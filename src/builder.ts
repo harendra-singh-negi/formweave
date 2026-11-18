@@ -347,6 +347,8 @@ export function Builder(props: BuilderProps) {
   const [tab, setTab] = useState<'design' | 'build' | 'layout' | 'preview' | 'json'>('design')
   /** The canvas alone, palette and form settings put away. */
   const [wide, setWide] = useState(false)
+  /** Full width: the palette opened again with "+ Add". */
+  const [adding, setAdding] = useState(false)
   /** On the canvas: a selected section, grid, page or text, by its place in the layout. */
   const [node, setNode] = useState<Ip | null>(null)
   const [find, setFind] = useState('')
@@ -579,8 +581,8 @@ export function Builder(props: BuilderProps) {
         h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, 'Redo'))),
     issues.length > 0 && h('ul', { className: 'fw-b-issues', role: 'status' }, issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message))),
     design && h('div', { className: `fw-b-main fw-b-design${wide ? ' fw-b-wide' : ''}` },
-      !wide && palette,
-      h(Canvas, { schema, issues: issues.length > 0, selected, node, select, selectNode, drop: canvasDrop, remove: () => (selected ? remove(selected) : removeNode()), wide, setWide }),
+      (!wide || adding) && palette,
+      h(Canvas, { schema, issues: issues.length > 0, selected, node, select, selectNode, drop: canvasDrop, remove: () => (selected ? remove(selected) : removeNode()), wide, setWide, adding, setAdding }),
       // full width: the settings come back only while something is picked
       (!wide || field || typeof piece === 'object') && h('div', { className: 'fw-b-settings' },
         fieldSettings
@@ -745,6 +747,8 @@ interface CanvasProps {
   remove(): void
   wide: boolean
   setWide(on: boolean): void
+  adding: boolean
+  setAdding(on: boolean): void
 }
 
 /** The form as people will see it. A click picks the field or section under it; dragging moves things or drops new ones in. */
@@ -813,6 +817,8 @@ function Canvas(p: CanvasProps) {
     h('div', { className: 'fw-b-devices', role: 'group', 'aria-label': 'Show it as on' },
       DEVICES.map(([k, label, w]) => h('button', { key: k, type: 'button', 'aria-pressed': device === k, title: `${w}px wide`, onClick: () => setDevice(k) }, label)),
       h('small', null, `${width}px${zoom < 1 ? ` · ${Math.round(zoom * 100)}%` : ''}`),
+      p.wide && h('button', { type: 'button', className: 'fw-b-wide-go', 'aria-pressed': p.adding, title: p.adding ? 'Put the palette away' : 'Open the palette: click an input or drag it onto the form', onClick: () => p.setAdding(!p.adding) },
+        p.adding ? '✕ Close palette' : '+ Add'),
       h('button', { type: 'button', className: 'fw-b-wide-go', 'aria-pressed': p.wide, title: p.wide ? 'Bring back the palette and the settings (Esc)' : 'Hide the palette and the form settings: the canvas gets all the room', onClick: () => p.setWide(!p.wide) },
         p.wide ? '⤡ Exit full width' : '⤢ Full width')),
     h('div', { className: 'fw-b-device', 'data-device': device, style: { width, zoom } }, h(Form, { schema: p.schema, design: true })))
