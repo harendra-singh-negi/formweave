@@ -2,7 +2,23 @@
 
 Forms as JSON: one engine for validation, conditions and formulas that runs in the browser and on your server.
 
-Status: phase 1, the engine. The renderer, builder and document import come next. Not published yet.
+Status: the engine, the renderer, the visual builder and scan import all work. Not on npm yet.
+
+## Install
+
+It isn't on npm yet, so install it from this folder:
+
+```sh
+cd formweave && npm install && npm run build   # makes dist/
+cd ../your-app && npm install ../formweave     # or: npm pack in formweave, then npm install ./formweave-0.0.0.tgz
+```
+
+Run `npm run build` in formweave again after you change it. Only install what you use:
+
+- `react` and `react-dom` for `formweave/react` and `formweave/builder`;
+- `tesseract.js` for `formweave/scan`, plus `pdfjs-dist` to read PDFs.
+
+The engine (`formweave`) needs none of them.
 
 ```ts
 import { validate, createForm, lint, type FormSchema } from 'formweave'
@@ -60,7 +76,7 @@ import { Builder } from 'formweave/builder'
 
 Or `<formweave-builder>` from `formweave/element`, which fires `fw-change` with `{ schema, issues }`.
 
-- Add the 8 field types. Add fields into groups and lists, and drag them or use ↑ ↓ to reorder.
+- Add the 8 field types: click one, or drag it from the palette to the spot it should go, groups and lists included. Drag fields or use ↑ ↓ to reorder. A line shows where a drop will land.
 - Duplicate, delete, undo and redo (Ctrl+Z, Ctrl+Shift+Z).
 - The settings panel is itself a formweave form. It covers key, label, help, required, "show only when", "calculated value", options and limits.
 - Renaming or deleting a field keeps the layout pointing at the right keys. `lint()` shows any formula that still uses an old name.
@@ -98,7 +114,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 const scan = (files: File[], progress: (m: string) => void) =>
   scanForm(files, { languages: ['eng', 'hin'], pdfjs, progress }) // → { schema, warnings }
 
-<Builder scan={scan} /> // adds "From a photo, scan or PDF" to the Import / JSON tab
+<Builder scan={scan} /> // adds a "From a PDF or photo…" button and a "Scan / Import" tab
 ```
 
 What it turns into fields:
