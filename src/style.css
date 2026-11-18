@@ -79,11 +79,37 @@
 
 .fw-section { display: grid; gap: var(--fw-gap); }
 .fw-section > h3, .fw-content { margin: 0; }
-.fw-steps, .fw-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0; margin: 0; list-style: none; }
-.fw-steps li { color: var(--fw-muted); }
-.fw-steps li[aria-current] { color: var(--fw-text); font-weight: 600; }
-.fw-tabs [aria-selected=true] { border-color: var(--fw-accent); }
-.fw-pages, .fw-page { display: grid; gap: var(--fw-gap); }
+/* Pages: a stepper (numbered circles joined by lines) or tabs, at the top, left, right or bottom. */
+.fw-pages { display: grid; gap: calc(var(--fw-gap) * 1.5); align-items: start; }
+.fw-pages-body, .fw-page { display: grid; gap: var(--fw-gap); min-width: 0; }
+.fw-pages[data-position=bottom] > :first-child { order: 1; }
+.fw-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.fw-tabs [aria-selected=true] { border-color: var(--fw-accent); color: var(--fw-accent); }
+.fw-steps { display: flex; padding: 0; margin: 0; list-style: none; }
+.fw-steps li { flex: 1; display: flex; align-items: center; min-width: 0; color: var(--fw-muted); }
+.fw-steps li:last-child { flex: 0 1 auto; }
+.fw-steps li:not(:last-child)::after { content: ''; flex: 1; min-width: 1rem; height: 2px; margin: 0 0.5rem; background: var(--fw-border); }
+.fw-steps li[data-state=done]::after { background: var(--fw-accent); }
+.fw-steps li[data-state=current] { color: var(--fw-text); font-weight: 600; }
+.fw-step { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.fw-form .fw-steps button.fw-step { border: 0; background: none; padding: 0; min-height: 0; text-align: start; }
+.fw-form .fw-steps button.fw-step:hover .fw-step-t { text-decoration: underline; }
+.fw-step-n { flex: none; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; border: 2px solid var(--fw-border); background: var(--fw-bg); font-size: 0.875rem; font-weight: 600; }
+.fw-steps [data-state=current] .fw-step-n { border-color: var(--fw-accent); color: var(--fw-accent); }
+.fw-steps [data-state=done] .fw-step-n { border-color: var(--fw-accent); background: var(--fw-accent); color: #fff; }
+.fw-step-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* narrow: only the current step keeps its title */
+@container fw (max-width: 30rem) { .fw-steps li:not([data-state=current]) .fw-step-t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } }
+/* left / right: a vertical stepper beside the page, once there is room */
+@container fw (min-width: 40rem) {
+  .fw-pages:is([data-position=left], [data-position=right]) { gap: calc(var(--fw-gap) * 2); }
+  .fw-pages[data-position=left] { grid-template-columns: minmax(10rem, max-content) minmax(0, 1fr); }
+  .fw-pages[data-position=right] { grid-template-columns: minmax(0, 1fr) minmax(10rem, max-content); }
+  .fw-pages[data-position=right] > :first-child { order: 1; }
+  .fw-pages:is([data-position=left], [data-position=right]) > :is(.fw-steps, .fw-tabs) { flex-direction: column; flex-wrap: nowrap; position: sticky; top: 1rem; }
+  .fw-pages:is([data-position=left], [data-position=right]) .fw-steps li { flex: none; flex-direction: column; align-items: flex-start; }
+  .fw-pages:is([data-position=left], [data-position=right]) .fw-steps li:not(:last-child)::after { flex: none; width: 2px; height: 1.5rem; min-width: 0; margin: 0.25rem 0 0.25rem calc(1rem - 1px); }
+}
 .fw-page:focus { outline: none; }
 .fw-nav { display: flex; gap: 0.5rem; }
 

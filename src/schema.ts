@@ -153,6 +153,8 @@ export interface Grid {
 export interface Pages {
   type: 'pages'
   display?: 'steps' | 'tabs' | 'accordion'
+  /** Where the stepper or tabs sit. Left and right fall back to top when the form is narrow. Default top. */
+  position?: 'top' | 'left' | 'right' | 'bottom'
   visible?: When
   children: Section[]
 }

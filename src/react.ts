@@ -176,18 +176,24 @@ function PagesView({ item }: { item: Pages }) {
     setTimeout(() => body.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
   }
   const tabs = item.display === 'tabs'
-  return h('div', { className: 'fw-pages' },
+  /** A step: done ones can be gone back to, later ones are reached with Next so each step gets checked. */
+  const step = (s: Section, j: number) => {
+    const inner = [h('span', { key: 'n', className: 'fw-step-n', 'aria-hidden': true }, j < i ? '✓' : j + 1), h('span', { key: 't', className: 'fw-step-t' }, title(s, j)), j < i && h('span', { key: 'd', className: 'fw-sr' }, ' (done)')]
+    return h('li', { key: j, 'data-state': j < i ? 'done' : j === i ? 'current' : 'next', 'aria-current': j === i ? 'step' : undefined },
+      j < i ? h('button', { type: 'button', className: 'fw-step', onClick: () => c.setPage(j) }, inner) : h('span', { className: 'fw-step' }, inner))
+  }
+  return h('div', { className: 'fw-pages', 'data-position': item.position ?? 'top' },
     tabs
       ? h('div', { role: 'tablist', className: 'fw-tabs' },
           pages.map((s, j) => h('button', { key: j, type: 'button', role: 'tab', 'aria-selected': j === i, onClick: () => c.setPage(j) }, title(s, j))))
-      : h('ol', { className: 'fw-steps' },
-          pages.map((s, j) => h('li', { key: j, 'aria-current': j === i ? 'step' : undefined }, title(s, j)))),
-    h('section', { ref: body, tabIndex: -1, className: 'fw-page', role: tabs ? 'tabpanel' : undefined, 'aria-label': title(pages[i], i) },
-      h(Nodes, { items: pages[i].children })),
-    tabs ? h(SubmitButton)
-      : h('div', { className: 'fw-nav' },
-          i > 0 && h('button', { type: 'button', onClick: () => c.setPage(i - 1) }, c.labels.back),
-          i < pages.length - 1 ? h('button', { type: 'button', onClick: next }, c.labels.next) : h(SubmitButton)))
+      : h('ol', { className: 'fw-steps' }, pages.map(step)),
+    h('div', { className: 'fw-pages-body' },
+      h('section', { ref: body, tabIndex: -1, className: 'fw-page', role: tabs ? 'tabpanel' : undefined, 'aria-label': title(pages[i], i) },
+        h(Nodes, { items: pages[i].children })),
+      tabs ? h(SubmitButton)
+        : h('div', { className: 'fw-nav' },
+            i > 0 && h('button', { type: 'button', onClick: () => c.setPage(i - 1) }, c.labels.back),
+            i < pages.length - 1 ? h('button', { type: 'button', onClick: next }, c.labels.next) : h(SubmitButton))))
 }
 
 function SubmitButton() {

@@ -62,6 +62,7 @@ import 'formweave/style.css'
 ```
 
 - Layout: `section`, `grid` (columns follow the form's own width through container queries), `pages` (`steps`, `tabs`, `accordion`) and `content`.
+- Stepper: numbered steps joined by a line, with done steps ticked and clickable to go back. Next checks the current step before moving on. `position: 'top' | 'left' | 'right' | 'bottom'` places it. Left and right show at the top when the form is narrow, and on a phone only the current step keeps its name.
 - Widgets: the built-ins cover all 8 types. Pass your own by widget name or by type. Each widget draws only its control; formweave adds the label, help and error.
 - Accessibility: every label is tied to its input, and errors are announced through `aria-describedby`. Submitting focuses the first error and opens the page it is on.
 - Theming: change the `--fw-*` CSS variables. All styles stay under `.fw-form`.
@@ -81,7 +82,7 @@ Or `<formweave-builder>` from `formweave/element`, which fires `fw-change` with 
 - The settings panel is itself a formweave form. It covers key, label, help, required, "show only when", "calculated value", options and limits.
 - Renaming or deleting a field keeps the layout pointing at the right keys. `lint()` shows any formula that still uses an old name.
 - Preview fills the form for real. The JSON tab copies the schema, or loads one after linting it.
-- The Layout tab adds sections, grids (columns per width), pages (steps, tabs, accordion), headings, text and dividers. Fields are dragged into them, and each part gets its title, columns and "show only when". Fields not placed yet are listed, and removing a container keeps what is inside it.
+- The Layout tab adds sections, grids (columns per width), pages (steps, tabs, accordion, with the steps at the top, left, right or bottom), headings, text and dividers. "Make it a stepper" turns a form with no layout into one step to split from. Fields are dragged into them, and each part gets its title, columns and "show only when". Fields not placed yet are listed, and removing a container keeps what is inside it.
 - Still to come: translations and templates.
 
 ## JSON Schema in and out

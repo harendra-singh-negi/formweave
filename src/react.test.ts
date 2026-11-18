@@ -25,7 +25,8 @@ const schema: FormSchema = {
 
 test('renders the first step with labels tied to inputs, in the chosen language', () => {
   const html = renderToString(h(Form, { schema, locale: 'hi' }))
-  assert.match(html, /<ol class="fw-steps">.*aria-current="step"[^>]*>You</)
+  assert.match(html, /data-position="top"><ol class="fw-steps"><li data-state="current" aria-current="step"><span class="fw-step"><span class="fw-step-n" aria-hidden="true">1<\/span><span class="fw-step-t">You</)
+  assert.match(html, /data-state="next"[^>]*><span class="fw-step">.*Order</) // a later step isn't a button: Next checks this one first
   const id = /<label for="([^"]+name)">नाम/.exec(html)?.[1]
   assert.ok(id, 'label for name')
   assert.match(html, new RegExp(`id="${id}"[^>]*aria-describedby="${id}-help"[^>]*aria-required="true"`))

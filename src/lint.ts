@@ -121,6 +121,8 @@ export function lint(schema: unknown): Issue[] {
         if (item.visible !== undefined && typeof item.visible !== 'boolean') formula(`${path}.visible`, item.visible, root)
         if (item.type === 'pages' && !(Array.isArray(item.children) && item.children.every((c: unknown) => isObj(c) && c.type === 'section')))
           add(`${path}.children`, 'Each page is a section')
+        if (item.type === 'pages' && item.position !== undefined && !['top', 'left', 'right', 'bottom'].includes(item.position as string))
+          add(`${path}.position`, 'Position is top, left, right or bottom')
         if (item.type !== 'content') layout(item.children, `${path}.children`)
       }
     })

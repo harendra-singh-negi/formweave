@@ -313,6 +313,7 @@ export function Builder(props: BuilderProps) {
       h('div', { className: 'fw-b-palette', 'aria-label': 'Add a field' },
         h('h3', null, 'Add'),
         KINDS.map(([k, label]) => h('button', { key: k, type: 'button', draggable: true, title: 'Click to add, or drag it into place', onClick: () => add(k), onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-kind', k) }, '+ ', label)),
+        h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
         props.scan && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…')),
       h('div', { className: 'fw-b-tree' },
         h('h3', null, 'Fields'),
@@ -494,7 +495,7 @@ const placedKeys = (items: Layout[]): string[] => items.flatMap((n) => (typeof n
 const NODES: [string, string, () => Layout][] = [
   ['section', 'Section', () => ({ type: 'section', title: 'Section', children: [] })],
   ['grid', 'Grid (columns)', () => ({ type: 'grid', cols: 2, children: [] })],
-  ['pages', 'Pages / steps', () => ({ type: 'pages', display: 'steps', children: [{ type: 'section', title: 'Step 1', children: [] }] })],
+  ['pages', 'Steps / tabs', () => ({ type: 'pages', display: 'steps', children: [{ type: 'section', title: 'Step 1', children: [] }] })],
   ['heading', 'Heading', () => ({ type: 'content', as: 'heading', text: 'Heading' })],
   ['text', 'Text', () => ({ type: 'content', as: 'text', text: 'Some text' })],
   ['divider', 'Divider', () => ({ type: 'content', as: 'divider' })],
@@ -507,7 +508,12 @@ const NODE_SETTINGS: Record<string, FormSchema> = {
   grid: { version: 1, fields: {
     base: cols('Columns on phones'), sm: cols('Columns from 480px'), md: cols('Columns from 640px'), lg: cols('Columns from 960px'), visible: showWhen,
   }, layout: [{ type: 'grid', cols: 2, children: ['base', 'sm', 'md', 'lg'] }, 'visible'] },
-  pages: { version: 1, fields: { display: { type: 'choice', label: 'Shown as', options: ['steps', 'tabs', 'accordion'], required: true }, visible: showWhen } },
+  pages: { version: 1, fields: {
+    display: { type: 'choice', label: 'Shown as', options: ['steps', 'tabs', 'accordion'], required: true },
+    position: { type: 'choice', widget: 'radio', label: 'Where the steps go', options: ['top', 'left', 'right', 'bottom'], required: true, visible: "display != 'accordion'",
+      help: 'Left and right show at the top when the form is narrow, like on a phone.' },
+    visible: showWhen,
+  } },
   content: { version: 1, fields: { as: { type: 'choice', label: 'Kind', options: ['heading', 'text', 'divider'], required: true }, text: { type: 'string', widget: 'textarea', label: 'Text' }, visible: showWhen } },
 }
 
@@ -519,7 +525,7 @@ function nodeSettings(n: Container | Extract<Layout, { type: 'content' }>): Valu
       const c = typeof n.cols === 'number' ? { base: 1, md: n.cols } : (n.cols ?? {})
       return { base: c.base ?? null, sm: c.sm ?? null, md: c.md ?? null, lg: c.lg ?? null, visible }
     }
-    case 'pages': return { display: n.display ?? 'steps', visible }
+    case 'pages': return { display: n.display ?? 'steps', position: n.position ?? 'top', visible }
     case 'content': return { as: n.as ?? 'text', text: text(n.text, 'en') || null, visible }
   }
 }
@@ -530,7 +536,7 @@ function fromNodeSettings(n: Exclude<Layout, string>, s: Values): Layout {
   const words = (old: unknown, v: unknown) => (v && old && typeof old === 'object' ? { ...old, en: v } : v)
   put('visible', s.visible)
   if (n.type === 'section') put('title', words(n.title, s.title))
-  if (n.type === 'pages') put('display', s.display)
+  if (n.type === 'pages') { put('display', s.display); put('position', s.position === 'top' ? null : s.position) }
   if (n.type === 'content') { put('as', s.as); put('text', s.as === 'divider' ? null : words(n.text, s.text)) }
   if (n.type === 'grid') {
     const c = Object.fromEntries(['base', 'sm', 'md', 'lg'].filter((k) => typeof s[k] === 'number').map((k) => [k, s[k]]))
@@ -552,7 +558,9 @@ function LayoutTab({ schema, commit, panel, bump }: LayoutTabProps) {
   if (!items)
     return h('div', { className: 'fw-b-layout-empty' },
       h('p', null, 'Fields show one after another. Start a layout to group them into sections, columns or steps.'),
-      h('button', { type: 'button', onClick: () => commit(Object.keys(schema.fields)) }, 'Start a layout'))
+      h('div', { className: 'fw-b-bar' },
+        h('button', { type: 'button', onClick: () => commit([{ type: 'pages', display: 'steps', children: [{ type: 'section', title: 'Step 1', children: Object.keys(schema.fields) }] }]) }, 'Make it a stepper'),
+        h('button', { type: 'button', onClick: () => commit(Object.keys(schema.fields)) }, 'Start a layout')))
 
   const node = sel ? nodeAt(items, sel) : undefined
   const select = (ip: Ip | null) => { setSel(ip); bump() }
@@ -634,7 +642,7 @@ function LayoutTree(p: LayoutTreeProps): ReactNode {
     switch (n.type) {
       case 'section': return [text(n.title, 'en') || 'Section', ' section']
       case 'grid': return ['Columns', ` grid · ${typeof n.cols === 'number' ? n.cols : Object.values(n.cols ?? { base: 1 }).join('/')}`]
-      case 'pages': return ['Pages', ` ${n.display ?? 'steps'}`]
+      case 'pages': return ['Pages', ` ${n.display ?? 'steps'}${n.position && n.display !== 'accordion' ? ` · ${n.position}` : ''}`]
       case 'content': return [n.as === 'divider' ? '———' : text(n.text, 'en').slice(0, 40) || '…', ` ${n.as ?? 'text'}`]
     }
   }
