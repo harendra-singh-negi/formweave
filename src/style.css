@@ -1,0 +1,90 @@
+/* formweave: everything under .fw-form, no global reset. Theme it with the --fw-* variables. */
+.fw-form {
+  --fw-font: inherit;
+  --fw-text: #1f2328;
+  --fw-muted: #59636e;
+  --fw-bg: #fff;
+  --fw-border: #d1d9e0;
+  --fw-accent: #0969da;
+  --fw-error: #cf222e;
+  --fw-radius: 6px;
+  --fw-gap: 1rem;
+  --fw-input-height: 2.25rem;
+  container: fw / inline-size;
+  font-family: var(--fw-font);
+  color: var(--fw-text);
+  display: grid;
+  gap: var(--fw-gap);
+}
+@media (prefers-color-scheme: dark) {
+  .fw-form {
+    --fw-text: #e6edf3;
+    --fw-muted: #9198a1;
+    --fw-bg: #0d1117;
+    --fw-border: #3d444d;
+    --fw-accent: #4493f8;
+    --fw-error: #f85149;
+  }
+}
+.fw-form *, .fw-form *::before, .fw-form *::after { box-sizing: border-box; }
+
+.fw-field { display: grid; gap: 0.375rem; align-content: start; min-width: 0; margin: 0; }
+.fw-field > label, .fw-field > legend { font-weight: 600; }
+.fw-required, .fw-error { color: var(--fw-error); }
+.fw-help { color: var(--fw-muted); font-size: 0.875em; }
+.fw-error { font-size: 0.875em; }
+
+.fw-form input:not([type=checkbox], [type=radio], [type=file]), .fw-form select, .fw-form textarea {
+  width: 100%;
+  min-height: var(--fw-input-height);
+  padding: 0.375rem 0.625rem;
+  font: inherit;
+  color: inherit;
+  background: var(--fw-bg);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius);
+}
+.fw-form :focus-visible { outline: 2px solid var(--fw-accent); outline-offset: 1px; }
+.fw-form [aria-invalid=true] { border-color: var(--fw-error); }
+.fw-form [readonly] { background: transparent; }
+.fw-check > label { display: flex; gap: 0.5rem; align-items: center; font-weight: normal; }
+.fw-options { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
+
+.fw-group, .fw-list { border: 1px solid var(--fw-border); border-radius: var(--fw-radius); padding: var(--fw-gap); gap: var(--fw-gap); grid-column: 1 / -1; }
+.fw-row { display: grid; gap: var(--fw-gap); padding-bottom: var(--fw-gap); border-bottom: 1px dashed var(--fw-border); }
+.fw-table-wrap { overflow-x: auto; }
+.fw-table { border-collapse: collapse; width: 100%; }
+.fw-table th { text-align: start; font-weight: 600; padding: 0.25rem; }
+.fw-table td { padding: 0.25rem; vertical-align: top; }
+
+.fw-form button {
+  font: inherit;
+  min-height: var(--fw-input-height);
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--fw-radius);
+  border: 1px solid var(--fw-border);
+  background: var(--fw-bg);
+  color: inherit;
+  cursor: pointer;
+}
+.fw-form .fw-submit { background: var(--fw-accent); border-color: var(--fw-accent); color: #fff; justify-self: start; }
+.fw-form button:disabled { opacity: 0.6; cursor: default; }
+.fw-add { justify-self: start; }
+
+/* Columns follow the form's own width, not the screen: a form in a narrow drawer gets one column. */
+.fw-grid { display: grid; gap: var(--fw-gap); grid-template-columns: repeat(var(--fw-c, var(--fw-cols, 1)), minmax(0, 1fr)); }
+@container fw (min-width: 30rem) { .fw-grid { --fw-c: var(--fw-cols-sm, var(--fw-cols, 1)); } }
+@container fw (min-width: 40rem) { .fw-grid { --fw-c: var(--fw-cols-md, var(--fw-cols-sm, var(--fw-cols, 1))); } }
+@container fw (min-width: 60rem) { .fw-grid { --fw-c: var(--fw-cols-lg, var(--fw-cols-md, var(--fw-cols-sm, var(--fw-cols, 1)))); } }
+
+.fw-section { display: grid; gap: var(--fw-gap); }
+.fw-section > h3, .fw-content { margin: 0; }
+.fw-steps, .fw-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0; margin: 0; list-style: none; }
+.fw-steps li { color: var(--fw-muted); }
+.fw-steps li[aria-current] { color: var(--fw-text); font-weight: 600; }
+.fw-tabs [aria-selected=true] { border-color: var(--fw-accent); }
+.fw-pages, .fw-page { display: grid; gap: var(--fw-gap); }
+.fw-page:focus { outline: none; }
+.fw-nav { display: flex; gap: 0.5rem; }
+
+.fw-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

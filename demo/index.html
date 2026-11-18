@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>formweave demo</title>
+  <link rel="stylesheet" href="../dist/style.css" />
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f6f8fa; color: #1f2328; }
+    main { max-width: 72rem; margin: 0 auto; padding: 1.5rem 1rem; display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+    @media (max-width: 50rem) { main { grid-template-columns: 1fr; } }
+    .card { background: #fff; border: 1px solid #d1d9e0; border-radius: 8px; padding: 1.25rem; }
+    h1 { font-size: 1.25rem; margin: 0 0 1rem; }
+    pre { font-size: 12px; white-space: pre-wrap; margin: 0; }
+    label.lang { font-size: 0.875rem; }
+    @media (prefers-color-scheme: dark) { body { background: #010409; color: #e6edf3; } .card { background: #0d1117; border-color: #3d444d; } }
+  </style>
+  <!-- the built files import 'react'; in a real app your bundler resolves it -->
+  <script type="importmap">
+    { "imports": {
+      "react": "https://esm.sh/react@19.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@19.3.1/client?external=react"
+    } }
+  </script>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Loan application <label class="lang">· <select id="lang"><option value="en">English</option><option value="hi">हिंदी</option></select></label></h1>
+      <formweave-form id="form"></formweave-form>
+    </section>
+    <section class="card">
+      <h1>Live state</h1>
+      <pre id="sent"></pre>
+      <pre id="out">Fill the form…</pre>
+    </section>
+  </main>
+  <script type="module">
+    import '../dist/element.js'
+
+    const schema = {
+      version: 1,
+      fields: {
+        name: { type: 'string', label: { en: 'Full name', hi: 'पूरा नाम' }, required: true, minLength: 2 },
+        email: { type: 'string', format: 'email', label: { en: 'Email', hi: 'ईमेल' }, required: true },
+        phone: { type: 'string', format: 'phone', label: { en: 'Phone', hi: 'फ़ोन' } },
+        dob: { type: 'date', label: { en: 'Date of birth', hi: 'जन्म तिथि' }, max: '2008-12-31' },
+        employment: { type: 'choice', widget: 'radio', label: { en: 'Employment', hi: 'रोज़गार' }, options: ['Salaried', 'Self Employed'], required: true },
+        business: { type: 'string', label: { en: 'Business name', hi: 'व्यवसाय का नाम' }, visible: "employment == 'Self Employed'", required: true },
+        gstin: { type: 'string', label: 'GSTIN', visible: "employment == 'Self Employed'", pattern: '[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]', messages: { pattern: { en: 'Like 22AAAAA0000A1Z5', hi: 'जैसे 22AAAAA0000A1Z5' } } },
+        items: {
+          type: 'list', widget: 'table', min: 1, max: 5, label: { en: 'Items', hi: 'सामान' },
+          fields: {
+            item: { type: 'string', label: { en: 'Item', hi: 'सामान' }, required: true },
+            qty: { type: 'number', label: { en: 'Qty', hi: 'मात्रा' }, min: 1, decimals: 0, required: true },
+            price: { type: 'number', label: { en: 'Price ₹', hi: 'दाम ₹' }, decimals: 2, required: true },
+            total: { type: 'number', label: { en: 'Total ₹', hi: 'कुल ₹' }, value: 'qty * price', decimals: 2 },
+          },
+        },
+        gst: { type: 'number', label: { en: 'GST 18% ₹', hi: 'GST 18% ₹' }, value: 'sum(items.total) * 18 / 100', decimals: 2 },
+        grandTotal: { type: 'number', label: { en: 'Grand total ₹', hi: 'कुल योग ₹' }, value: 'sum(items.total) + gst', decimals: 2 },
+        agree: { type: 'boolean', widget: 'toggle', label: { en: 'I agree to the terms', hi: 'मैं शर्तें मानता/मानती हूँ' }, required: true },
+      },
+      layout: [{
+        type: 'pages', display: 'steps',
+        children: [
+          { type: 'section', title: { en: 'About you', hi: 'आपके बारे में' }, children: [{ type: 'grid', cols: 2, children: ['name', 'email', 'phone', 'dob'] }] },
+          { type: 'section', title: { en: 'Work', hi: 'काम' }, children: ['employment', { type: 'grid', cols: 2, children: ['business', 'gstin'] }] },
+          { type: 'section', title: { en: 'Order', hi: 'ऑर्डर' }, children: ['items', { type: 'grid', cols: 2, children: ['gst', 'grandTotal'] }, 'agree'] },
+        ],
+      }],
+    }
+
+    const form = document.getElementById('form')
+    const out = document.getElementById('out')
+    const hi = { submit: 'जमा करें', next: 'आगे', back: 'पीछे', addRow: '+ पंक्ति जोड़ें', removeRow: 'पंक्ति हटाएँ', remove: 'हटाएँ' }
+    form.schema = schema
+    document.getElementById('lang').onchange = (e) => { form.locale = e.target.value; form.labels = e.target.value === 'hi' ? hi : {} }
+    form.addEventListener('fw-change', (e) => { const { values, errors } = e.detail; out.textContent = JSON.stringify({ values, errors }, null, 2) })
+    form.addEventListener('fw-submit', (e) => { document.getElementById("sent").textContent = "Submitted ✓ " + JSON.stringify(e.detail) })
+  </script>
+</body>
+</html>
