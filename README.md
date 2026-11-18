@@ -68,6 +68,21 @@ Or `<formweave-builder>` from `formweave/element`, which fires `fw-change` with 
 - The Layout tab adds sections, grids (columns per width), pages (steps, tabs, accordion), headings, text and dividers. Fields are dragged into them, and each part gets its title, columns and "show only when". Fields not placed yet are listed, and removing a container keeps what is inside it.
 - Still to come: translations and templates.
 
+## JSON Schema in and out
+
+```ts
+import { fromJsonSchema, toJsonSchema } from 'formweave'
+
+const { schema, warnings } = fromJsonSchema(openApiBody) // or z.toJSONSchema(zodSchema)
+const forBackend = toJsonSchema(schema) // validate submissions in Java, Python, Go, PHP…
+```
+
+- Supported: `type`, `required`, `title` → label, `description` → help, `enum` and `oneOf: [{ const, title }]` → choices, and arrays of enums → multiple choice.
+- Also: arrays of objects → table, nested objects → groups, `$ref` into `$defs`/`definitions`, nullable types, `allOf`, and `minLength`/`maxLength`/`pattern`/`minimum`/`maximum`/`minItems`/`maxItems`. `format: email | uri | date | date-time | time | binary` is read too.
+- Anything that can't be carried over comes back in `warnings`, for example a key that isn't a valid name gets renamed.
+- In the builder, paste a JSON Schema into the JSON tab to turn it into a form.
+- In `toJsonSchema`, a field with a "show only when" condition is never listed as required, because it may be hidden. `validate()` still checks it.
+
 ## Field types
 
 `string` · `number` · `boolean` · `choice` · `date` · `file` · `group` · `list`.

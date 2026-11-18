@@ -2,6 +2,7 @@
 import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { lint, type Issue } from './lint.ts'
 import { text } from './form.ts'
+import { fromJsonSchema } from './jsonschema.ts'
 import { Form } from './react.ts'
 import { DATE_FORMATS, type Field, type Fields, type FormSchema, type Layout, type Values, type Grid } from './schema.ts'
 
@@ -349,15 +350,26 @@ function JsonTab({ schema, load }: { schema: FormSchema; load(s: FormSchema): vo
   const [problems, setProblems] = useState<string[]>([])
   const apply = () => {
     try {
-      const s = JSON.parse(draft)
+      let s = JSON.parse(draft)
+      let notes: string[] = []
+      // a JSON Schema (OpenAPI, Zod's z.toJSONSchema()…) is turned into a form
+      if (s && typeof s === 'object' && s.version === undefined && (s.properties || s.$schema || s.type === 'object')) {
+        const r = fromJsonSchema(s)
+        s = r.schema
+        notes = r.warnings.map((w) => `Imported with a change: ${w}`)
+      }
       const found = lint(s)
-      setProblems(found.map((i) => `${i.path || 'schema'}: ${i.message}`))
-      if (!found.length) load(s)
+      setProblems([...found.map((i) => `${i.path || 'schema'}: ${i.message}`), ...notes])
+      if (!found.length) {
+        load(s)
+        setDraft(JSON.stringify(s, null, 2))
+      }
     } catch (e) {
       setProblems([(e as Error).message])
     }
   }
   return h('div', { className: 'fw-b-json' },
+    h('p', { className: 'fw-help' }, 'Paste a formweave schema, or a JSON Schema (OpenAPI, Zod…) to turn it into a form.'),
     h('textarea', { 'aria-label': 'Schema JSON', value: draft, spellCheck: false, onChange: (e: { target: { value: string } }) => setDraft(e.target.value) }),
     problems.length > 0 && h('ul', { className: 'fw-error' }, problems.map((m, i) => h('li', { key: i }, m))),
     h('div', null,
