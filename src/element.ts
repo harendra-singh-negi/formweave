@@ -4,6 +4,10 @@ import { createRoot, type Root } from 'react-dom/client'
 import { Form, type FormProps } from './react.ts'
 import { Builder, type BuilderProps } from './builder.ts'
 
+/** Each element is its own React root: without a prefix of its own, two of them would hand out the same ids. */
+let roots = 0
+const nextPrefix = () => `fw${++roots}-`
+
 /**
  * Set `schema` (and optionally `values`, `context`, `locale`, `validators`, `labels`, `classes`, `onUpload`) as properties.
  * Events: `fw-submit` (detail: values), `fw-change` (detail: state). Not `submit`: the inner <form>'s own event bubbles.
@@ -28,7 +32,7 @@ export class FormweaveForm extends HTMLElement {
   set classes(v: FormProps['classes']) { this.#set('classes', v) }
 
   connectedCallback() {
-    this.#root ??= createRoot(this)
+    this.#root ??= createRoot(this, { identifierPrefix: nextPrefix() })
     this.#render()
   }
   disconnectedCallback() {
@@ -60,7 +64,7 @@ export class FormweaveBuilder extends HTMLElement {
     this.#render(false)
   }
   connectedCallback() {
-    this.#root ??= createRoot(this)
+    this.#root ??= createRoot(this, { identifierPrefix: nextPrefix() })
     this.#render(false)
   }
   disconnectedCallback() {
