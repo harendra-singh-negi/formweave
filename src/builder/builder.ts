@@ -22,6 +22,7 @@ import { Tree } from './tabs/fields-tab.ts'
 import { JsonTab } from './tabs/import-tab.ts'
 import { LayoutTab } from './tabs/layout-tab.ts'
 import { BUILDER_LABELS, type BuilderProps, type BuilderTab, fill, type Path } from './types.ts'
+import { nameFor } from './a11y.ts'
 
 export function Builder(props: BuilderProps) {
   const [past, setPast] = useState<FormSchema[]>([])
@@ -298,7 +299,7 @@ export function Builder(props: BuilderProps) {
     props.scan && tabs.includes('json') && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…'))
   /** Copy, Paste and Duplicate for what is picked; with nothing picked, Copy takes the whole form. */
   const tool = (label: string, title: string, onClick: () => void, disabled = false) =>
-    h('button', { type: 'button', title, 'aria-label': title, disabled, onClick, className: 'fw-b-clip' }, label)
+    h('button', { type: 'button', title, 'aria-label': nameFor(label, title), disabled, onClick, className: 'fw-b-clip' }, label)
   const clipTools = h(Fragment, null,
     tool(L.copy, selected || node ? `${L.copy} (Ctrl+C)` : `${L.copy}: the whole form (Ctrl+C)`, () => copy()),
     tool(L.paste, clip ? 'Paste after what is picked (Ctrl+V)' : 'Copy something first', () => paste(), !clip),

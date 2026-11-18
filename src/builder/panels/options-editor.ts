@@ -3,6 +3,7 @@ import { createElement as h, Fragment, useRef, useState, type ChangeEvent, type 
 import type { WidgetProps } from '../../react.ts'
 import type { Values } from '../../core/schema.ts'
 import { formula } from '../settings/field-settings.ts'
+import { nameFor } from '../a11y.ts'
 
 export function OptionsEditor(p: WidgetProps) {
   const rows = (Array.isArray(p.value) ? p.value : []) as Values[]
@@ -34,7 +35,7 @@ export function OptionsEditor(p: WidgetProps) {
     onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); insert(i + 1) } },
   })
   const tool = (label: string, title: string, onClick: () => void, disabled = false) =>
-    h('button', { type: 'button', title, 'aria-label': title, disabled: disabled || p.readOnly, onClick }, label)
+    h('button', { type: 'button', title, 'aria-label': nameFor(label, title), disabled: disabled || p.readOnly, onClick }, label)
   return h('div', { ref: box, className: 'fw-b-opts' },
     bulk !== null
       ? h('div', { className: 'fw-b-opts-bulk' },

@@ -3,6 +3,7 @@ import { createElement as h, Fragment, useState, type ChangeEvent } from 'react'
 import { text } from '../../core/form.ts'
 import type { ChoiceField, Field, ListField } from '../../core/schema.ts'
 import { cols } from '../settings/layout-settings.ts'
+import { nameFor } from '../a11y.ts'
 
 export const NEW_COLUMNS: [string, string, Field][] = [
   ['text', 'Text', { type: 'string', label: 'Text' }],
@@ -64,7 +65,7 @@ export function TableDesigner({ field: f, set, pick }: TableDesignerProps) {
     withCols([...cols, [base + n, structuredClone(make)]])
   }
   const tool = (label: string, title: string, onClick: () => void, disabled = false) =>
-    h('button', { type: 'button', title, 'aria-label': title, disabled, onClick }, label)
+    h('button', { type: 'button', title, 'aria-label': nameFor(label, title), disabled, onClick }, label)
   const numbers = cols.filter(([k, x]) => x.type === 'number' && k !== scale?.[0])
   return h('div', { className: 'fw-b-td' },
     h('h3', null, scale ? 'Matrix' : 'Table', ' designer'),
