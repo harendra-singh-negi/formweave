@@ -38,6 +38,8 @@ test('opens on the design canvas: the form itself, every part marked so a click 
   assert.match(html, /data-fw-path="items.qty" draggable="true"/) // and from its cells, which name the column, not the row
   assert.match(html, /data-fw-path="secret" data-fw-hidden="true"/) // hidden by its condition, still shown here
   assert.match(html, /Form settings/)
+  assert.match(html, /<button type="button" aria-pressed="true" title="1024px wide">Desktop<\/button>/) // also Tablet and Phone widths
+  assert.match(html, /class="fw-b-device" data-device="desktop" style="width:1024px;zoom:1"/)
   assert.match(html, /<summary>Layout<small> 7<\/small>/) // sections and steps come from the same palette
 })
 

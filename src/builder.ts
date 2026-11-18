@@ -743,7 +743,23 @@ interface CanvasProps {
 }
 
 /** The form as people will see it. A click picks the field or section under it; dragging moves things or drops new ones in. */
+/** Widths the canvas shows the form at. The form follows its own width, so a phone's width gives the phone layout. */
+const DEVICES = [['desktop', 'Desktop', 1024], ['tablet', 'Tablet', 768], ['phone', 'Phone', 375]] as const
+
 function Canvas(p: CanvasProps) {
+  const [device, setDevice] = useState<(typeof DEVICES)[number][0]>('desktop')
+  const box = useRef<HTMLDivElement>(null)
+  const [room, setRoom] = useState(0)
+  useEffect(() => {
+    if (!box.current || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(([e]) => setRoom(e.contentRect.width))
+    ro.observe(box.current)
+    return () => ro.disconnect()
+  }, [p.issues])
+  const width = DEVICES.find(([k]) => k === device)![2]
+  // wider than the room there is: drawn at that width, then shrunk to fit, so it is the real layout, only smaller
+  const outer = width + (device === 'desktop' ? 0 : 48) // the tablet / phone frame around it (see .fw-b-device)
+  const zoom = room && room < outer ? room / outer : 1
   const over = useRef<Element | null>(null)
   const mark = (el: Element | null) => {
     over.current?.classList.remove('fw-b-over')
@@ -753,14 +769,14 @@ function Canvas(p: CanvasProps) {
   const hit = (t: EventTarget | null) => (t instanceof Element ? t.closest('[data-fw-path], [data-fw-ip]') : null)
   const read = (el: Element | null): { path?: Path; ip?: Ip } =>
     !el ? {} : el.hasAttribute('data-fw-path') ? { path: el.getAttribute('data-fw-path')!.split('.') } : { ip: el.getAttribute('data-fw-ip')!.split('.').map(Number) }
-  if (p.issues) return h('div', { className: 'fw-b-canvas' }, h('p', { className: 'fw-error' }, 'Fix the issues above to see the form.'))
+  if (p.issues) return h('div', { ref: box, className: 'fw-b-canvas' }, h('p', { className: 'fw-error' }, 'Fix the issues above to see the form.'))
   // keys and places are checked by lint() (letters, digits, _), so they are safe inside the selector
   const sel = p.selected ? `[data-fw-path="${p.selected.join('.')}"]` : p.node ? `[data-fw-ip="${p.node.join('.')}"]` : ''
   return h('div', {
-    className: 'fw-b-canvas', tabIndex: -1, 'aria-label': 'The form: click a part to change it',
+    ref: box, className: 'fw-b-canvas', tabIndex: -1, 'aria-label': 'The form: click a part to change it',
     onClickCapture: (e: MouseEvent) => {
       const t = e.target as Element
-      if (t.closest('.fw-steps button, [role=tab], summary, .fw-nav button')) return // moving between pages still works
+      if (t.closest('.fw-steps button, [role=tab], summary, .fw-nav button, .fw-b-devices')) return // moving between pages still works
       e.preventDefault()
       e.stopPropagation()
       const at = read(hit(t))
@@ -788,7 +804,10 @@ function Canvas(p: CanvasProps) {
     },
   },
     sel && h('style', null, `.fw-b-canvas ${sel} { outline: 2px solid var(--fw-accent) !important; outline-offset: 3px; }`),
-    h(Form, { schema: p.schema, design: true }))
+    h('div', { className: 'fw-b-devices', role: 'group', 'aria-label': 'Show it as on' },
+      DEVICES.map(([k, label, w]) => h('button', { key: k, type: 'button', 'aria-pressed': device === k, title: `${w}px wide`, onClick: () => setDevice(k) }, label)),
+      h('small', null, `${width}px${zoom < 1 ? ` · ${Math.round(zoom * 100)}%` : ''}`)),
+    h('div', { className: 'fw-b-device', 'data-device': device, style: { width, zoom } }, h(Form, { schema: p.schema, design: true })))
 }
 
 interface TreeProps {
