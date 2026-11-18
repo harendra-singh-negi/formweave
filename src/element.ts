@@ -54,6 +54,23 @@ export class FormweaveBuilder extends HTMLElement {
   #root?: Root
   #schema?: BuilderProps['schema']
   #scan?: BuilderProps['scan']
+  #look: Partial<BuilderProps> = {}
+  #setLook(key: keyof BuilderProps, value: unknown) {
+    this.#look = { ...this.#look, [key]: value }
+    this.#render(false)
+  }
+  /** Which tabs show, in order: ['design', 'preview']. */
+  set tabs(v: BuilderProps['tabs']) { this.#setLook('tabs', v) }
+  /** Only these palette inputs or groups: ['email', 'Choices']. */
+  set palette(v: BuilderProps['palette']) { this.#setLook('palette', v) }
+  /** Your own samples, or false for none. */
+  set samples(v: BuilderProps['samples']) { this.#setLook('samples', v) }
+  /** Your words for the builder's buttons and headings (see BUILDER_LABELS). */
+  set labels(v: BuilderProps['labels']) { this.#setLook('labels', v) }
+  /** false hides the Help button. */
+  set help(v: BuilderProps['help']) { this.#setLook('help', v) }
+  /** CSS variables on the builder: { '--fw-accent': '#7c3aed', '--fw-b-font': 'Georgia' }. */
+  set vars(v: BuilderProps['vars']) { this.#setLook('vars', v) }
   set schema(v: BuilderProps['schema']) {
     this.#schema = v
     this.#render(true)
@@ -77,6 +94,7 @@ export class FormweaveBuilder extends HTMLElement {
     if (fresh) this.#version++ // a new schema from outside starts a new history
     this.#root.render(h(Builder, {
       key: this.#version,
+      ...this.#look,
       schema: this.#schema,
       scan: this.#scan,
       onChange: (schema, issues) => { this.dispatchEvent(new CustomEvent('fw-change', { detail: { schema, issues } })) },

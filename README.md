@@ -118,6 +118,35 @@ Or `<formweave-builder>` from `formweave/element`, which fires `fw-change` with 
 - The Layout tab's tree marks each line with what it is (section, grid, steps, heading, text, image, and the field's type), tints containers, and cuts long names (the full name shows on hover).
 - Still to come: translations and templates.
 
+## Builder looks
+
+The builder is yours to fit into your app: its words, which parts show, and how it looks.
+
+```tsx
+<Builder
+  schema={saved}
+  tabs={['design', 'preview']}                 // which tabs, in this order; the first opens
+  palette={['text', 'email', 'phone', 'Choices']} // only these inputs (by key) or groups (by name)
+  samples={false}                               // or your own: [{ id, title, about, schema }]
+  help={false}                                  // no Help button
+  labels={{ design: 'डिज़ाइन', undo: 'पूर्ववत', add: 'जोड़ें' }} // any of BUILDER_LABELS, e.g. another language
+  className="my-builder"
+  vars={{ '--fw-accent': '#7c3aed', '--fw-b-font': 'Georgia, serif', '--fw-radius': '0', '--fw-b-palette': '16rem', '--fw-b-settings': '26rem' }}
+/>
+```
+
+`<formweave-builder>` takes the same as properties (`tabs`, `palette`, `samples`, `labels`, `help`, `vars`).
+
+| Variable | What |
+|---|---|
+| `--fw-accent`, `--fw-text`, `--fw-muted`, `--fw-bg`, `--fw-border`, `--fw-error` | colours of the builder and its panels |
+| `--fw-radius` | corners |
+| `--fw-b-font` | the builder's font (default: your page's) |
+| `--fw-b-palette`, `--fw-b-settings` | widths of the palette and the settings panel |
+| `--fw-b-top` | how far below the top the tab bar's sticky panels start (raise it under a fixed app header) |
+
+The form on the canvas keeps its own colours and corners: the `--fw-*` variables, `className` and `classes` you give `<Form>` (see Show it), so what you design is what people get. Its font follows the page around it, as in your app. The palette's group names and the settings panels' own wording are in English for now. The demo's header has accent, font, corner and language controls to try these out.
+
 ## Samples
 
 Six ready-made forms show every input and layout piece at work, with made-up names and data:

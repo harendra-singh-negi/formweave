@@ -91,9 +91,24 @@ $('reset').addEventListener('click', () => {
   location.reload()
 })
 
+// The builder's look and words are the app's to choose: colours, font and corners as CSS variables, words as labels
+const BUILDER_HI = {
+  design: 'डिज़ाइन', build: 'फ़ील्ड', layout: 'लेआउट', preview: 'पूर्वावलोकन', json: 'इम्पोर्ट / JSON', jsonScan: 'स्कैन / इम्पोर्ट',
+  undo: 'पूर्ववत', redo: 'फिर करें', help: '? मदद', closeHelp: '✕ मदद बंद', add: 'जोड़ें', addTo: '{name} में जोड़ें', find: 'इनपुट खोजें ({n})',
+  fields: 'फ़ील्ड', formSettings: 'फ़ॉर्म सेटिंग', settings: '{kind} सेटिंग', selectField: 'बदलने के लिए कोई फ़ील्ड चुनें।', copy: 'कॉपी', paste: 'पेस्ट',
+  duplicate: 'डुप्लिकेट', remove: 'हटाएँ', desktop: 'डेस्कटॉप', tablet: 'टैबलेट', phone: 'फ़ोन', fullWidth: '⤢ पूरी चौड़ाई', exitFullWidth: '⤡ सामान्य चौड़ाई',
+  openPalette: '+ जोड़ें', closePalette: '✕ पैलेट बंद', samples: 'नमूने', layoutPieces: 'लेआउट',
+}
+const look = () => {
+  builder.vars = { '--fw-accent': $<HTMLInputElement>('accent').value, '--fw-b-font': $<HTMLSelectElement>('font').value || 'inherit', '--fw-radius': $<HTMLSelectElement>('radius').value }
+  builder.labels = $<HTMLSelectElement>('words').value === 'hi' ? BUILDER_HI : {}
+}
+for (const id of ['accent', 'font', 'radius', 'words']) $(id).addEventListener('input', look)
+
 function showTab() {
   const tab = location.hash === '#fill' ? 'fill' : 'builder'
   for (const id of ['builder', 'fill']) $(id).hidden = id !== tab
+  $('look').hidden = tab !== 'builder'
   for (const a of document.querySelectorAll('nav a')) a.toggleAttribute('aria-current', a.getAttribute('href') === `#${tab}`)
   document.querySelector('nav a[aria-current]')?.setAttribute('aria-current', 'page')
 }

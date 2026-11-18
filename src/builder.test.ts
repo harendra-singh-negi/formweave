@@ -135,3 +135,19 @@ test('copy and paste: keys made unique, formulas and the layout follow them', as
   const col = pasteClip(t, copyPart(t, { path: ['items', 'qty'] })!, ['items'], 'qty')
   assert.deepEqual(Object.keys((col.schema.fields.items as any).fields), ['qty', 'qty1'])
 })
+
+test('the builder takes your tabs, palette, words and look', () => {
+  const html = renderToString(h(Builder, { schema: base, tabs: ['preview', 'design'], palette: ['email', 'Date & time'], samples: false, help: false,
+    labels: { preview: 'पूर्वावलोकन', design: 'डिज़ाइन', undo: 'पूर्ववत' }, className: 'mine', vars: { '--fw-accent': '#7c3aed' } }))
+  assert.match(html, /^<div class="fw-builder mine" style="--fw-accent:#7c3aed">/)
+  assert.match(html, /role="tablist"><button type="button" role="tab" aria-selected="true">पूर्वावलोकन<\/button><button[^>]*>डिज़ाइन<\/button><\/div>/) // only these, in this order
+  assert.match(html, />पूर्ववत</)
+  assert.doesNotMatch(html, /Help/)
+})
+
+test('the palette shows only the inputs and groups asked for', () => {
+  const html = renderToString(h(Builder, { schema: base, palette: ['email', 'Date & time'] }))
+  assert.match(html, /placeholder="Find an input \(9\)"/) // email + the 8 dates
+  assert.match(html, /<summary>Text<small> 1<\/small>/)
+  assert.doesNotMatch(html, /<summary>Numbers/)
+})

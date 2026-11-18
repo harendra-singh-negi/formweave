@@ -5,7 +5,7 @@ import { text } from './form.ts'
 import { fromJsonSchema, type Imported } from './jsonschema.ts'
 import { Form, type WidgetProps } from './react.ts'
 import { PALETTE } from './palette.ts'
-import { SAMPLES } from './samples.ts'
+import { SAMPLES, type Sample } from './samples.ts'
 import { DATE_FORMATS, SAFE_IMAGE, type ChoiceField, type Field, type Fields, type FormSchema, type Grid, type Layout, type ListField, type Text, type Values } from './schema.ts'
 
 type Path = string[]
@@ -21,7 +21,35 @@ export interface BuilderProps {
    * from formweave/scan. Without it, the Import tab has no "from a photo" part.
    */
   scan?(files: File[], progress: (message: string) => void): Promise<Imported>
+  /** Which tabs show, in this order; the first one opens. Default: all of them. */
+  tabs?: BuilderTab[]
+  /** Only these palette inputs or groups, by key or group name: ['email', 'phone', 'Choices']. Default: all. */
+  palette?: string[]
+  /** The samples on the Import tab: your own forms, or false for none. Default: formweave's SAMPLES. */
+  samples?: Sample[] | false
+  /** Your words for the builder's own tabs, buttons and headings, e.g. in another language. */
+  labels?: Partial<BuilderLabels>
+  /** false hides the Help button. */
+  help?: boolean
+  /** Added to the builder's root, next to `fw-builder`, to style it from your CSS. */
+  className?: string
+  /** CSS variables on the builder's root: { '--fw-accent': '#7c3aed', '--fw-b-font': 'Georgia', '--fw-b-palette': '16rem' }. README → Builder looks. */
+  vars?: Record<string, string>
 }
+
+export type BuilderTab = 'design' | 'build' | 'layout' | 'preview' | 'json'
+
+/** The builder's own words. Pass `labels` to change any of them. */
+export const BUILDER_LABELS = {
+  design: 'Design', build: 'Fields', layout: 'Layout', preview: 'Preview', json: 'Import / JSON', jsonScan: 'Scan / Import',
+  undo: 'Undo', redo: 'Redo', help: '? Help', closeHelp: '✕ Close help',
+  add: 'Add', addTo: 'Add to {name}', find: 'Find an input ({n})', fields: 'Fields', formSettings: 'Form settings', settings: '{kind} settings',
+  selectField: 'Select a field to change it.', copy: 'Copy', paste: 'Paste', duplicate: 'Duplicate', remove: 'Delete',
+  desktop: 'Desktop', tablet: 'Tablet', phone: 'Phone', fullWidth: '⤢ Full width', exitFullWidth: '⤡ Exit full width', openPalette: '+ Add', closePalette: '✕ Close palette',
+  samples: 'Samples', layoutPieces: 'Layout',
+}
+export type BuilderLabels = typeof BUILDER_LABELS
+const fill = (t: string, v: Record<string, string | number>) => t.replace(/\{(\w+)\}/g, (_, k: string) => String(v[k] ?? ''))
 
 const KINDS: [Kind, string][] = [
   ['string', 'Text'], ['number', 'Number'], ['boolean', 'Yes / No'], ['choice', 'Choice'],
@@ -235,7 +263,10 @@ export function Builder(props: BuilderProps) {
   const [schema, setSchema] = useState<FormSchema>(props.schema ?? EMPTY)
   const [selected, setSelected] = useState<Path | null>(null)
   const [panel, setPanel] = useState(0) // remounts the settings form
-  const [tab, setTab] = useState<'design' | 'build' | 'layout' | 'preview' | 'json'>('design')
+  const L = { ...BUILDER_LABELS, ...props.labels }
+  const tabs = props.tabs?.length ? props.tabs : (['design', 'build', 'layout', 'preview', 'json'] as BuilderTab[])
+  const [tab, setTab] = useState<BuilderTab>(tabs[0])
+  const shows = (id: string, group: string) => !props.palette || props.palette.includes(id) || props.palette.includes(group)
   /** The canvas alone, palette and form settings put away. */
   const [wide, setWide] = useState(false)
   const [help, setHelp] = useState(false)
@@ -486,28 +517,28 @@ export function Builder(props: BuilderProps) {
   }
   const design = tab === 'design'
   const palette = h('div', { className: 'fw-b-palette', 'aria-label': 'Add a field' },
-    h('h3', null, field && (field.type === 'group' || field.type === 'list') ? `Add to ${text(field.label, 'en') || selected!.at(-1)}` : 'Add'),
-    h('input', { type: 'search', className: 'fw-b-find', placeholder: `Find an input (${ITEMS.length})`, 'aria-label': 'Find an input', value: find, onChange: (e: ChangeEvent<HTMLInputElement>) => setFind(e.target.value) }),
+    h('h3', null, field && (field.type === 'group' || field.type === 'list') ? fill(L.addTo, { name: text(field.label, 'en') || selected!.at(-1)! }) : L.add),
+    h('input', { type: 'search', className: 'fw-b-find', placeholder: fill(L.find, { n: ITEMS.filter((i) => shows(i.id, i.group)).length }), 'aria-label': fill(L.find, { n: '' }).replace(/\s*\(\)/, ''), value: find, onChange: (e: ChangeEvent<HTMLInputElement>) => setFind(e.target.value) }),
     [...PALETTE, ...(design ? [['Layout', NODES] as const] : [])].map(([group, list]) => {
-      const hits = (list as [string, string, unknown][]).filter(([base, label]) => !find || `${label} ${group} ${base}`.toLowerCase().includes(find.toLowerCase()))
+      const hits = (list as [string, string, unknown][]).filter(([base, label]) => (group === 'Layout' || shows(base, group)) && (!find || `${label} ${group} ${base}`.toLowerCase().includes(find.toLowerCase())))
       // an accordion: Text starts open; while searching, every group with a hit opens (the key resets them after)
       return hits.length > 0 && h('details', { key: `${group}${find ? '?' : ''}`, className: 'fw-b-group', open: !!find || group === 'Text', name: find ? undefined : 'fw-palette' },
-        h('summary', null, group, h('small', null, ` ${hits.length}`)),
+        h('summary', null, group === 'Layout' ? L.layoutPieces : group, h('small', null, ` ${hits.length}`)),
         h('div', null, group === 'Layout'
           ? (hits as typeof NODES).map(([k, label, make]) => h('button', { key: k, type: 'button', draggable: true, title: 'Click to add, or drag it into place', onClick: () => addNode(make()), onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-new', JSON.stringify(make())) }, '+ ', label))
           : hits.map(([base]) => paletteButton(base))))
     }),
-    !design && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
-    props.scan && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…'))
+    !design && tabs.includes('layout') && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
+    props.scan && tabs.includes('json') && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…'))
   /** Copy, Paste and Duplicate for what is picked; with nothing picked, Copy takes the whole form. */
   const tool = (label: string, title: string, onClick: () => void, disabled = false) =>
     h('button', { type: 'button', title, 'aria-label': title, disabled, onClick, className: 'fw-b-clip' }, label)
   const clipTools = h(Fragment, null,
-    tool('Copy', selected || node ? 'Copy (Ctrl+C)' : 'Copy the whole form (Ctrl+C)', () => copy()),
-    tool('Paste', clip ? 'Paste after what is picked (Ctrl+V)' : 'Copy something first', () => paste(), !clip),
-    (selected || node) && tool('⧉', 'Duplicate (Ctrl+D)', () => duplicate()))
+    tool(L.copy, selected || node ? `${L.copy} (Ctrl+C)` : `${L.copy}: the whole form (Ctrl+C)`, () => copy()),
+    tool(L.paste, clip ? 'Paste after what is picked (Ctrl+V)' : 'Copy something first', () => paste(), !clip),
+    (selected || node) && tool('⧉', `${L.duplicate} (Ctrl+D)`, () => duplicate()))
   const fieldSettings = field && selected && h(Fragment, null,
-    h('div', { className: 'fw-b-head' }, h('h3', null, KINDS.find(([k]) => k === field.type)![1], ' settings'),
+    h('div', { className: 'fw-b-head' }, h('h3', null, fill(L.settings, { kind: KINDS.find(([k]) => k === field.type)![1] })),
       h('span', { className: 'fw-b-tools' }, clipTools, h('button', { type: 'button', 'aria-label': 'Delete', title: 'Delete', onClick: () => remove(selected) }, '✕'))),
     field.type === 'list' && (field.widget === 'table' || field.widget === 'matrix') && h(TableDesigner, {
       field, pick: (k) => select([...selected, k]),
@@ -541,20 +572,20 @@ export function Builder(props: BuilderProps) {
     commit({ ...schema, layout: isContainer(piece) ? layoutEdits.unwrap(schema.layout, node) : layoutEdits.remove(schema.layout, node) }, null)
     selectNode(null)
   }
-  return h('div', { className: 'fw-builder', onKeyDown: onKey, onCopy, onPaste },
+  return h('div', { className: `fw-builder${props.className ? ` ${props.className}` : ''}`, style: props.vars as CSSProperties, onKeyDown: onKey, onCopy, onPaste },
     h('div', { className: 'fw-b-bar' },
       h('div', { role: 'tablist' },
-        (['design', 'build', 'layout', 'preview', 'json'] as const).map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, { design: 'Design', build: 'Fields', layout: 'Layout', preview: 'Preview', json: props.scan ? 'Scan / Import' : 'Import / JSON' }[t]))),
+        tabs.map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, t === 'json' && props.scan ? L.jsonScan : L[t]))),
       h('div', null,
-        h('button', { type: 'button', onClick: undo, disabled: !past.length, title: 'Ctrl+Z' }, 'Undo'),
-        h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, 'Redo'),
-        h('button', { type: 'button', 'aria-expanded': help, 'aria-controls': 'fw-b-help', onClick: () => setHelp(!help) }, help ? '✕ Close help' : '? Help'))),
+        h('button', { type: 'button', onClick: undo, disabled: !past.length, title: 'Ctrl+Z' }, L.undo),
+        h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, L.redo),
+        props.help !== false && h('button', { type: 'button', 'aria-expanded': help, 'aria-controls': 'fw-b-help', onClick: () => setHelp(!help) }, help ? L.closeHelp : L.help))),
     help && h(Help),
     note && h('p', { className: 'fw-b-note', role: 'status' }, note),
     issues.length > 0 && h('ul', { className: 'fw-b-issues', role: 'status' }, issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message))),
     design && h('div', { className: `fw-b-main fw-b-design${wide ? ' fw-b-wide' : ''}` },
       (!wide || adding) && palette,
-      h(Canvas, { schema, issues: issues.length > 0, selected, node, select, selectNode, drop: canvasDrop, remove: () => (selected ? remove(selected) : removeNode()), wide, setWide, adding, setAdding, relabel }),
+      h(Canvas, { schema, issues: issues.length > 0, selected, node, select, selectNode, drop: canvasDrop, remove: () => (selected ? remove(selected) : removeNode()), wide, setWide, adding, setAdding, relabel, labels: L }),
       // full width: the settings come back only while something is picked
       (!wide || field || typeof piece === 'object') && h('div', { className: 'fw-b-settings' },
         fieldSettings
@@ -563,21 +594,21 @@ export function Builder(props: BuilderProps) {
               h('span', { className: 'fw-b-tools' }, clipTools, h('button', { type: 'button', 'aria-label': isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', title: isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', onClick: removeNode }, '✕'))),
             h(Form, { key: panel, schema: NODE_SETTINGS[piece.type], values: nodeSettings(piece), widgets: { image: ImagePicker }, labels: { submit: 'Done' }, onSubmit: () => selectNode(null),
               onChange: (st) => { const next = fromNodeSettings(piece, st.values); if (JSON.stringify(next) !== JSON.stringify(piece)) commit({ ...schema, layout: layoutEdits.replace(schema.layout!, node!, next) }, null, true) } })))
-          || h(Fragment, null, h('div', { className: 'fw-b-head' }, h('h3', null, 'Form settings'), h('span', { className: 'fw-b-tools' }, clipTools)),
+          || h(Fragment, null, h('div', { className: 'fw-b-head' }, h('h3', null, L.formSettings), h('span', { className: 'fw-b-tools' }, clipTools)),
             h(Form, { key: panel, schema: FORM_SETTINGS, values: formSettings(schema), labels: { submit: 'Done' }, onSubmit: () => {},
               onChange: (st) => { const next = fromFormSettings(schema, st.values); if (JSON.stringify(next) !== JSON.stringify(schema)) commit(next, null, true) } }),
             h('p', { className: 'fw-help' }, 'Click a field or section on the form to change it. Drag them to move them; drag from the left to add.')))),
     tab === 'build' && h('div', { className: 'fw-b-main' },
       palette,
       h('div', { className: 'fw-b-tree' },
-        h('h3', null, 'Fields'),
+        h('h3', null, L.fields),
         h(Tree, { fields: schema.fields, parent: [], selected, select, move, remove, duplicate, place, drop: (path, before) => commit(edits.move(schema, path, before)) })),
       h('div', { className: 'fw-b-settings' },
-        fieldSettings || h('p', { className: 'fw-help' }, 'Select a field to change it.'))),
+        fieldSettings || h('p', { className: 'fw-help' }, L.selectField))),
     tab === 'layout' && h(LayoutTab, { schema, commit: (layout: Layout[] | undefined, typing?: boolean) => commit({ ...schema, layout }, selected, typing), panel, bump: () => setPanel((n) => n + 1) }),
     tab === 'preview' && h('div', { className: 'fw-b-preview' },
       issues.length ? h('p', { className: 'fw-error' }, 'Fix the issues above to preview.') : h(Form, { schema, onSubmit: () => {} })),
-    tab === 'json' && h(JsonTab, { schema, scan: props.scan, load: (s) => commit(s, null) }))
+    tab === 'json' && h(JsonTab, { schema, scan: props.scan, samples: props.samples === false ? [] : (props.samples ?? SAMPLES), heading: L.samples, load: (s) => commit(s, null) }))
 }
 
 /**
@@ -846,6 +877,7 @@ const HELP: [string, string[]][] = [
     'Scan / Import → Samples opens ready-made forms that use every input and layout piece (made-up data), to see how each one works or to start from.',
     'Scan / Import reads a PDF or photos into a form on this device (nothing is uploaded), or takes a pasted schema or JSON Schema.',
     'Every change is passed to your app, with any problems listed at the top; Preview fills the form for real.',
+    'The app that shows this builder chooses its colours, font, corners, panel widths, words, tabs and palette (README → Builder looks).',
   ]],
 ]
 
@@ -868,6 +900,7 @@ interface CanvasProps {
   adding: boolean
   setAdding(on: boolean): void
   relabel(on: { path?: Path; ip?: Ip }, words: string): void
+  labels: BuilderLabels
 }
 
 /** The form as people will see it. A click picks the field or section under it; dragging moves things or drops new ones in. */
@@ -965,12 +998,12 @@ function Canvas(p: CanvasProps) {
       onFocus: (e: { target: HTMLInputElement }) => e.target.select(),
     }),
     h('div', { className: 'fw-b-devices', role: 'group', 'aria-label': 'Show it as on' },
-      DEVICES.map(([k, label, w]) => h('button', { key: k, type: 'button', 'aria-pressed': device === k, title: `${w}px wide`, onClick: () => setDevice(k) }, label)),
+      DEVICES.map(([k, , w]) => h('button', { key: k, type: 'button', 'aria-pressed': device === k, title: `${w}px wide`, onClick: () => setDevice(k) }, p.labels[k])),
       h('small', null, `${width}px${zoom < 1 ? ` · ${Math.round(zoom * 100)}%` : ''}`),
       p.wide && h('button', { type: 'button', className: 'fw-b-wide-go', 'aria-pressed': p.adding, title: p.adding ? 'Put the palette away' : 'Open the palette: click an input or drag it onto the form', onClick: () => p.setAdding(!p.adding) },
-        p.adding ? '✕ Close palette' : '+ Add'),
+        p.adding ? p.labels.closePalette : p.labels.openPalette),
       h('button', { type: 'button', className: 'fw-b-wide-go', 'aria-pressed': p.wide, title: p.wide ? 'Bring back the palette and the settings (Esc)' : 'Hide the palette and the form settings: the canvas gets all the room', onClick: () => p.setWide(!p.wide) },
-        p.wide ? '⤡ Exit full width' : '⤢ Full width')),
+        p.wide ? p.labels.exitFullWidth : p.labels.fullWidth)),
     h('div', { className: 'fw-b-device', 'data-device': device, style: { width, zoom } }, h(Form, { schema: p.schema, design: true })))
 }
 
@@ -1030,7 +1063,7 @@ function Tree(p: TreeProps): ReactNode {
     }))
 }
 
-function JsonTab({ schema, load, scan }: { schema: FormSchema; load(s: FormSchema): void; scan?: BuilderProps['scan'] }) {
+function JsonTab({ schema, load, scan, samples, heading }: { schema: FormSchema; load(s: FormSchema): void; scan?: BuilderProps['scan']; samples: Sample[]; heading: string }) {
   const [draft, setDraft] = useState(() => JSON.stringify(schema, null, 2))
   const [problems, setProblems] = useState<string[]>([])
   const [notes, setNotes] = useState<string[]>([])
@@ -1074,10 +1107,10 @@ function JsonTab({ schema, load, scan }: { schema: FormSchema; load(s: FormSchem
     }
   }
   return h('div', { className: 'fw-b-json' },
-    h('div', { className: 'fw-b-samples' },
-      h('h3', null, 'Samples'),
+    samples.length > 0 && h('div', { className: 'fw-b-samples' },
+      h('h3', null, heading),
       h('p', { className: 'fw-help' }, 'Ready-made forms that show every input and layout piece at work, with made-up data. Opening one replaces this form; Undo brings it back.'),
-      h('div', null, SAMPLES.map((x) => h('button', { key: x.id, type: 'button', onClick: () => { load(structuredClone(x.schema)); setDraft(JSON.stringify(x.schema, null, 2)); setNotes([`Opened "${x.title}". Undo brings back the form you had.`]) } },
+      h('div', null, samples.map((x) => h('button', { key: x.id, type: 'button', onClick: () => { load(structuredClone(x.schema)); setDraft(JSON.stringify(x.schema, null, 2)); setNotes([`Opened "${x.title}". Undo brings back the form you had.`]) } },
         h('strong', null, x.title), h('span', null, x.about))))),
     scan && h('div', { className: 'fw-b-scan' },
       h('h3', null, 'From a photo, scan or PDF'),

@@ -15,6 +15,13 @@
     nav a[aria-current=page] { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
     header button { margin-left: auto; font: inherit; padding: 0.3rem 0.7rem; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: inherit; cursor: pointer; }
     main { max-width: 80rem; margin: 0 auto; padding: 1rem; }
+    /* the builder takes the whole screen; filling in keeps a readable width */
+    main:has(#builder:not([hidden])) { max-width: none; }
+    .look { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-left: auto; font-size: 0.875rem; color: var(--muted); }
+    .look label { display: inline-flex; align-items: center; gap: 0.375rem; }
+    .look select, .look input { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 6px; }
+    .look input[type=color] { width: 2.25rem; height: 1.75rem; padding: 0.125rem; }
+    header .look + button { margin-left: 0; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 1.25rem; min-width: 0; }
     .fill { display: grid; gap: 1rem; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
     @media (max-width: 50rem) { .fill { grid-template-columns: 1fr; } }
@@ -31,6 +38,12 @@
       <a href="#builder">Build</a>
       <a href="#fill">Fill</a>
     </nav>
+    <div class="look" id="look" title="The builder takes your colours, font, words and panel sizes: see README → Builder looks">
+      <label>Accent <input id="accent" type="color" value="#0969da" /></label>
+      <label>Font <select id="font"><option value="">System</option><option value="Georgia, serif">Georgia</option><option value="ui-monospace, monospace">Mono</option></select></label>
+      <label>Corners <select id="radius"><option value="6px">Round</option><option value="0">Square</option><option value="14px">Soft</option></select></label>
+      <label>Builder words <select id="words"><option value="en">English</option><option value="hi">हिंदी</option></select></label>
+    </div>
     <button id="reset" type="button" title="Forget your changes and load the sample form">Reset demo</button>
   </header>
   <main>
