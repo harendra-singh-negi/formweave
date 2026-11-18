@@ -30,7 +30,8 @@
       "types": "./dist/samples.d.ts",
       "default": "./dist/samples.js"
     },
-    "./builder.css": "./dist/builder.css"
+    "./builder.css": "./dist/builder.css",
+    "./package.json": "./package.json"
   },
   "files": [
     "dist"

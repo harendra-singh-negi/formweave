@@ -1,4 +1,9 @@
 import { test } from 'node:test'
+import type * as pdfjsLib from 'pdfjs-dist'
+import type { PdfJs } from '../src/scan.ts'
+
+// pdf.js itself fits the small PdfJs type scanForm asks for (checked by `npm run typecheck`)
+export const pdfjsFits = (m: typeof pdfjsLib): PdfJs => m
 import assert from 'node:assert/strict'
 import { sketchToForm } from '../src/scan.ts'
 import { lint } from '../src/core/lint.ts'

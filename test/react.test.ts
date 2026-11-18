@@ -192,3 +192,9 @@ test('every sample passes lint() and renders', async () => {
     assert.match(renderToString(h(Form, { schema: s.schema })), /<form class="fw-form/, s.id)
   }
 })
+
+test('formweave/element imports on a server (no DOM): the elements are simply not defined there', async () => {
+  const m = await import('../src/element.ts')
+  assert.equal(typeof m.FormweaveForm, 'function')
+  assert.equal(typeof m.FormweaveBuilder, 'function')
+})

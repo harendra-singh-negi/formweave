@@ -4,11 +4,36 @@ import type { Imported } from '../core/jsonschema.ts'
 import { erase, findShapes, readPage, toSketch, type Gray, type Item, type Word } from './vision/index.ts'
 import { sketchToForm, words } from './sketch-to-form.ts'
 
+/**
+ * The parts of pdf.js (pdfjs-dist) the scan uses. Pass the module itself (`import * as pdfjs from 'pdfjs-dist'`);
+ * written out here so formweave's types don't need pdfjs-dist installed.
+ */
+export interface PdfJs {
+  getDocument(src: { data: Uint8Array }): { promise: Promise<PdfDocument>; destroy(): Promise<void> }
+  Util: { transform(m1: number[], m2: number[]): number[] }
+}
+export interface PdfDocument {
+  numPages: number
+  getPage(n: number): Promise<PdfPage>
+}
+export interface PdfViewport {
+  width: number
+  height: number
+  scale: number
+  transform: number[]
+}
+export interface PdfPage {
+  getViewport(o: { scale: number }): PdfViewport
+  // the viewport passed back is the one getViewport gave; pdf.js's own type for it is wider than PdfViewport
+  render(o: { canvas: HTMLCanvasElement; viewport: any }): { promise: Promise<unknown> } // eslint-disable-line @typescript-eslint/no-explicit-any
+  getTextContent(): Promise<{ items: ({ str: string; transform: number[]; width: number } | object)[] }>
+}
+
 export interface ScanOptions {
   /** Tesseract language codes, e.g. ['eng', 'hin']. Default ['eng']. */
   languages?: string[]
   /** pdf.js (pdfjs-dist) with its worker set up, to read PDFs. Without it, only pictures can be read. */
-  pdfjs?: typeof import('pdfjs-dist')
+  pdfjs?: PdfJs
   /**
    * Where tesseract.js loads its worker, engine and language files from. By default a public CDN (jsDelivr);
    * serve them yourself to work offline.
@@ -79,7 +104,7 @@ export interface Page {
 }
 
 /** The words a PDF page carries, in the canvas's pixels. Undefined for a scanned page (no text, or almost none). */
-export async function pdfWords(page: import('pdfjs-dist').PDFPageProxy, viewport: import('pdfjs-dist').PageViewport, pdfjs: typeof import('pdfjs-dist')): Promise<Word[] | undefined> {
+export async function pdfWords(page: PdfPage, viewport: PdfViewport, pdfjs: PdfJs): Promise<Word[] | undefined> {
   const { items } = await page.getTextContent()
   const out: Word[] = []
   for (const it of items) {

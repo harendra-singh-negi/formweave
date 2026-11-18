@@ -12,7 +12,10 @@ const nextPrefix = () => `fw${++roots}-`
  * Set `schema` (and optionally `values`, `context`, `locale`, `validators`, `labels`, `classes`, `onUpload`) as properties.
  * Events: `fw-submit` (detail: values), `fw-change` (detail: state). Not `submit`: the inner <form>'s own event bubbles.
  */
-export class FormweaveForm extends HTMLElement {
+/** On a server there is no HTMLElement: this file still imports (in SSR, Next.js, Nuxt, Angular Universal), the elements just aren't defined. */
+const Base = (typeof HTMLElement === 'undefined' ? class {} : HTMLElement) as typeof HTMLElement
+
+export class FormweaveForm extends Base {
   #root?: Root
   #props: Partial<FormProps> = {}
 
@@ -50,7 +53,7 @@ export class FormweaveForm extends HTMLElement {
 }
 
 /** Set `schema` as a property. Event `fw-change` (detail: { schema, issues }); save when issues is empty. */
-export class FormweaveBuilder extends HTMLElement {
+export class FormweaveBuilder extends Base {
   #root?: Root
   #schema?: BuilderProps['schema']
   #scan?: BuilderProps['scan']
