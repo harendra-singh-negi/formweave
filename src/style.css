@@ -478,3 +478,20 @@
 .fw-builder .fw-b-samples button { display: grid; gap: 0.25rem; text-align: start; padding: 0.625rem 0.75rem; }
 .fw-builder .fw-b-samples button:hover { border-color: var(--fw-accent); }
 .fw-b-samples button span { color: var(--fw-muted); font-size: 0.8125rem; line-height: 1.4; }
+/* a switch: a track with a knob that slides across when on */
+.fw-form input[role=switch] {
+  appearance: none; flex: none; position: relative; width: 2.5rem; height: 1.375rem; margin: 0; cursor: pointer;
+  border-radius: 999px; background: color-mix(in srgb, var(--fw-muted) 45%, var(--fw-bg)); transition: background-color 0.15s;
+}
+.fw-form input[role=switch]::before {
+  content: ''; position: absolute; top: 0.1875rem; left: 0.1875rem; width: 1rem; height: 1rem; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); transition: transform 0.15s;
+}
+.fw-form input[role=switch]:checked { background: var(--fw-accent); }
+.fw-form input[role=switch]:checked::before { transform: translateX(1.125rem); }
+.fw-form input[role=switch]:disabled { opacity: 0.5; cursor: default; }
+.fw-form input[role=switch][aria-invalid] { box-shadow: 0 0 0 2px var(--fw-error); }
+.fw-form input[role=switch]:focus-visible { outline: 2px solid var(--fw-accent); outline-offset: 2px; }
+.fw-check > label:has(input[role=switch]) { gap: 0.625rem; }
+@media (prefers-reduced-motion: reduce) { .fw-form input[role=switch], .fw-form input[role=switch]::before { transition: none; } }
+@media (forced-colors: active) { .fw-form input[role=switch] { border: 1px solid CanvasText; } .fw-form input[role=switch]::before { background: CanvasText; } }
