@@ -18,6 +18,14 @@
   ],
   "license": "MIT",
   "author": "Harendra Singh Negi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harendra-singh-negi/formweave.git"
+  },
+  "homepage": "https://github.com/harendra-singh-negi/formweave#readme",
+  "bugs": {
+    "url": "https://github.com/harendra-singh-negi/formweave/issues"
+  },
   "type": "module",
   "exports": {
     ".": {

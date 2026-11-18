@@ -2,8 +2,9 @@
 
 ## Reporting a problem
 
-Please don't open a public issue for a security problem. Write to the maintainer privately (see the `author` in
-package.json, or the repository's security advisories when it has them), with what you found and how to see it.
+Please don't open a public issue for a security problem. Report it privately through GitHub:
+[Security → Report a vulnerability](https://github.com/harendra-singh-negi/formweave/security/advisories/new),
+with what you found and how to see it.
 You'll get an answer within a week.
 
 ## What formweave does to stay safe
