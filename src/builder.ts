@@ -345,6 +345,8 @@ export function Builder(props: BuilderProps) {
   const [selected, setSelected] = useState<Path | null>(null)
   const [panel, setPanel] = useState(0) // remounts the settings form
   const [tab, setTab] = useState<'design' | 'build' | 'layout' | 'preview' | 'json'>('design')
+  /** The canvas alone, palette and form settings put away. */
+  const [wide, setWide] = useState(false)
   /** On the canvas: a selected section, grid, page or text, by its place in the layout. */
   const [node, setNode] = useState<Ip | null>(null)
   const [find, setFind] = useState('')
@@ -576,10 +578,11 @@ export function Builder(props: BuilderProps) {
         h('button', { type: 'button', onClick: undo, disabled: !past.length, title: 'Ctrl+Z' }, 'Undo'),
         h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, 'Redo'))),
     issues.length > 0 && h('ul', { className: 'fw-b-issues', role: 'status' }, issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message))),
-    design && h('div', { className: 'fw-b-main fw-b-design' },
-      palette,
-      h(Canvas, { schema, issues: issues.length > 0, selected, node, select, selectNode, drop: canvasDrop, remove: () => (selected ? remove(selected) : removeNode()) }),
-      h('div', { className: 'fw-b-settings' },
+    design && h('div', { className: `fw-b-main fw-b-design${wide ? ' fw-b-wide' : ''}` },
+      !wide && palette,
+      h(Canvas, { schema, issues: issues.length > 0, selected, node, select, selectNode, drop: canvasDrop, remove: () => (selected ? remove(selected) : removeNode()), wide, setWide }),
+      // full width: the settings come back only while something is picked
+      (!wide || field || typeof piece === 'object') && h('div', { className: 'fw-b-settings' },
         fieldSettings
           || (typeof piece === 'object' && h(Fragment, null,
             h('div', { className: 'fw-b-head' }, h('h3', null, piece.type === 'content' ? 'Content' : piece.type, ' settings'),
@@ -740,6 +743,8 @@ interface CanvasProps {
   selectNode(ip: Ip | null): void
   drop(data: DataTransfer, on: { path?: Path; ip?: Ip }): void
   remove(): void
+  wide: boolean
+  setWide(on: boolean): void
 }
 
 /** The form as people will see it. A click picks the field or section under it; dragging moves things or drops new ones in. */
@@ -785,6 +790,7 @@ function Canvas(p: CanvasProps) {
       else p.select(null)
     },
     onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && p.wide) return p.setWide(false)
       if (e.key !== 'Delete' || (e.target as Element).closest('input, textarea, select, [contenteditable]')) return
       e.preventDefault()
       p.remove()
@@ -806,7 +812,9 @@ function Canvas(p: CanvasProps) {
     sel && h('style', null, `.fw-b-canvas ${sel} { outline: 2px solid var(--fw-accent) !important; outline-offset: 3px; }`),
     h('div', { className: 'fw-b-devices', role: 'group', 'aria-label': 'Show it as on' },
       DEVICES.map(([k, label, w]) => h('button', { key: k, type: 'button', 'aria-pressed': device === k, title: `${w}px wide`, onClick: () => setDevice(k) }, label)),
-      h('small', null, `${width}px${zoom < 1 ? ` · ${Math.round(zoom * 100)}%` : ''}`)),
+      h('small', null, `${width}px${zoom < 1 ? ` · ${Math.round(zoom * 100)}%` : ''}`),
+      h('button', { type: 'button', className: 'fw-b-wide-go', 'aria-pressed': p.wide, title: p.wide ? 'Bring back the palette and the settings (Esc)' : 'Hide the palette and the form settings: the canvas gets all the room', onClick: () => p.setWide(!p.wide) },
+        p.wide ? '⤡ Exit full width' : '⤢ Full width')),
     h('div', { className: 'fw-b-device', 'data-device': device, style: { width, zoom } }, h(Form, { schema: p.schema, design: true })))
 }
 
