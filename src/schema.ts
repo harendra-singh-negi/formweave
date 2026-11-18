@@ -26,6 +26,8 @@ interface Base {
   validators?: string[]
   /** Your own error text per code, e.g. { required: 'Tell us your name' }. `{n}` is the limit. */
   messages?: Record<string, Text>
+  /** Your own CSS classes on the field's wrapper, separated by spaces. */
+  className?: string
 }
 
 interface Input extends Base {
@@ -140,6 +142,8 @@ export interface Section {
   type: 'section'
   title?: Text
   visible?: When
+  /** Your own CSS classes, separated by spaces. */
+  className?: string
   children: Layout[]
 }
 
@@ -147,6 +151,8 @@ export interface Grid {
   type: 'grid'
   cols?: number | { base?: number; sm?: number; md?: number; lg?: number }
   visible?: When
+  /** Your own CSS classes, separated by spaces. */
+  className?: string
   children: Layout[]
 }
 
@@ -156,6 +162,8 @@ export interface Pages {
   /** Where the stepper or tabs sit. Left and right fall back to top when the form is narrow. Default top. */
   position?: 'top' | 'left' | 'right' | 'bottom'
   visible?: When
+  /** Your own CSS classes, separated by spaces. */
+  className?: string
   children: Section[]
 }
 
@@ -164,6 +172,8 @@ export interface Content {
   as?: 'heading' | 'text' | 'divider'
   text?: Text
   visible?: When
+  /** Your own CSS classes, separated by spaces. */
+  className?: string
 }
 
 export interface FormSchema {

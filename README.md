@@ -66,6 +66,22 @@ import 'formweave/style.css'
 - Widgets: the built-ins cover all 8 types. Pass your own by widget name or by type. Each widget draws only its control; formweave adds the label, help and error.
 - Accessibility: every label is tied to its input, and errors are announced through `aria-describedby`. Submitting focuses the first error and opens the page it is on.
 - Theming: change the `--fw-*` CSS variables. All styles stay under `.fw-form`.
+- Tabs and accordion: underlined tabs that scroll sideways when they don't fit, with arrow keys between them. The accordion has one bordered panel per page. When a form is sent with an error in a closed panel, that panel opens.
+
+### Your own CSS and classes
+
+```tsx
+<Form
+  schema={schema}
+  className="my-form"
+  classes={{ field: 'mb-3', label: 'form-label', input: 'form-control', error: 'invalid-feedback d-block', button: 'btn btn-outline-secondary', submit: 'btn btn-primary' }}
+/>
+```
+
+- `classes` puts your classes on every field, label, input, help text, error and button, so Bootstrap, Tailwind or your own CSS all work. `input` goes on text boxes, numbers, dates, dropdowns and file pickers, but not on checkboxes or radio buttons.
+- `className` on a field, section, grid, pages or content adds classes to just that part. The builder has a "CSS classes" box in every field's and layout part's settings.
+- For `<formweave-form>`, set `el.classes = { … }`.
+- Your classes are added next to formweave's own `fw-*` classes, so the layout stays responsive. Columns, steps and tabs still follow the form's width. If you want only your own styles, leave out `formweave/style.css`. Columns, the stepper and the tabs then need CSS of your own.
 - Headless: `useForm(schema)` gives `{ form, state }` for a UI of your own.
 
 ## Build it visually

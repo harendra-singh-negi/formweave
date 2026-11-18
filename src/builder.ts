@@ -110,6 +110,7 @@ export function freeKey(fields: Fields, parent: Path, base: string): string {
 
 // ---- the settings panel: a form describing a field ----
 
+const cssClasses: Field = { type: 'string', label: 'CSS classes', placeholder: 'my-class another', help: 'Your own classes, separated by spaces. Style them in your app.', pattern: '[A-Za-z0-9_ :/.\\[\\]-]*', messages: { pattern: 'Class names only' } }
 const formula = (label: string, placeholder: string): Field => ({ type: 'string', label, placeholder, help: 'A formula. Leave empty for none.' })
 
 function settingsSchema(kind: Kind): FormSchema {
@@ -148,12 +149,13 @@ function settingsSchema(kind: Kind): FormSchema {
       Object.assign(f, { min: num('Fewest rows'), max: num('Most rows'), widget: pick('Shown as', ['table']) })
       break
   }
+  f.className = cssClasses
   return { version: 1, fields: f }
 }
 const SETTINGS = Object.fromEntries(KINDS.map(([k]) => [k, settingsSchema(k)])) as Record<Kind, FormSchema>
 
 /** Settings names that map 1:1 onto field props. */
-const PLAIN = ['format', 'widget', 'minLength', 'maxLength', 'pattern', 'min', 'max', 'decimals', 'multiple', 'accept', 'maxSize']
+const PLAIN = ['format', 'widget', 'minLength', 'maxLength', 'pattern', 'min', 'max', 'decimals', 'multiple', 'accept', 'maxSize', 'className']
 
 function toSettings(key: string, f: Field): Values {
   const any = f as unknown as Record<string, unknown>
@@ -504,20 +506,24 @@ const NODES: [string, string, () => Layout][] = [
 const showWhen = formula('Show only when', "employment == 'Self Employed'")
 const cols = (label: string): Field => ({ type: 'number', label, min: 1, max: 12, decimals: 0 })
 const NODE_SETTINGS: Record<string, FormSchema> = {
-  section: { version: 1, fields: { title: { type: 'string', label: 'Title' }, visible: showWhen } },
+  section: { version: 1, fields: { title: { type: 'string', label: 'Title' }, visible: showWhen, className: cssClasses } },
   grid: { version: 1, fields: {
-    base: cols('Columns on phones'), sm: cols('Columns from 480px'), md: cols('Columns from 640px'), lg: cols('Columns from 960px'), visible: showWhen,
-  }, layout: [{ type: 'grid', cols: 2, children: ['base', 'sm', 'md', 'lg'] }, 'visible'] },
+    base: cols('Columns on phones'), sm: cols('Columns from 480px'), md: cols('Columns from 640px'), lg: cols('Columns from 960px'), visible: showWhen, className: cssClasses,
+  }, layout: [{ type: 'grid', cols: 2, children: ['base', 'sm', 'md', 'lg'] }, 'visible', 'className'] },
   pages: { version: 1, fields: {
     display: { type: 'choice', label: 'Shown as', options: ['steps', 'tabs', 'accordion'], required: true },
     position: { type: 'choice', widget: 'radio', label: 'Where the steps go', options: ['top', 'left', 'right', 'bottom'], required: true, visible: "display != 'accordion'",
       help: 'Left and right show at the top when the form is narrow, like on a phone.' },
     visible: showWhen,
+    className: cssClasses,
   } },
-  content: { version: 1, fields: { as: { type: 'choice', label: 'Kind', options: ['heading', 'text', 'divider'], required: true }, text: { type: 'string', widget: 'textarea', label: 'Text' }, visible: showWhen } },
+  content: { version: 1, fields: { as: { type: 'choice', label: 'Kind', options: ['heading', 'text', 'divider'], required: true }, text: { type: 'string', widget: 'textarea', label: 'Text' }, visible: showWhen, className: cssClasses } },
 }
 
 function nodeSettings(n: Container | Extract<Layout, { type: 'content' }>): Values {
+  return { ...nodeOwn(n), className: n.className ?? null }
+}
+function nodeOwn(n: Container | Extract<Layout, { type: 'content' }>): Values {
   const visible = typeof n.visible === 'string' ? n.visible : null
   switch (n.type) {
     case 'section': return { title: text(n.title, 'en') || null, visible }
@@ -535,6 +541,7 @@ function fromNodeSettings(n: Exclude<Layout, string>, s: Values): Layout {
   const put = (k: string, v: unknown) => (v === null || v === undefined || v === '' ? delete out[k] : (out[k] = v))
   const words = (old: unknown, v: unknown) => (v && old && typeof old === 'object' ? { ...old, en: v } : v)
   put('visible', s.visible)
+  put('className', s.className)
   if (n.type === 'section') put('title', words(n.title, s.title))
   if (n.type === 'pages') { put('display', s.display); put('position', s.position === 'top' ? null : s.position) }
   if (n.type === 'content') { put('as', s.as); put('text', s.as === 'divider' ? null : words(n.text, s.text)) }

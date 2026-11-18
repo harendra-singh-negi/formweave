@@ -45,3 +45,22 @@ test('your own widget replaces one by name, and errors wait for a touch', () => 
   assert.match(html, /<table class="fw-table">/)
   assert.match(html, /\+ Add row/)
 })
+
+test('your own classes go on the form, its parts, a field and a layout node', () => {
+  const one: FormSchema = { version: 1, fields: { name: { type: 'string', className: 'wide' }, ok: { type: 'boolean' } }, layout: [{ type: 'section', className: 'card', children: ['name', 'ok'] }] }
+  const html = renderToString(h(Form, { schema: one, className: 'mine', classes: { field: 'mb-3', label: 'form-label', input: 'form-control', submit: 'btn btn-primary' } }))
+  assert.match(html, /<form class="fw-form mine"/)
+  assert.match(html, /<section class="fw-section card"/)
+  assert.match(html, /class="fw-field mb-3 wide"><label for="[^"]+" class="form-label">/)
+  assert.match(html, /<input id="[^"]+name" class="form-control"/)
+  assert.doesNotMatch(html, /type="checkbox"[^>]*form-control|form-control[^>]*type="checkbox"/) // a checkbox isn't a text box
+  assert.match(html, /class="fw-submit btn btn-primary"/)
+})
+
+test('tabs are a real tab list: one in the tab order, each tied to the panel', () => {
+  const tabs: FormSchema = { ...schema, layout: [{ ...(schema.layout![0] as object), display: 'tabs' } as never] }
+  const html = renderToString(h(Form, { schema: tabs }))
+  assert.match(html, /role="tab" aria-selected="true" aria-controls="([^"]+)panel" tabindex="0">You/)
+  assert.match(html, /role="tab" aria-selected="false" aria-controls="[^"]+panel" tabindex="-1">Order/)
+  assert.match(html, /id="[^"]+panel" role="tabpanel" aria-labelledby="[^"]+tab0"/)
+})

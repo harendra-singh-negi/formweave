@@ -83,8 +83,27 @@
 .fw-pages { display: grid; gap: calc(var(--fw-gap) * 1.5); align-items: start; }
 .fw-pages-body, .fw-page { display: grid; gap: var(--fw-gap); min-width: 0; }
 .fw-pages[data-position=bottom] > :first-child { order: 1; }
-.fw-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.fw-tabs [aria-selected=true] { border-color: var(--fw-accent); color: var(--fw-accent); }
+/* tabs: underlined, one line that scrolls sideways when there are more than fit */
+.fw-tabs { display: flex; overflow: auto hidden; scrollbar-width: thin; border-bottom: 1px solid var(--fw-border); }
+.fw-form .fw-tabs [role=tab] { flex: none; margin-bottom: -1px; padding: 0.5rem 1rem; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--fw-muted); white-space: nowrap; }
+.fw-form .fw-tabs [role=tab]:hover { color: var(--fw-text); }
+.fw-form .fw-tabs [aria-selected=true] { color: var(--fw-accent); border-bottom-color: var(--fw-accent); font-weight: 600; }
+.fw-form .fw-tabs [role=tab]:focus-visible { outline: 2px solid var(--fw-accent); outline-offset: -2px; }
+.fw-pages[data-position=bottom] > .fw-tabs { border-bottom: 0; border-top: 1px solid var(--fw-border); }
+.fw-form .fw-pages[data-position=bottom] > .fw-tabs [role=tab] { margin: -1px 0 0; border-bottom: 0; border-top: 2px solid transparent; }
+.fw-form .fw-pages[data-position=bottom] > .fw-tabs [aria-selected=true] { border-top-color: var(--fw-accent); }
+/* accordion: one bordered panel per page, the first one open */
+.fw-accordion { display: grid; gap: 0.5rem; }
+.fw-accordion > details { border: 1px solid var(--fw-border); border-radius: var(--fw-radius); background: var(--fw-bg); }
+.fw-accordion summary { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.75rem 1rem; font-weight: 600; cursor: pointer; list-style: none; }
+.fw-accordion summary::-webkit-details-marker { display: none; }
+.fw-accordion summary::after { content: ''; flex: none; width: 0.5rem; height: 0.5rem; margin-top: -0.25rem; border: solid var(--fw-muted); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform 0.15s; }
+.fw-accordion details[open] > summary { border-bottom: 1px solid var(--fw-border); }
+.fw-accordion details[open] > summary::after { margin-top: 0.25rem; transform: rotate(-135deg); }
+.fw-accordion summary:focus-visible { outline: 2px solid var(--fw-accent); outline-offset: -2px; border-radius: var(--fw-radius); }
+.fw-accordion-body { display: grid; gap: var(--fw-gap); padding: 1rem; }
+.fw-accordion > .fw-submit { margin-top: 0.5rem; }
+@media (prefers-reduced-motion: reduce) { .fw-accordion summary::after { transition: none; } }
 .fw-steps { display: flex; padding: 0; margin: 0; list-style: none; }
 .fw-steps li { flex: 1; display: flex; align-items: center; min-width: 0; color: var(--fw-muted); }
 .fw-steps li:last-child { flex: 0 1 auto; }
@@ -108,6 +127,14 @@
   .fw-pages[data-position=right] > :first-child { order: 1; }
   .fw-pages:is([data-position=left], [data-position=right]) > :is(.fw-steps, .fw-tabs) { flex-direction: column; flex-wrap: nowrap; position: sticky; top: 1rem; }
   .fw-pages:is([data-position=left], [data-position=right]) .fw-steps li { flex: none; flex-direction: column; align-items: flex-start; }
+  .fw-pages:is([data-position=left], [data-position=right]) > .fw-tabs { overflow: visible; border-bottom: 0; }
+  .fw-pages[data-position=left] > .fw-tabs { border-right: 1px solid var(--fw-border); }
+  .fw-pages[data-position=right] > .fw-tabs { border-left: 1px solid var(--fw-border); }
+  .fw-form .fw-pages:is([data-position=left], [data-position=right]) > .fw-tabs [role=tab] { margin: 0; border-bottom: 0; text-align: start; }
+  .fw-form .fw-pages[data-position=left] > .fw-tabs [role=tab] { margin-right: -1px; border-right: 2px solid transparent; }
+  .fw-form .fw-pages[data-position=right] > .fw-tabs [role=tab] { margin-left: -1px; border-left: 2px solid transparent; }
+  .fw-form .fw-pages[data-position=left] > .fw-tabs [aria-selected=true] { border-right-color: var(--fw-accent); }
+  .fw-form .fw-pages[data-position=right] > .fw-tabs [aria-selected=true] { border-left-color: var(--fw-accent); }
   .fw-pages:is([data-position=left], [data-position=right]) .fw-steps li:not(:last-child)::after { flex: none; width: 2px; height: 1.5rem; min-width: 0; margin: 0.25rem 0 0.25rem calc(1rem - 1px); }
 }
 .fw-page:focus { outline: none; }

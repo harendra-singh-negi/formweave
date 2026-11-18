@@ -5,7 +5,7 @@ import { Form, type FormProps } from './react.ts'
 import { Builder, type BuilderProps } from './builder.ts'
 
 /**
- * Set `schema` (and optionally `values`, `context`, `locale`, `validators`, `labels`, `onUpload`) as properties.
+ * Set `schema` (and optionally `values`, `context`, `locale`, `validators`, `labels`, `classes`, `onUpload`) as properties.
  * Events: `fw-submit` (detail: values), `fw-change` (detail: state). Not `submit`: the inner <form>'s own event bubbles.
  */
 export class FormweaveForm extends HTMLElement {
@@ -24,6 +24,8 @@ export class FormweaveForm extends HTMLElement {
   set validators(v: FormProps['validators']) { this.#set('validators', v) }
   set labels(v: FormProps['labels']) { this.#set('labels', v) }
   set onUpload(v: FormProps['onUpload']) { this.#set('onUpload', v) }
+  /** Your own classes per part, e.g. { input: 'form-control' }. Classes on the element itself style its outside. */
+  set classes(v: FormProps['classes']) { this.#set('classes', v) }
 
   connectedCallback() {
     this.#root ??= createRoot(this)

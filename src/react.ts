@@ -1,7 +1,7 @@
 // No JSX, so tests run in plain Node without a build step.
 import {
   createContext, createElement as h, Fragment, useContext, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore,
-  type ChangeEvent, type ComponentType, type CSSProperties, type FormEvent, type ReactNode,
+  type ChangeEvent, type ComponentType, type CSSProperties, type FormEvent, type KeyboardEvent, type ReactNode,
 } from 'react'
 import { evaluate, parse, truthy, type Node } from './expr.ts'
 import { createForm, text, type Form as Store, type FormState, type Options } from './form.ts'
@@ -22,12 +22,20 @@ export interface WidgetProps {
   error?: string
   describedBy?: string
   locale?: string
+  /** `classes.input` from <Form>, for your widget's control. */
+  className?: string
   set(value: unknown): void
   touch(): void
 }
 
 /** Your own components, by widget name ('signature') or type ('string'). */
 export type Widgets = Record<string, ComponentType<WidgetProps>>
+
+/** Your own CSS classes for each kind of part, e.g. Bootstrap's { input: 'form-control', submit: 'btn btn-primary' }. */
+export type Classes = Partial<Record<'field' | 'label' | 'input' | 'help' | 'error' | 'button' | 'submit', string>>
+
+/** Joins class names, skipping empty ones. */
+const cx = (...names: unknown[]) => names.filter(Boolean).join(' ') || undefined
 
 const LABELS = { submit: 'Submit', next: 'Next', back: 'Back', addRow: '+ Add row', removeRow: 'Remove row', remove: 'Remove' }
 
@@ -38,6 +46,10 @@ export interface FormProps extends Options {
   form?: Store
   widgets?: Widgets
   labels?: Partial<typeof LABELS>
+  /** Added to the <form>, next to `fw-form`. */
+  className?: string
+  /** Your own classes on every field, label, input, help text, error and button. */
+  classes?: Classes
   onSubmit?(values: Values): void | Promise<void>
   onChange?(state: FormState): void
   /** Stores a picked file and says how to find it. Without it, the file's name is its id. */
@@ -50,6 +62,7 @@ interface Ctx {
   schema: FormSchema
   widgets: Widgets
   labels: typeof LABELS
+  classes: Classes
   locale?: string
   context?: Record<string, unknown>
   onUpload?: FormProps['onUpload']
@@ -87,7 +100,11 @@ export function Form(props: FormProps) {
   useEffect(() => props.onChange?.(state), [state])
   const layout = schema.layout ?? Object.keys(schema.fields)
   const pages = layout.find((l): l is Pages => typeof l === 'object' && l.type === 'pages')
-  const focusError = () => setTimeout(() => ref.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+  const focusError = () => setTimeout(() => {
+    const el = ref.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+    el?.closest('details')?.setAttribute('open', '') // an accordion panel that was closed
+    el?.focus()
+  })
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -110,13 +127,14 @@ export function Form(props: FormProps) {
     form, state, schema, id, page, setPage, busy,
     widgets: { ...WIDGETS, ...props.widgets },
     labels: { ...LABELS, ...props.labels },
+    classes: props.classes ?? {},
     locale: props.locale,
     context: props.context,
     onUpload: props.onUpload,
     compact: false,
   }
   return h(Context.Provider, { value: ctx },
-    h('form', { ref, className: 'fw-form', noValidate: true, onSubmit: submit },
+    h('form', { ref, className: cx('fw-form', props.className), noValidate: true, onSubmit: submit },
       h(Nodes, { items: layout }),
       !pages && h(SubmitButton)))
 }
@@ -133,12 +151,12 @@ function LayoutView({ item }: { item: Layout }): ReactNode {
   if (!shown(item.visible, c.state, c.context)) return null
   switch (item.type) {
     case 'content':
-      return item.as === 'divider' ? h('hr', { className: 'fw-divider' })
-        : h(item.as === 'heading' ? 'h3' : 'p', { className: 'fw-content' }, text(item.text, c.locale))
+      return item.as === 'divider' ? h('hr', { className: cx('fw-divider', item.className) })
+        : h(item.as === 'heading' ? 'h3' : 'p', { className: cx('fw-content', item.className) }, text(item.text, c.locale))
     case 'section':
-      return h('section', { className: 'fw-section' }, item.title && h('h3', null, text(item.title, c.locale)), h(Nodes, { items: item.children }))
+      return h('section', { className: cx('fw-section', item.className) }, item.title && h('h3', null, text(item.title, c.locale)), h(Nodes, { items: item.children }))
     case 'grid':
-      return h('div', { className: 'fw-grid', style: gridVars(item.cols) }, h(Nodes, { items: item.children }))
+      return h('div', { className: cx('fw-grid', item.className), style: gridVars(item.cols) }, h(Nodes, { items: item.children }))
     case 'pages':
       return h(PagesView, { item })
   }
@@ -157,14 +175,14 @@ function PagesView({ item }: { item: Pages }) {
   const body = useRef<HTMLElement>(null)
   const moved = useRef(false)
   useEffect(() => {
-    if (moved.current) body.current?.focus() // say where we are after Next / Back
+    if (moved.current && item.display !== 'tabs') body.current?.focus() // say where we are after Next / Back; a tab keeps its focus
     moved.current = true
   }, [i])
   const title = (s: Section, j: number) => text(s.title, c.locale) || `${j + 1}`
 
   if (item.display === 'accordion')
-    return h('div', { className: 'fw-accordion' },
-      pages.map((s, j) => h('details', { key: j, open: j === 0 }, h('summary', null, title(s, j)), h(Nodes, { items: s.children }))),
+    return h('div', { className: cx('fw-accordion', item.className) },
+      pages.map((s, j) => h('details', { key: j, open: j === 0 }, h('summary', null, title(s, j)), h('div', { className: 'fw-accordion-body' }, h(Nodes, { items: s.children })))),
       h(SubmitButton))
   if (!pages.length) return h(SubmitButton)
 
@@ -182,23 +200,33 @@ function PagesView({ item }: { item: Pages }) {
     return h('li', { key: j, 'data-state': j < i ? 'done' : j === i ? 'current' : 'next', 'aria-current': j === i ? 'step' : undefined },
       j < i ? h('button', { type: 'button', className: 'fw-step', onClick: () => c.setPage(j) }, inner) : h('span', { className: 'fw-step' }, inner))
   }
-  return h('div', { className: 'fw-pages', 'data-position': item.position ?? 'top' },
+  /** Arrow keys move between tabs, as in any tab list. */
+  const tabKey = (e: KeyboardEvent<HTMLElement>) => {
+    const d = ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 } as Record<string, number>)[e.key]
+    if (!d) return
+    e.preventDefault()
+    const j = (i + d + pages.length) % pages.length
+    const list = e.currentTarget
+    c.setPage(j)
+    setTimeout(() => list.querySelectorAll<HTMLElement>('[role=tab]')[j]?.focus())
+  }
+  return h('div', { className: cx('fw-pages', item.className), 'data-position': item.position ?? 'top' },
     tabs
-      ? h('div', { role: 'tablist', className: 'fw-tabs' },
-          pages.map((s, j) => h('button', { key: j, type: 'button', role: 'tab', 'aria-selected': j === i, onClick: () => c.setPage(j) }, title(s, j))))
+      ? h('div', { role: 'tablist', className: 'fw-tabs', onKeyDown: tabKey },
+          pages.map((s, j) => h('button', { key: j, id: `${c.id}tab${j}`, type: 'button', role: 'tab', 'aria-selected': j === i, 'aria-controls': `${c.id}panel`, tabIndex: j === i ? 0 : -1, onClick: () => c.setPage(j) }, title(s, j))))
       : h('ol', { className: 'fw-steps' }, pages.map(step)),
     h('div', { className: 'fw-pages-body' },
-      h('section', { ref: body, tabIndex: -1, className: 'fw-page', role: tabs ? 'tabpanel' : undefined, 'aria-label': title(pages[i], i) },
+      h('section', { ref: body, tabIndex: -1, className: 'fw-page', ...(tabs ? { id: `${c.id}panel`, role: 'tabpanel', 'aria-labelledby': `${c.id}tab${i}` } : { 'aria-label': title(pages[i], i) }) },
         h(Nodes, { items: pages[i].children })),
       tabs ? h(SubmitButton)
         : h('div', { className: 'fw-nav' },
-            i > 0 && h('button', { type: 'button', onClick: () => c.setPage(i - 1) }, c.labels.back),
-            i < pages.length - 1 ? h('button', { type: 'button', onClick: next }, c.labels.next) : h(SubmitButton))))
+            i > 0 && h('button', { type: 'button', className: c.classes.button, onClick: () => c.setPage(i - 1) }, c.labels.back),
+            i < pages.length - 1 ? h('button', { type: 'button', className: c.classes.button, onClick: next }, c.labels.next) : h(SubmitButton))))
 }
 
 function SubmitButton() {
   const c = useCtx()
-  return h('button', { type: 'submit', className: 'fw-submit', disabled: c.busy }, c.labels.submit)
+  return h('button', { type: 'submit', className: cx('fw-submit', c.classes.submit), disabled: c.busy }, c.labels.submit)
 }
 
 const visiblePages = (p: Pages, state: FormState, context?: Values) => p.children.filter((s) => shown(s.visible, state, context))
@@ -245,22 +273,24 @@ function Shell({ path, field }: { path: string; field: Field }) {
   const Widget = c.widgets[field.widget ?? ''] ?? c.widgets[field.type]
   const control = h(Widget, {
     field, path, id, label, error, describedBy, locale: c.locale,
-    value: at(c.state.values, path), required: st.required, readOnly: st.readOnly,
+    value: at(c.state.values, path), required: st.required, readOnly: st.readOnly, className: c.classes.input,
     set: (v: unknown) => c.form.set(path, v), touch: () => c.form.touch(path),
   })
   const mark = st.required && h('span', { className: 'fw-required', 'aria-hidden': true }, ' *')
   const notes = h(Fragment, null,
-    help && h('div', { id: `${id}-help`, className: 'fw-help' }, help),
-    error && h('div', { id: `${id}-error`, className: 'fw-error' }, error))
+    help && h('div', { id: `${id}-help`, className: cx('fw-help', c.classes.help) }, help),
+    error && h('div', { id: `${id}-error`, className: cx('fw-error', c.classes.error) }, error))
+  const wrap = (kind?: string) => cx('fw-field', kind, c.classes.field, field.className)
   if (field.type === 'group' || field.type === 'list')
-    return h('fieldset', { className: `fw-field fw-${field.type}` }, h('legend', null, label, mark), control, notes)
+    return h('fieldset', { className: wrap(`fw-${field.type}`) }, h('legend', { className: c.classes.label }, label, mark), control, notes)
   if (field.type === 'boolean')
-    return h('div', { className: 'fw-field fw-check' }, h('label', { htmlFor: id }, control, ' ', label, mark), notes)
-  return h('div', { className: 'fw-field' }, h('label', { htmlFor: id, className: c.compact ? 'fw-sr' : undefined }, label, mark), control, notes)
+    return h('div', { className: wrap('fw-check') }, h('label', { htmlFor: id, className: c.classes.label }, control, ' ', label, mark), notes)
+  return h('div', { className: wrap() }, h('label', { htmlFor: id, className: cx(c.compact && 'fw-sr', c.classes.label) }, label, mark), control, notes)
 }
 
 const aria = (p: WidgetProps) => ({
   id: p.id,
+  className: p.className,
   'aria-invalid': p.error ? true : undefined,
   'aria-describedby': p.describedBy,
   'aria-required': p.required || undefined,
@@ -291,7 +321,7 @@ function NumberInput(p: WidgetProps) {
 
 function BooleanInput(p: WidgetProps) {
   return h('input', {
-    ...aria(p), type: 'checkbox', role: p.field.widget === 'toggle' ? 'switch' : undefined, disabled: p.readOnly, checked: p.value === true,
+    ...aria(p), className: undefined, type: 'checkbox', role: p.field.widget === 'toggle' ? 'switch' : undefined, disabled: p.readOnly, checked: p.value === true,
     onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.checked), onBlur: p.touch,
   })
 }
@@ -361,7 +391,7 @@ function ListInput(p: WidgetProps) {
   const rows = Array.isArray(p.value) ? p.value : []
   const cols = Object.entries(f.fields)
   const add = !p.readOnly && (f.max == null || rows.length < f.max) &&
-    h('button', { type: 'button', className: 'fw-add', onClick: () => c.form.addRow(p.path) }, c.labels.addRow)
+    h('button', { type: 'button', className: cx('fw-add', c.classes.button), onClick: () => c.form.addRow(p.path) }, c.labels.addRow)
   const remove = (i: number) => !p.readOnly && rows.length > (f.min ?? 0) &&
     h('button', { type: 'button', className: 'fw-remove', 'aria-label': `${c.labels.removeRow} ${i + 1}`, onClick: () => c.form.removeRow(p.path, i) }, '×')
   const cell = (i: number, k: string, field: Field) => h(Shell, { key: k, path: `${p.path}.${i}.${k}`, field })
