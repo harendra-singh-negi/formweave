@@ -28,7 +28,7 @@ const MAX_PAGES = 50
 /** A form from pictures of its pages (photos, scans, screenshots) or a PDF. Runs in the browser. */
 export async function scanForm(files: File[], opts: ScanOptions = {}): Promise<Imported> {
   const say = opts.progress ?? (() => {})
-  const pages: HTMLCanvasElement[] = []
+  const pages: Page[] = []
   for (const file of files) {
     say(`Opening ${file.name}…`)
     pages.push(...(await pictures(file, opts)))
@@ -36,23 +36,30 @@ export async function scanForm(files: File[], opts: ScanOptions = {}): Promise<I
   if (!pages.length) throw new Error('Pick a picture of the form, or a PDF')
   if (pages.length > MAX_PAGES) throw new Error(`At most ${MAX_PAGES} pages at a time`)
 
-  say('Getting the text reader ready… (the first time it downloads its language files)')
-  const T = await import('tesseract.js')
-  const tesseract = T.default ?? T // a CommonJS package: its exports arrive as `default`
-  const worker = await tesseract.createWorker(opts.languages?.length ? opts.languages : ['eng'], tesseract.OEM.LSTM_ONLY, {
-    ...opts.tesseract,
-  })
-  try {
+  // a PDF made on a computer carries its words: read those, exactly and at once; OCR only the pages without them
+  let worker: Awaited<ReturnType<typeof import('tesseract.js')['createWorker']>> | undefined
+  let tesseract: typeof import('tesseract.js') | undefined
+  if (pages.some((p) => !p.words)) {
+    say('Getting the text reader ready… (the first time it downloads its language files)')
+    const T = await import('tesseract.js')
+    tesseract = (T.default ?? T) as typeof import('tesseract.js') // a CommonJS package: its exports arrive as `default`
+    worker = await tesseract.createWorker(opts.languages?.length ? opts.languages : ['eng'], tesseract.OEM.LSTM_ONLY, { ...opts.tesseract })
     // forms are mostly scattered words, not paragraphs
     await worker.setParameters({ tessedit_pageseg_mode: tesseract.PSM.SPARSE_TEXT, preserve_interword_spaces: '1' })
+  }
+  try {
     const read: Item[][] = []
-    for (const [i, canvas] of pages.entries()) {
+    for (const [i, { canvas, words: own }] of pages.entries()) {
       say(`Reading page ${i + 1} of ${pages.length}…`)
       const gray = toGray(canvas)
       const shapes = findShapes(gray)
+      if (own) {
+        read.push(readPage(shapes, own))
+        continue
+      }
       // small print is read better a little larger
       const scale = shapes.em < 18 ? Math.min(2.5, 24 / shapes.em) : 1
-      const { data } = await worker.recognize(toCanvas(erase(gray, shapes), scale), {}, { blocks: true })
+      const { data } = await worker!.recognize(toCanvas(erase(gray, shapes), scale), {}, { blocks: true })
       const words: Word[] = (data.blocks ?? []).flatMap((b) =>
         b.paragraphs.flatMap((p) =>
           p.lines.flatMap((l) =>
@@ -64,23 +71,50 @@ export async function scanForm(files: File[], opts: ScanOptions = {}): Promise<I
     }
     return sketchToForm(toSketch(read))
   } finally {
-    await worker.terminate()
+    await worker?.terminate()
   }
 }
 
-async function pictures(file: File, opts: ScanOptions): Promise<HTMLCanvasElement[]> {
+/** A page to read: its picture, and its words when the PDF has them. */
+interface Page {
+  canvas: HTMLCanvasElement
+  words?: Word[]
+}
+
+/** The words a PDF page carries, in the canvas's pixels. Undefined for a scanned page (no text, or almost none). */
+async function pdfWords(page: import('pdfjs-dist').PDFPageProxy, viewport: import('pdfjs-dist').PageViewport, pdfjs: typeof import('pdfjs-dist')): Promise<Word[] | undefined> {
+  const { items } = await page.getTextContent()
+  const out: Word[] = []
+  for (const it of items) {
+    if (!('str' in it) || !it.str.trim()) continue
+    const t = pdfjs.Util.transform(viewport.transform, it.transform)
+    const size = Math.hypot(t[2], t[3])
+    if (!size || Math.abs(t[1]) > 0.1 * size) continue // turned text (a stamp, a margin note)
+    const width = it.width * viewport.scale
+    // a run of text holds several words: share its width out by characters
+    const per = width / Math.max(1, it.str.length)
+    let x = t[4]
+    for (const part of it.str.split(/(\s+)/)) {
+      if (part.trim()) out.push({ text: part, confidence: 99, x0: x, x1: x + per * part.length, y0: t[5] - size * 0.85, y1: t[5] + size * 0.2 })
+      x += per * part.length
+    }
+  }
+  return out.filter((w) => /\p{L}/u.test(w.text)).length >= 5 ? out : undefined
+}
+
+async function pictures(file: File, opts: ScanOptions): Promise<Page[]> {
   if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
     if (!opts.pdfjs) throw new Error(`${file.name}: reading PDFs needs pdf.js (the pdfjs option)`)
     const task = opts.pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) })
     const pdf = await task.promise
-    const out: HTMLCanvasElement[] = []
+    const out: Page[] = []
     for (let n = 1; n <= Math.min(pdf.numPages, MAX_PAGES + 1); n++) {
       const page = await pdf.getPage(n)
       const base = page.getViewport({ scale: 1 })
       const viewport = page.getViewport({ scale: LONG_SIDE / Math.max(base.width, base.height) })
       const canvas = blank(Math.round(viewport.width), Math.round(viewport.height))
       await page.render({ canvas, viewport }).promise
-      out.push(canvas)
+      out.push({ canvas, words: await pdfWords(page, viewport, opts.pdfjs).catch(() => undefined) })
     }
     await task.destroy()
     return out
@@ -95,7 +129,7 @@ async function pictures(file: File, opts: ScanOptions): Promise<HTMLCanvasElemen
   const scale = Math.min(1, LONG_SIDE / Math.max(bitmap.width, bitmap.height))
   const canvas = blank(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale))
   canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  return [canvas]
+  return [{ canvas }]
 }
 
 /** A white canvas: transparent parts of a picture must not read as black. */
@@ -170,9 +204,11 @@ function toField(raw: Record<string, any>, at: string, warnings: string[]): Fiel
       warnings.push(`${at}: fewer than two choices, so it became a text field`)
       return { type: 'string', ...base, ...req }
     }
+    // short answers side by side (1 2 3 4 5 N/S, Y N): buttons, as on paper and easy in a table row
+    const short = options.length <= 7 && options.every((o) => o.length <= 4)
     return multiple
       ? { type: 'choice', multiple: true, options, ...base, ...req }
-      : { type: 'choice', ...(options.length <= 4 ? { widget: 'radio' } : {}), options, ...base, ...req }
+      : { type: 'choice', ...(short ? { widget: 'buttons' } : options.length <= 4 ? { widget: 'radio' } : {}), options, ...base, ...req }
   }
   switch (raw.kind as Kind) {
     case 'text': return { type: 'string', ...base, ...req, ...max }
@@ -195,13 +231,21 @@ function toField(raw: Record<string, any>, at: string, warnings: string[]): Fiel
       for (const c of list(raw.columns)) {
         if (!isObj(c)) continue
         const col = toField({ ...c, required: false, help: '', columns: [] }, `${at} → ${words(c.label) || 'column'}`, warnings)
+        if (col && col.type === 'choice' && c.free === true) Object.assign(col, { widget: 'autocomplete', allowOther: true })
         if (col && col.type !== 'list') fields[keyFor(c.key, words(c.label), taken)] = col
       }
       if (!Object.keys(fields).length) {
         warnings.push(`${at}: a table without columns was left out`)
         return
       }
-      return { type: 'list', widget: 'table', min: 1, ...base, fields }
+      const rows = list(raw.rows).map((r) => words(r, 200)).filter(Boolean).slice(0, 200)
+      if (rows.length >= 2) {
+        const rowHeading = words(raw.rowHeading)
+        return { type: 'list', widget: 'table', ...base, rows, ...(rowHeading ? { rowHeading } : {}), fields }
+      }
+      // as many rows to start with as the paper had, without making them all required
+      const start = typeof raw.minRows === 'number' && raw.minRows > 1 ? Math.min(50, Math.round(raw.minRows)) : 1
+      return { type: 'list', widget: 'table', min: 1, ...base, ...(start > 1 ? { default: Array.from({ length: start }, () => ({})) } : {}), fields }
     }
   }
   warnings.push(`${at}: unknown kind ${JSON.stringify(raw.kind)}, so it became a text field`)
@@ -217,7 +261,14 @@ export function sketchToForm(sketch: unknown): Imported {
   const taken = new Set<string>()
   for (const section of list(s.sections).slice(0, 100)) {
     if (!isObj(section)) continue
-    const children: string[] = []
+    const children: Layout[] = []
+    let row: { line: unknown; keys: string[] } = { line: undefined, keys: [] }
+    // fields printed side by side on a line stay side by side: a grid of them (one column on a phone)
+    const flush = () => {
+      if (row.keys.length >= 2 && row.keys.length <= 4) children.push({ type: 'grid', cols: { base: 1, md: row.keys.length }, children: row.keys })
+      else children.push(...row.keys)
+      row = { line: undefined, keys: [] }
+    }
     for (const raw of list(section.fields).slice(0, 500)) {
       if (!isObj(raw)) continue
       const label = words(raw.label)
@@ -225,15 +276,21 @@ export function sketchToForm(sketch: unknown): Imported {
       if (!f) continue
       const key = keyFor(raw.key, label, taken)
       fields[key] = f
-      children.push(key)
+      const side = typeof raw.line === 'number' && f.type !== 'list' && f.type !== 'group'
+      if (!side || raw.line !== row.line) flush()
+      row.line = side ? raw.line : undefined
+      row.keys.push(key)
+      if (!side) flush()
     }
+    flush()
     const title = words(section.title)
     if (children.length) layout.push({ type: 'section', ...(title ? { title } : {}), children })
   }
   if (!Object.keys(fields).length) warnings.push('No fields were found')
+  if (typeof s.skipped === 'number' && s.skipped > 0) warnings.push(`${s.skipped} lines or boxes had no words saying what they are for, so they were left out`)
   const title = words(s.title)
   // one untitled part needs no layout
-  const plain = layout.length <= 1 && !layout.some((l) => typeof l === 'object' && l.type === 'section' && l.title)
+  const plain = layout.length <= 1 && !layout.some((l) => typeof l === 'object' && l.type === 'section' && (l.title || l.children.some((c) => typeof c === 'object')))
   const schema: FormSchema = { version: 1, ...(title ? { title } : {}), fields, ...(plain ? {} : { layout }) }
   const issues = lint(schema)
   if (issues.length) throw new Error(`Could not build a valid form: ${issues[0].path}: ${issues[0].message}`)

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanLabel, findShapes, readPage, toSketch, type Gray, type Rect, type Shapes, type Word } from './vision.ts'
+import { cleanLabel, findShapes, readPage, toSketch, type Gray, type Rect, type Shapes, type SketchField, type Word } from './vision.ts'
 
 /** A white page to draw on. */
 function page(width: number, height: number) {
@@ -112,7 +112,7 @@ test('pairs printed words with the shapes next to them', () => {
   assert.equal(sketch.sections.length, 1)
 })
 
-test('a table whose first column asks the questions gives one question per row', () => {
+test('a table whose first column asks the questions gives a table with a fixed row per question', () => {
   const shapes: Shapes = {
     width: 800, height: 600, em: 20, mask: new Uint8Array(0), rules: [],
     ticks: [R(330, 120, 348, 138), R(430, 120, 448, 138), R(330, 170, 348, 188), R(430, 170, 448, 188)],
@@ -124,8 +124,13 @@ test('a table whose first column asks the questions gives one question per row',
     W('Fire', 60, 115, 100), W('exit', 105, 115, 140), W('Helmet', 60, 165, 130),
   ]
   const items = readPage(shapes, words)
-  const out = items.map((it) => ('field' in it ? `${it.field.label} | ${it.field.kind}` : `# ${it.heading}`))
-  assert.deepEqual(out, ['# SAFETY CHECK', 'Fire exit | yes_no', 'Fire exit – Remarks | long_text', 'Helmet | yes_no', 'Helmet – Remarks | long_text'])
+  assert.equal(items.length, 1)
+  const t = (items[0] as { field: SketchField }).field
+  assert.equal(t.label, 'SAFETY CHECK')
+  assert.equal(t.kind, 'table')
+  assert.deepEqual(t.rows, ['Fire exit', 'Helmet'])
+  assert.equal(t.rowHeading, 'Item')
+  assert.deepEqual(t.columns.map((c) => `${c.label} | ${c.kind}`), ['Answer | yes_no', 'Remarks | long_text'])
 })
 
 test('labels lose numbering, stars and trailing dots', () => {
@@ -153,4 +158,63 @@ test('the D of a word is not a box to tick, a box beside its words is', () => {
   const s = findShapes(g)
   assert.equal(s.ticks.length, 1)
   assert.equal(s.ticks[0].x0, 300)
+})
+
+const fieldsOf = (shapes: Shapes, words: Word[]) => readPage(shapes, words).flatMap((it) => ('field' in it ? [it.field] : []))
+const empty = (frames: Shapes['frames'], ticks: Rect[] = [], rules: Rect[] = []): Shapes => ({ width: 1200, height: 1600, em: 20, mask: new Uint8Array(0), rules, ticks, frames })
+
+test('a line drawn a little under its label belongs to that label, not the one on the next line', () => {
+  // "SHIP: ____" with the line 0.9 em below the words' bottom, and "IMO NUMBER: ____" under it
+  const shapes = empty([], [], [R(120, 138, 400, 140), R(170, 208, 400, 210)])
+  const out = fieldsOf(shapes, [W('SHIP:', 50, 100, 110), W('IMO', 50, 170, 90), W('NUMBER:', 95, 170, 160)])
+  assert.deepEqual(out.map((f) => f.label), ['SHIP', 'IMO NUMBER'])
+})
+
+test('boxes with their words before them, and rows of boxes in a grid, make one question', () => {
+  const ticks = [R(200, 100, 218, 118), R(400, 100, 418, 118), R(200, 140, 218, 158), R(400, 140, 418, 158)]
+  const words = [
+    W('Qualifications', 50, 68, 220), W('(tick', 230, 68, 280), W('all)', 290, 68, 330),
+    W('Master', 130, 99, 190), W('C/O', 340, 99, 390), W('BRM', 140, 139, 190), W('Other', 330, 139, 390),
+  ]
+  const [q] = fieldsOf(empty([], ticks), words)
+  assert.equal(q.kind, 'many_of')
+  assert.equal(q.label, 'Qualifications (tick all)')
+  assert.deepEqual(q.options, ['Master', 'C/O', 'BRM', 'Other'])
+})
+
+test('a frame of cells, each with a box and its words, is one question named by its title row', () => {
+  const frames = [{ ...R(50, 50, 650, 200), cols: [250, 450], rows: [100, 150] }]
+  const ticks = [R(60, 115, 78, 133), R(260, 115, 278, 133), R(460, 115, 478, 133), R(60, 165, 78, 183), R(260, 165, 278, 183)]
+  const words = [W('OPERATIONS', 60, 65, 200), W('Loading', 85, 114, 160), W('Discharging', 285, 114, 400), W('Bunkering', 485, 114, 580), W('Ballasting', 85, 164, 180), W('Idle', 285, 164, 330)]
+  const [q] = fieldsOf(empty(frames, ticks), words)
+  assert.equal(q.kind, 'many_of')
+  assert.equal(q.label, 'OPERATIONS')
+  assert.deepEqual(q.options, ['Loading', 'Discharging', 'Bunkering', 'Ballasting', 'Idle'])
+})
+
+test('lines in columns under headings make a table; numbered empty rows make a table to add rows to', () => {
+  const rules = [R(200, 140, 380, 142), R(400, 140, 580, 142), R(200, 190, 380, 192), R(400, 190, 580, 192)]
+  const [t] = fieldsOf(empty([], [], rules), [W('SUPERINTENDENT', 40, 120, 180), W('RANK', 260, 90, 320), W('DATE', 460, 90, 520)])
+  assert.equal(t.kind, 'table')
+  assert.equal(t.label, 'SUPERINTENDENT')
+  assert.deepEqual(t.columns.map((c) => `${c.label} ${c.kind}`), ['RANK text', 'DATE date'])
+  assert.equal(t.minRows, 2)
+
+  const frames = [{ ...R(50, 100, 650, 250), cols: [100], rows: [150, 200] }]
+  const [n] = fieldsOf(empty(frames), [W('Best', 60, 60, 120), W('Practices', 130, 60, 230), W('1.', 60, 115, 80), W('2.', 60, 165, 80), W('3.', 60, 215, 80)])
+  assert.equal(n.kind, 'table')
+  assert.equal(n.label, 'Best Practices')
+  assert.equal(n.minRows, 3)
+})
+
+test('across pages: a table heading printed again is kept once; nameless and page-number fields are left out', () => {
+  const at = R(0, 0, 10, 10)
+  const f = (label: string, kind: SketchField['kind'] = 'text', columns: SketchField['columns'] = []): SketchField => ({ key: '', label, kind, required: false, help: '', options: [], columns })
+  const col = (label: string) => ({ key: '', label, kind: 'text' as const, options: [] })
+  const sketch = toSketch([
+    [{ at, field: f('Name') }, { at, heading: 'PLANNED MAINTENANCE' }, { at, field: f('Comments', 'long_text') }, { at, field: f('') }],
+    [{ at, field: f('PLANNED MAINTENANCE', 'table', [col('Equipment'), col('Comments')]) }, { at, field: f('12') }],
+  ])
+  assert.deepEqual(sketch.sections.flatMap((s) => s.fields.map((x) => x.label)), ['Name', 'PLANNED MAINTENANCE'])
+  assert.equal(sketch.skipped, 1)
 })

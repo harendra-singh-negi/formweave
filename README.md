@@ -138,22 +138,32 @@ const scan = (files: File[], progress: (m: string) => void) =>
 What it turns into fields:
 - **Answer lines** after a label ("Name: ______"), or with the label below or above them. Dotted lines, dashes and typed underscores count as answer lines too.
 - **Dates and long answers:** `__/__/____` becomes a date. Several lines under one label become one long answer.
-- **Tick boxes:** a row of them becomes a choice, "☐ Yes ☐ No" becomes yes/no, and a stacked list or "(tick all that apply)" allows several. A single box beside a statement becomes a checkbox.
+- **Tick boxes:**
+  - A row of them becomes a choice, and "☐ Yes ☐ No" becomes yes/no.
+  - A stacked list, "(tick all that apply)" or a grid of boxes allows several. A grid becomes one question, in a frame or not, with its words before or after each box.
+  - A graded scale (below average … above average) takes one answer.
+  - A single box beside a statement becomes a checkbox.
 - **Boxes to fill**, with the label inside them, beside them or above them. A box with a lot of room becomes a long answer.
 - **One box per character** (PAN, PIN code): one text field whose length is the number of boxes.
 - **Tables:**
-  - an empty table becomes a table people add rows to;
-  - a table whose first column lists questions becomes one question per row (Yes / No columns become yes/no).
+  - An empty table becomes a table people add rows to. It starts with as many rows as the paper has, and a "No." column is left out because rows are numbered anyway. Lines in columns under headings (RANK  NAME  SIGNATURE  DATE) count as a table too, and so do numbered empty rows.
+  - A table whose first column lists questions becomes a table with a fixed row per question. Its box columns become one choice (1 2 3 4 5 N/S, Yes / No), and "Yes/No" printed in the cells becomes the choices.
+  - Column lines that stop at some rows (a title row, "Label | value" rows, then the table) are read part by part.
+  - A table printed again at the top of the next page is kept once.
+  - Columns already printed full of data (a payslip) are not asked for.
 - **Kinds from the label:** email, phone, date, time, amount, number, signature, photo or file, and address or remarks.
 - **Required** when the label has a `*`.
-- **Headings** (numbered, in capitals or larger) become sections, and the first one becomes the title.
+- **Fields side by side** on one line ("SHIP ___  GT ___") stay side by side, in a grid that becomes one column on a phone. "LAST PSC INSPECTION: Place ___ Date ___" names both fields after the lead-in.
+- **Headings** (numbered, in capitals or larger) become sections, and the first one becomes the title. Running page headers and footers, and lines or boxes that nothing names, are left out, and the warnings say how many.
 
 Good to know:
 - **Languages:** pass Tesseract's language codes, for example `['eng', 'hin']`. The first scan downloads the engine and the language files (a few MB) from a public CDN and caches them. Pass `tesseract: { workerPath, corePath, langPath }` to serve them yourself and work offline.
 - **What reads well:** clear printed forms, such as scans, screenshots, PDFs, and photos taken straight on.
 - **What reads less well:** skewed or curled photos, handwriting, and forms without lines or boxes.
 - **Afterwards:** the result is a starting point to check in the builder. `warnings` lists what was changed, and the schema always passes `lint()`.
+- **PDFs made on a computer** carry their words, and those are used exactly as they are, with no text recognition and no download. Scanned pages are read with OCR.
 - **Without pdf.js**, only pictures can be read.
+- **To see what a change finds:** `node --experimental-strip-types scripts/scan-pdf.ts form.pdf` prints the outline of any PDF with a text layer (it needs poppler's `pdftoppm` and `pdftotext`).
 
 ## Field types
 
