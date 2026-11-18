@@ -22,7 +22,7 @@
     "type": "git",
     "url": "git+https://github.com/harendra-singh-negi/formweave.git"
   },
-  "homepage": "https://github.com/harendra-singh-negi/formweave#readme",
+  "homepage": "https://harendra-singh-negi.github.io/formweave/",
   "bugs": {
     "url": "https://github.com/harendra-singh-negi/formweave/issues"
   },
@@ -75,6 +75,7 @@
     "typecheck": "tsc",
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts",
     "demo": "vite --open",
+    "demo:build": "vite build",
     "dev": "vite",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "prepack": "npm run build",

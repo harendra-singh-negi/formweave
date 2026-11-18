@@ -3,7 +3,40 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>formweave demo</title>
+    <title>formweave: JSON form builder, React and web component forms</title>
+    <meta
+      name="description"
+      content="Try formweave live: a drag-and-drop form builder, forms as JSON with validation, conditions and formulas, React and web components, and paper forms scanned on the device. Free and open source (MIT)."
+    />
+    <meta name="keywords" content="form builder, json form, react form, web components, form validation, drag and drop form, json schema, open source" />
+    <meta name="theme-color" content="#0969da" />
+    <link rel="canonical" href="https://harendra-singh-negi.github.io/formweave/" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230969da'/%3E%3Cpath d='M9 9h14M9 16h10M9 23h6' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="formweave" />
+    <meta property="og:title" content="formweave: forms as JSON, with a visual builder" />
+    <meta
+      property="og:description"
+      content="Build a form by drag and drop, fill it in, and see the JSON your app gets. Open source, for React, Angular, Vue or plain HTML."
+    />
+    <meta property="og:url" content="https://harendra-singh-negi.github.io/formweave/" />
+    <meta name="twitter:card" content="summary" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        "name": "formweave",
+        "description": "Forms as JSON: a visual builder, a React renderer and web components, scanning paper forms on the device, and one engine for validation, conditions and formulas.",
+        "codeRepository": "https://github.com/harendra-singh-negi/formweave",
+        "programmingLanguage": "TypeScript",
+        "license": "https://opensource.org/licenses/MIT",
+        "author": { "@type": "Person", "name": "Harendra Singh Negi" },
+        "url": "https://harendra-singh-negi.github.io/formweave/"
+      }
+    </script>
     <style>
       :root {
         --bg: #f6f8fa;
@@ -143,6 +176,10 @@
         font-size: 0.875rem;
         color: var(--muted);
       }
+      .ext {
+        color: var(--accent);
+        font-size: 0.875rem;
+      }
       [hidden] {
         display: none !important;
       }
@@ -182,6 +219,8 @@
         >
       </div>
       <button id="reset" type="button" title="Forget your changes and load the sample form">Reset demo</button>
+      <a class="ext" href="https://github.com/harendra-singh-negi/formweave">GitHub</a>
+      <a class="ext" href="https://www.npmjs.com/package/formweave">npm</a>
     </header>
     <main>
       <section id="builder" class="card" aria-label="Builder"><formweave-builder id="b"></formweave-builder></section>
