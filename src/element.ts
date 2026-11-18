@@ -2,6 +2,7 @@
 import { createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { Form, type FormProps } from './react.ts'
+import { Builder, type BuilderProps } from './builder.ts'
 
 /**
  * Set `schema` (and optionally `values`, `context`, `locale`, `validators`, `labels`, `onUpload`) as properties.
@@ -42,4 +43,35 @@ export class FormweaveForm extends HTMLElement {
   }
 }
 
-if (typeof customElements !== 'undefined' && !customElements.get('formweave-form')) customElements.define('formweave-form', FormweaveForm)
+/** Set `schema` as a property. Event `fw-change` (detail: { schema, issues }); save when issues is empty. */
+export class FormweaveBuilder extends HTMLElement {
+  #root?: Root
+  #schema?: BuilderProps['schema']
+  set schema(v: BuilderProps['schema']) {
+    this.#schema = v
+    this.#render(true)
+  }
+  connectedCallback() {
+    this.#root ??= createRoot(this)
+    this.#render(false)
+  }
+  disconnectedCallback() {
+    this.#root?.unmount()
+    this.#root = undefined
+  }
+  #version = 0
+  #render(fresh: boolean) {
+    if (!this.#root) return
+    if (fresh) this.#version++ // a new schema from outside starts a new history
+    this.#root.render(h(Builder, {
+      key: this.#version,
+      schema: this.#schema,
+      onChange: (schema, issues) => { this.dispatchEvent(new CustomEvent('fw-change', { detail: { schema, issues } })) },
+    }))
+  }
+}
+
+if (typeof customElements !== 'undefined') {
+  if (!customElements.get('formweave-form')) customElements.define('formweave-form', FormweaveForm)
+  if (!customElements.get('formweave-builder')) customElements.define('formweave-builder', FormweaveBuilder)
+}

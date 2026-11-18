@@ -17,7 +17,11 @@
       "types": "./dist/element.d.ts",
       "default": "./dist/element.js"
     },
-    "./style.css": "./dist/style.css"
+    "./style.css": "./dist/style.css",
+    "./builder": {
+      "types": "./dist/builder.d.ts",
+      "default": "./dist/builder.js"
+    }
   },
   "files": [
     "dist"

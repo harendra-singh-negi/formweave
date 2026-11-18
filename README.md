@@ -51,6 +51,22 @@ import 'formweave/style.css'
 - Theming: change the `--fw-*` CSS variables. All styles stay under `.fw-form`.
 - Headless: `useForm(schema)` gives `{ form, state }` for a UI of your own.
 
+## Build it visually
+
+```tsx
+import { Builder } from 'formweave/builder'
+<Builder schema={saved} onChange={(schema, issues) => issues.length || save(schema)} />
+```
+
+Or `<formweave-builder>` from `formweave/element`, which fires `fw-change` with `{ schema, issues }`.
+
+- Add the 8 field types. Add fields into groups and lists, and drag them or use ↑ ↓ to reorder.
+- Duplicate, delete, undo and redo (Ctrl+Z, Ctrl+Shift+Z).
+- The settings panel is itself a formweave form. It covers key, label, help, required, "show only when", "calculated value", options and limits.
+- Renaming or deleting a field keeps the layout pointing at the right keys. `lint()` shows any formula that still uses an old name.
+- Preview fills the form for real. The JSON tab copies the schema, or loads one after linting it.
+- Still to come: editing layout (sections, grids, pages), translations, and templates.
+
 ## Field types
 
 `string` · `number` · `boolean` · `choice` · `date` · `file` · `group` · `list`.
