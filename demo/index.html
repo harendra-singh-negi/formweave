@@ -72,7 +72,8 @@
         border-bottom: 1px solid var(--line);
         background: var(--card);
       }
-      header strong {
+      header h1 {
+        margin: 0;
         font-size: 1.125rem;
       }
       nav {
@@ -180,6 +181,24 @@
         color: var(--accent);
         font-size: 0.875rem;
       }
+      .intro {
+        max-width: 80rem;
+        margin: 0 auto;
+        padding: 0.75rem 1rem 0;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .intro code {
+        user-select: all;
+        padding: 0.125rem 0.375rem;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--card);
+        color: var(--text);
+      }
+      .intro a {
+        color: var(--accent);
+      }
       [hidden] {
         display: none !important;
       }
@@ -187,7 +206,7 @@
   </head>
   <body>
     <header>
-      <strong>formweave</strong>
+      <h1>formweave</h1>
       <nav aria-label="Demo">
         <a href="#builder">Build</a>
         <a href="#fill">Fill</a>
@@ -222,6 +241,11 @@
       <a class="ext" href="https://github.com/harendra-singh-negi/formweave">GitHub</a>
       <a class="ext" href="https://www.npmjs.com/package/formweave">npm</a>
     </header>
+    <p class="intro">
+      Forms as JSON: a drag-and-drop builder, React and web components for Angular, Vue or plain HTML, validation, conditions and formulas that run in the
+      browser and on your server, and paper forms scanned on the device. Free and open source (MIT). <code title="Click to select">npm install formweave</code>
+      <a href="https://github.com/harendra-singh-negi/formweave#readme">Docs</a>
+    </p>
     <main>
       <section id="builder" class="card" aria-label="Builder"><formweave-builder id="b"></formweave-builder></section>
       <section id="fill" class="fill" aria-label="Fill" hidden>

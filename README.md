@@ -1,6 +1,6 @@
 # formweave
 
-[![npm](https://img.shields.io/npm/v/formweave)](https://www.npmjs.com/package/formweave) [![ci](https://github.com/harendra-singh-negi/formweave/actions/workflows/ci.yml/badge.svg)](https://github.com/harendra-singh-negi/formweave/actions/workflows/ci.yml) [![license](https://img.shields.io/npm/l/formweave)](LICENSE)
+[![npm](https://img.shields.io/npm/v/formweave)](https://www.npmjs.com/package/formweave) [![ci](https://github.com/harendra-singh-negi/formweave/actions/workflows/ci.yml/badge.svg)](https://github.com/harendra-singh-negi/formweave/actions/workflows/ci.yml) [![license](https://img.shields.io/github/license/harendra-singh-negi/formweave)](LICENSE)
 
 **[Try the live demo →](https://harendra-singh-negi.github.io/formweave/)**
 
