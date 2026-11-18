@@ -1,8 +1,23 @@
 {
   "name": "formweave",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Forms as JSON: one engine for validation, conditions and formulas that runs in the browser and on your server.",
+  "version": "0.1.0",
+  "description": "Forms as JSON: a visual builder, a React renderer and web components, scanning paper forms on the device, and one engine for validation, conditions and formulas that runs in the browser and on your server.",
+  "keywords": [
+    "form",
+    "form-builder",
+    "forms",
+    "json-schema",
+    "react",
+    "web-components",
+    "validation",
+    "formulas",
+    "drag-and-drop",
+    "ocr",
+    "pdf",
+    "survey"
+  ],
+  "license": "MIT",
+  "author": "Harendra Singh Negi",
   "type": "module",
   "exports": {
     ".": {
@@ -34,7 +49,10 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
   ],
   "sideEffects": [
     "./dist/element.js",
@@ -48,7 +66,10 @@
     "typecheck": "tsc",
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts",
     "demo": "vite --open",
-    "dev": "vite"
+    "dev": "vite",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
