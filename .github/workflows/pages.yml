@@ -1,6 +1,7 @@
 # Every push to main: the demo built and published to GitHub Pages.
-# Google Tag Manager is always on (GTM_ID below); GA4 and the rest are set up inside Tag Manager.
-# Optional repository variables (Settings → Secrets and variables → Actions → Variables):
+# Optional repository variables (Settings → Secrets and variables → Actions → Variables), kept out of the code so
+# only the repository's admins set them:
+#   GTM_ID                    Google Tag Manager, like GTM-XXXXXXX (set GA4 up inside Tag Manager, not below)
 #   GA_MEASUREMENT_ID         Google Analytics 4, like G-XXXXXXXXXX
 #   GOOGLE_SITE_VERIFICATION  the content of Search Console's HTML-tag verification
 name: pages
@@ -31,7 +32,7 @@ jobs:
       - run: npm ci
       - run: npm run demo:build
         env:
-          GTM_ID: GTM-5FVBSZN9
+          GTM_ID: ${{ vars.GTM_ID }}
           GA_MEASUREMENT_ID: ${{ vars.GA_MEASUREMENT_ID }}
           GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
       - uses: actions/configure-pages@v5
