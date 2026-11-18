@@ -31,7 +31,7 @@ Only add what you use:
 | `formweave/style.css` | the look of forms |
 | `formweave/builder.css` | the look of the builder (with `style.css`) |
 
-The package is ESM only, with TypeScript types. Node 18 or newer runs the engine; bundlers (Vite, webpack, Next.js,
+The package is ESM only, with TypeScript types. Node 20 or newer runs it (checked on 20, 22 and 24 for every change); bundlers (Vite, webpack, Next.js,
 Angular) take it as it is. `require('formweave')` works where Node can load ES modules that way (Node 20.19+, 22.12+).
 
 **Network:** formweave sends nothing anywhere by itself, with two exceptions you can turn off. The `map` widget loads
@@ -305,6 +305,7 @@ npm install
 npm run demo      # the demo app at http://127.0.0.1:5180 (Build and Fill tabs, live reload)
 npm test          # unit tests, node:test, Node 22.6+
 npm run test:e2e  # the builder in a real browser (Playwright)
+npm run test:dist # after build: the built package used by name, on any supported Node
 npm run typecheck
 npm run build     # dist/ from scratch
 ```

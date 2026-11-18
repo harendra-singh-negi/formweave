@@ -59,7 +59,7 @@
     "*.css"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -70,7 +70,8 @@
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "prepack": "npm run build",
     "prepublishOnly": "npm run typecheck && npm test",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:dist": "node scripts/smoke.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",

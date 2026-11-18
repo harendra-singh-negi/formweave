@@ -38,6 +38,10 @@ The first release.
 
 - Photos, scans and PDFs read into a form on the device with OCR and geometry: no AI service, nothing uploaded.
 
+### Package
+
+- ESM with TypeScript types; Node 20 or newer; React 18 or newer for the React parts. MIT licence.
+
 ### Samples (`formweave/samples`)
 
 - Six ready-made forms with made-up data that use every input and layout piece.
