@@ -65,7 +65,8 @@ Or `<formweave-builder>` from `formweave/element`, which fires `fw-change` with 
 - The settings panel is itself a formweave form. It covers key, label, help, required, "show only when", "calculated value", options and limits.
 - Renaming or deleting a field keeps the layout pointing at the right keys. `lint()` shows any formula that still uses an old name.
 - Preview fills the form for real. The JSON tab copies the schema, or loads one after linting it.
-- Still to come: editing layout (sections, grids, pages), translations, and templates.
+- The Layout tab adds sections, grids (columns per width), pages (steps, tabs, accordion), headings, text and dividers. Fields are dragged into them, and each part gets its title, columns and "show only when". Fields not placed yet are listed, and removing a container keeps what is inside it.
+- Still to come: translations and templates.
 
 ## Field types
 

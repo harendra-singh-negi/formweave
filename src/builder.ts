@@ -3,7 +3,7 @@ import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, typ
 import { lint, type Issue } from './lint.ts'
 import { text } from './form.ts'
 import { Form } from './react.ts'
-import { DATE_FORMATS, type Field, type Fields, type FormSchema, type Layout, type Values } from './schema.ts'
+import { DATE_FORMATS, type Field, type Fields, type FormSchema, type Layout, type Values, type Grid } from './schema.ts'
 
 type Path = string[]
 type Kind = Field['type']
@@ -186,7 +186,7 @@ export function Builder(props: BuilderProps) {
   const [schema, setSchema] = useState<FormSchema>(props.schema ?? EMPTY)
   const [selected, setSelected] = useState<Path | null>(null)
   const [panel, setPanel] = useState(0) // remounts the settings form
-  const [tab, setTab] = useState<'build' | 'preview' | 'json'>('build')
+  const [tab, setTab] = useState<'build' | 'layout' | 'preview' | 'json'>('build')
   const lastPush = useRef(0)
   const issues = useMemo(() => lint(schema), [schema])
   const first = useRef(true)
@@ -279,7 +279,7 @@ export function Builder(props: BuilderProps) {
   return h('div', { className: 'fw-builder', onKeyDown: onKey },
     h('div', { className: 'fw-b-bar' },
       h('div', { role: 'tablist' },
-        (['build', 'preview', 'json'] as const).map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, { build: 'Build', preview: 'Preview', json: 'JSON' }[t]))),
+        (['build', 'layout', 'preview', 'json'] as const).map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, { build: 'Fields', layout: 'Layout', preview: 'Preview', json: 'JSON' }[t]))),
       h('div', null,
         h('button', { type: 'button', onClick: undo, disabled: !past.length, title: 'Ctrl+Z' }, 'Undo'),
         h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, 'Redo'))),
@@ -298,6 +298,7 @@ export function Builder(props: BuilderProps) {
           ? h(Fragment, null, h('h3', null, KINDS.find(([k]) => k === field.type)![1], ' settings'),
               h(Form, { key: panel, schema: SETTINGS[field.type], values: toSettings(selected.at(-1)!, field), labels: { submit: 'Done' }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
           : h('p', { className: 'fw-help' }, 'Select a field to change it.'))),
+    tab === 'layout' && h(LayoutTab, { schema, commit: (layout: Layout[] | undefined, typing?: boolean) => commit({ ...schema, layout }, selected, typing), panel, bump: () => setPanel((n) => n + 1) }),
     tab === 'preview' && h('div', { className: 'fw-b-preview' },
       issues.length ? h('p', { className: 'fw-error' }, 'Fix the issues above to preview.') : h(Form, { schema, onSubmit: () => {} })),
     tab === 'json' && h(JsonTab, { schema, load: (s) => commit(s, null) }))
@@ -362,4 +363,213 @@ function JsonTab({ schema, load }: { schema: FormSchema; load(s: FormSchema): vo
     h('div', null,
       h('button', { type: 'button', onClick: apply }, 'Apply'), ' ',
       h('button', { type: 'button', onClick: () => navigator.clipboard?.writeText(JSON.stringify(schema, null, 2)) }, 'Copy')))
+}
+
+// ---- layout editing ----
+
+/** A node in the layout, by index: [0, 2] is the third child of the first item. */
+type Ip = number[]
+type Container = Exclude<Layout, string | { type: 'content' }>
+const isContainer = (n: Layout | undefined): n is Container => typeof n === 'object' && n.type !== 'content'
+
+export function nodeAt(items: Layout[], ip: Ip): Layout | undefined {
+  let list: Layout[] | undefined = items
+  let n: Layout | undefined
+  for (const i of ip) {
+    n = list?.[i]
+    list = isContainer(n) ? n.children : undefined
+  }
+  return n
+}
+
+/** Changes the children list at `parent` ([] = the top). */
+function inList(items: Layout[], parent: Ip, fn: (l: Layout[]) => Layout[]): Layout[] {
+  if (!parent.length) return fn(items)
+  const [i, ...rest] = parent
+  return items.map((n, j) => (j === i && isContainer(n) ? ({ ...n, children: inList(n.children, rest, fn) } as Layout) : n))
+}
+
+/** May `node` go into the list at `parent`? Pages hold only sections. */
+const fits = (items: Layout[], parent: Ip, node: Layout) => {
+  const p = parent.length ? nodeAt(items, parent) : undefined
+  if (parent.length && !isContainer(p)) return false
+  return !(isContainer(p) && p.type === 'pages') || (typeof node === 'object' && node.type === 'section')
+}
+
+export const layoutEdits = {
+  insert: (items: Layout[], parent: Ip, index: number, node: Layout) => inList(items, parent, (l) => [...l.slice(0, index), node, ...l.slice(index)]),
+  remove: (items: Layout[], ip: Ip) => inList(items, ip.slice(0, -1), (l) => l.filter((_, i) => i !== ip.at(-1))),
+  replace: (items: Layout[], ip: Ip, node: Layout) => inList(items, ip.slice(0, -1), (l) => l.map((n, i) => (i === ip.at(-1) ? node : n))),
+  /** Removes a container but keeps what was in it, in its place. */
+  unwrap: (items: Layout[], ip: Ip) => inList(items, ip.slice(0, -1), (l) => l.flatMap((n, i) => (i === ip.at(-1) && isContainer(n) ? n.children : [n]))),
+  /** Moves a node into `parent` before `index`. Undefined when the move isn't allowed. */
+  move(items: Layout[], from: Ip, parent: Ip, index: number): Layout[] | undefined {
+    const node = nodeAt(items, from)
+    if (node === undefined || from.every((x, i) => parent[i] === x)) return // into itself
+    if (!fits(items, parent, node)) return
+    const to = [...parent]
+    const fp = from.slice(0, -1)
+    const last = from.at(-1)!
+    // removing `from` shifts later siblings (and the path to `parent` through them) up by one
+    if (to.length > fp.length && fp.every((x, i) => to[i] === x) && to[fp.length] > last) to[fp.length]--
+    if (to.length === fp.length && fp.every((x, i) => to[i] === x) && index > last) index--
+    return layoutEdits.insert(layoutEdits.remove(items, from), to, index, node)
+  },
+}
+
+const placedKeys = (items: Layout[]): string[] => items.flatMap((n) => (typeof n === 'string' ? [n] : isContainer(n) ? placedKeys(n.children) : []))
+
+const NODES: [string, string, () => Layout][] = [
+  ['section', 'Section', () => ({ type: 'section', title: 'Section', children: [] })],
+  ['grid', 'Grid (columns)', () => ({ type: 'grid', cols: 2, children: [] })],
+  ['pages', 'Pages / steps', () => ({ type: 'pages', display: 'steps', children: [{ type: 'section', title: 'Step 1', children: [] }] })],
+  ['heading', 'Heading', () => ({ type: 'content', as: 'heading', text: 'Heading' })],
+  ['text', 'Text', () => ({ type: 'content', as: 'text', text: 'Some text' })],
+  ['divider', 'Divider', () => ({ type: 'content', as: 'divider' })],
+]
+
+const showWhen = formula('Show only when', "employment == 'Self Employed'")
+const cols = (label: string): Field => ({ type: 'number', label, min: 1, max: 12, decimals: 0 })
+const NODE_SETTINGS: Record<string, FormSchema> = {
+  section: { version: 1, fields: { title: { type: 'string', label: 'Title' }, visible: showWhen } },
+  grid: { version: 1, fields: {
+    base: cols('Columns on phones'), sm: cols('Columns from 480px'), md: cols('Columns from 640px'), lg: cols('Columns from 960px'), visible: showWhen,
+  }, layout: [{ type: 'grid', cols: 2, children: ['base', 'sm', 'md', 'lg'] }, 'visible'] },
+  pages: { version: 1, fields: { display: { type: 'choice', label: 'Shown as', options: ['steps', 'tabs', 'accordion'], required: true }, visible: showWhen } },
+  content: { version: 1, fields: { as: { type: 'choice', label: 'Kind', options: ['heading', 'text', 'divider'], required: true }, text: { type: 'string', widget: 'textarea', label: 'Text' }, visible: showWhen } },
+}
+
+function nodeSettings(n: Container | Extract<Layout, { type: 'content' }>): Values {
+  const visible = typeof n.visible === 'string' ? n.visible : null
+  switch (n.type) {
+    case 'section': return { title: text(n.title, 'en') || null, visible }
+    case 'grid': {
+      const c = typeof n.cols === 'number' ? { base: 1, md: n.cols } : (n.cols ?? {})
+      return { base: c.base ?? null, sm: c.sm ?? null, md: c.md ?? null, lg: c.lg ?? null, visible }
+    }
+    case 'pages': return { display: n.display ?? 'steps', visible }
+    case 'content': return { as: n.as ?? 'text', text: text(n.text, 'en') || null, visible }
+  }
+}
+
+function fromNodeSettings(n: Exclude<Layout, string>, s: Values): Layout {
+  const out: Record<string, unknown> = { ...n }
+  const put = (k: string, v: unknown) => (v === null || v === undefined || v === '' ? delete out[k] : (out[k] = v))
+  const words = (old: unknown, v: unknown) => (v && old && typeof old === 'object' ? { ...old, en: v } : v)
+  put('visible', s.visible)
+  if (n.type === 'section') put('title', words(n.title, s.title))
+  if (n.type === 'pages') put('display', s.display)
+  if (n.type === 'content') { put('as', s.as); put('text', s.as === 'divider' ? null : words(n.text, s.text)) }
+  if (n.type === 'grid') {
+    const c = Object.fromEntries(['base', 'sm', 'md', 'lg'].filter((k) => typeof s[k] === 'number').map((k) => [k, s[k]]))
+    put('cols', Object.keys(c).length ? (c as Grid['cols']) : null)
+  }
+  return out as unknown as Layout
+}
+
+interface LayoutTabProps {
+  schema: FormSchema
+  commit(layout: Layout[] | undefined, typing?: boolean): void
+  panel: number
+  bump(): void
+}
+
+function LayoutTab({ schema, commit, panel, bump }: LayoutTabProps) {
+  const [sel, setSel] = useState<Ip | null>(null)
+  const items = schema.layout
+  if (!items)
+    return h('div', { className: 'fw-b-layout-empty' },
+      h('p', null, 'Fields show one after another. Start a layout to group them into sections, columns or steps.'),
+      h('button', { type: 'button', onClick: () => commit(Object.keys(schema.fields)) }, 'Start a layout'))
+
+  const node = sel ? nodeAt(items, sel) : undefined
+  const select = (ip: Ip | null) => { setSel(ip); bump() }
+  /** Where a new node goes: into the selected container, else after the selected node, else at the end. */
+  const target = (n: Layout): [Ip, number] => {
+    if (sel && isContainer(node) && fits(items, sel, n)) return [sel, node.children.length]
+    if (sel && fits(items, sel.slice(0, -1), n)) return [sel.slice(0, -1), sel.at(-1)! + 1]
+    return [[], items.length]
+  }
+  const add = (n: Layout) => {
+    const [parent, index] = target(n)
+    commit(layoutEdits.insert(items, parent, index, n))
+    select([...parent, index])
+  }
+  const unplaced = Object.keys(schema.fields).filter((k) => !placedKeys(items).includes(k))
+  const move = (from: Ip, parent: Ip, index: number) => {
+    const next = layoutEdits.move(items, from, parent, index)
+    if (next) { commit(next); select(null) }
+  }
+  const onSettings = (v: Values) => {
+    if (!sel || typeof node !== 'object') return
+    const next = fromNodeSettings(node, v)
+    if (JSON.stringify(next) !== JSON.stringify(node)) commit(layoutEdits.replace(items, sel, next), true)
+  }
+
+  return h('div', { className: 'fw-b-main' },
+    h('div', { className: 'fw-b-palette', 'aria-label': 'Add to the layout' },
+      h('h3', null, 'Add'),
+      NODES.map(([k, label, make]) => h('button', { key: k, type: 'button', onClick: () => add(make()) }, '+ ', label)),
+      unplaced.length > 0 && h('h3', null, 'Not placed'),
+      unplaced.map((k) => h('button', { key: k, type: 'button', title: 'Place it', onClick: () => add(k) }, '+ ', text(schema.fields[k].label, 'en') || k))),
+    h('div', { className: 'fw-b-tree' },
+      h('h3', null, 'Layout'),
+      items.length === 0 ? h('p', { className: 'fw-help' }, 'Empty: add a section or place a field.')
+        : h(LayoutTree, { items: items, all: items, parent: [], sel, select, move, schema,
+            remove: (ip: Ip) => { commit(isContainer(nodeAt(items, ip)) ? layoutEdits.unwrap(items, ip) : layoutEdits.remove(items, ip)); select(null) } }),
+      h('p', null, h('button', { type: 'button', onClick: () => { commit(undefined); select(null) } }, 'Remove the layout'))),
+    h('div', { className: 'fw-b-settings' },
+      typeof node === 'object'
+        ? h(Fragment, null, h('h3', null, node.type === 'content' ? 'Content' : node.type, ' settings'),
+            h(Form, { key: panel, schema: NODE_SETTINGS[node.type], values: nodeSettings(node), labels: { submit: 'Done' }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
+        : h('p', { className: 'fw-help' }, typeof node === 'string' ? 'A field. Change it on the Fields tab.' : 'Select a section, grid, page or text to change it. Drag anything to move it.')))
+}
+
+interface LayoutTreeProps {
+  items: Layout[]
+  all: Layout[]
+  parent: Ip
+  sel: Ip | null
+  schema: FormSchema
+  select(ip: Ip): void
+  move(from: Ip, parent: Ip, index: number): void
+  remove(ip: Ip): void
+}
+
+function LayoutTree(p: LayoutTreeProps): ReactNode {
+  const drop = (e: DragEvent, index: number) => {
+    const raw = e.dataTransfer.getData('text/x-fw-node')
+    if (!raw) return
+    e.preventDefault()
+    e.stopPropagation()
+    p.move(raw.split('.').map(Number), p.parent, index)
+  }
+  const name = (n: Layout) => {
+    if (typeof n === 'string') return [text(p.schema.fields[n]?.label, 'en') || n, ` ${n} · field`]
+    switch (n.type) {
+      case 'section': return [text(n.title, 'en') || 'Section', ' section']
+      case 'grid': return ['Columns', ` grid · ${typeof n.cols === 'number' ? n.cols : Object.values(n.cols ?? { base: 1 }).join('/')}`]
+      case 'pages': return ['Pages', ` ${n.display ?? 'steps'}`]
+      case 'content': return [n.as === 'divider' ? '———' : text(n.text, 'en').slice(0, 40) || '…', ` ${n.as ?? 'text'}`]
+    }
+  }
+  return h('ul', { className: 'fw-b-list', onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => drop(e, p.items.length) },
+    p.items.length === 0 && h('li', { className: 'fw-b-drop' }, 'Empty: drag something here'),
+    p.items.map((n, i): ReactNode => {
+      const ip = [...p.parent, i]
+      const on = !!p.sel && p.sel.join('.') === ip.join('.')
+      const [title, kind] = name(n)
+      const siblings = p.items.length
+      return h('li', { key: i, onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => drop(e, i) },
+        h('div', { className: 'fw-b-item', 'aria-current': on || undefined },
+          h('button', {
+            type: 'button', className: `fw-b-pick${isContainer(n) ? ' fw-b-box' : ''}`, draggable: true, onClick: () => p.select(ip),
+            onDragStart: (e: DragEvent) => { e.stopPropagation(); e.dataTransfer.setData('text/x-fw-node', ip.join('.')) },
+          }, h('span', null, title), h('small', null, kind)),
+          on && h('span', { className: 'fw-b-tools' },
+            h('button', { type: 'button', 'aria-label': 'Move up', disabled: i === 0, onClick: () => p.move(ip, p.parent, i - 1) }, '↑'),
+            h('button', { type: 'button', 'aria-label': 'Move down', disabled: i === siblings - 1, onClick: () => p.move(ip, p.parent, i + 2) }, '↓'),
+            h('button', { type: 'button', 'aria-label': isContainer(n) ? 'Remove, keep what is inside' : 'Remove from the layout', onClick: () => p.remove(ip) }, '✕'))),
+        isContainer(n) && h(LayoutTree, { ...p, items: n.children, parent: ip }))
+    }))
 }

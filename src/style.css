@@ -116,3 +116,6 @@
 .fw-b-settings, .fw-b-preview { min-width: 0; }
 .fw-b-json { display: grid; gap: 0.5rem; }
 .fw-b-json textarea { width: 100%; min-height: 24rem; font: 12px/1.5 ui-monospace, monospace; padding: 0.5rem; color: inherit; background: var(--fw-bg); border: 1px solid var(--fw-border); border-radius: var(--fw-radius); }
+.fw-builder .fw-b-box { font-weight: 600; }
+.fw-b-layout-empty { display: grid; gap: 0.75rem; justify-items: start; }
+.fw-b-drop { padding: 0.5rem; border: 1px dashed var(--fw-border); border-radius: var(--fw-radius); color: var(--fw-muted); font-size: 0.875rem; }
