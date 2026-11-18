@@ -118,6 +118,26 @@ Or `<formweave-builder>` from `formweave/element`, which fires `fw-change` with 
 - The Layout tab's tree marks each line with what it is (section, grid, steps, heading, text, image, and the field's type), tints containers, and cuts long names (the full name shows on hover).
 - Still to come: translations and templates.
 
+## Samples
+
+Six ready-made forms show every input and layout piece at work, with made-up names and data:
+
+| Sample | Shows |
+|---|---|
+| Every input | all inputs of the palette, a section per group |
+| Cake order | steps, a field shown only for "Other", cascading town by region, a table with a Total row, calculated tax and total |
+| Gym membership | tabs on the left, a name group, plan buttons, dates with limits, a slider, tags, stars, OTP, a signature |
+| Garden club survey | an accordion, radios and tick boxes in columns, a rating matrix with a comment column, a percent, rich text |
+| Library card | the paper look, a picture beside coloured text, label \| text rows, section looks, a table with fixed rows of tick boxes |
+| Kite festival registration | guests as repeating cards, a calculated count, a colour, a map, several photos, markdown |
+
+In the builder: Scan / Import → Samples (Undo brings back your form). In code:
+
+```ts
+import { SAMPLES } from 'formweave/samples'
+<Form schema={SAMPLES.find((s) => s.id === 'cake-order')!.schema} />
+```
+
 ## JSON Schema in and out
 
 ```ts

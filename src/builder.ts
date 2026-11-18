@@ -4,6 +4,8 @@ import { lint, type Issue } from './lint.ts'
 import { text } from './form.ts'
 import { fromJsonSchema, type Imported } from './jsonschema.ts'
 import { Form, type WidgetProps } from './react.ts'
+import { PALETTE } from './palette.ts'
+import { SAMPLES } from './samples.ts'
 import { DATE_FORMATS, SAFE_IMAGE, type ChoiceField, type Field, type Fields, type FormSchema, type Grid, type Layout, type ListField, type Text, type Values } from './schema.ts'
 
 type Path = string[]
@@ -25,119 +27,6 @@ const KINDS: [Kind, string][] = [
   ['string', 'Text'], ['number', 'Number'], ['boolean', 'Yes / No'], ['choice', 'Choice'],
   ['date', 'Date'], ['file', 'File'], ['group', 'Group'], ['list', 'List / table'],
 ]
-const NEW: Record<Kind, () => Field> = {
-  string: () => ({ type: 'string', label: 'Text' }),
-  number: () => ({ type: 'number', label: 'Number' }),
-  boolean: () => ({ type: 'boolean', label: 'Yes / No' }),
-  choice: () => ({ type: 'choice', label: 'Choice', options: ['Option 1', 'Option 2'] }),
-  date: () => ({ type: 'date', label: 'Date' }),
-  file: () => ({ type: 'file', label: 'File' }),
-  group: () => ({ type: 'group', label: 'Group', fields: {} }),
-  list: () => ({ type: 'list', label: 'List', widget: 'table', min: 1, fields: {} }),
-}
-/** Every input, ready-made and grouped, so people find a radio group or a signature pad without knowing the settings behind it. */
-const opts2 = ['Option 1', 'Option 2']
-const range = (f: Field, label: string): Field => ({ type: 'group', label, fields: {
-  from: { ...f, label: 'From' } as Field,
-  to: { ...f, label: 'To', check: 'empty(from) or empty(to) or to >= from', messages: { check: 'Must not be before From' } } as Field,
-} })
-const id = (label: string, pattern: string, example: string): Field => ({ type: 'string', label, pattern, placeholder: example, messages: { pattern: `Like ${example}` } })
-const PALETTE: [string, [string, string, Field][]][] = [
-  ['Text', [
-    ['text', 'Short text', { type: 'string', label: 'Text' }],
-    ['longText', 'Long text', { type: 'string', label: 'Long text', widget: 'textarea' }],
-    ['email', 'Email', { type: 'string', label: 'Email', format: 'email' }],
-    ['phone', 'Phone', { type: 'string', label: 'Phone', format: 'phone' }],
-    ['intlPhone', 'Phone + country code', { type: 'string', label: 'Phone', widget: 'phone', format: 'phone', country: 'IN' }],
-    ['website', 'Website', { type: 'string', label: 'Website', format: 'url' }],
-    ['password', 'Password', { type: 'string', label: 'Password', widget: 'password' }],
-    ['search', 'Search', { type: 'string', label: 'Search', widget: 'search' }],
-  ]],
-  ['Numbers', [
-    ['number', 'Number', { type: 'number', label: 'Number' }],
-    ['stepper', 'Number with − / +', { type: 'number', label: 'Quantity', widget: 'stepper', min: 0, decimals: 0 }],
-    ['amount', 'Amount (₹)', { type: 'number', label: 'Amount', format: 'currency', currency: 'INR', decimals: 2, min: 0 }],
-    ['percent', 'Percent', { type: 'number', label: 'Percent', format: 'percent', min: 0, max: 100 }],
-    ['slider', 'Slider', { type: 'number', label: 'Slider', widget: 'slider', min: 0, max: 100 }],
-    ['numberRange', 'Number range', range({ type: 'number' }, 'Range')],
-    ['rating', 'Rating (stars)', { type: 'number', label: 'Rating', widget: 'rating', min: 1, max: 5, decimals: 0 }],
-  ]],
-  ['Choices', [
-    ['radio', 'Radio group', { type: 'choice', label: 'Pick one', widget: 'radio', options: opts2 }],
-    ['checkboxes', 'Checkbox group', { type: 'choice', label: 'Pick any', multiple: true, options: opts2 }],
-    ['dropdown', 'Dropdown', { type: 'choice', label: 'Dropdown', widget: 'select', options: opts2 }],
-    ['multiSelect', 'Multi-select dropdown', { type: 'choice', label: 'Pick several', multiple: true, widget: 'select', options: opts2 }],
-    ['buttonGroup', 'Button group', { type: 'choice', label: 'Pick one', widget: 'buttons', options: ['Low', 'Medium', 'High'] }],
-    ['yesNo', 'Yes / No buttons', { type: 'choice', label: 'Yes or no', widget: 'buttons', options: ['Yes', 'No'] }],
-    ['checkbox', 'Single checkbox', { type: 'boolean', label: 'I agree' }],
-    ['toggle', 'Switch', { type: 'boolean', label: 'Switch', widget: 'toggle' }],
-    ['autocomplete', 'Autocomplete', { type: 'choice', label: 'Search and pick', widget: 'autocomplete', options: opts2 }],
-    ['tags', 'Tags', { type: 'choice', label: 'Tags', widget: 'tags', multiple: true, allowOther: true, options: ['Urgent', 'Follow up'] }],
-    ['country', 'Country', { type: 'string', label: 'Country', format: 'country' }],
-    ['matrix', 'Matrix (rate each row)', { type: 'list', label: 'Rate each', widget: 'matrix', rows: ['Quality', 'Speed', 'Support'], fields: { rating: { type: 'choice', label: 'Rating', options: ['Poor', 'Fair', 'Good', 'Excellent'] } } }],
-    ['cascading', 'Cascading dropdowns', { type: 'group', label: 'Place', fields: {
-      state: { type: 'choice', label: 'State', widget: 'select', options: ['Maharashtra', 'Karnataka'] },
-      city: { type: 'choice', label: 'City', widget: 'select', options: [
-        { value: 'Mumbai', visible: "state == 'Maharashtra'" }, { value: 'Pune', visible: "state == 'Maharashtra'" },
-        { value: 'Bengaluru', visible: "state == 'Karnataka'" }, { value: 'Mysuru', visible: "state == 'Karnataka'" },
-      ] },
-    } }],
-  ]],
-  ['Date & time', [
-    ['date', 'Date', { type: 'date', label: 'Date' }],
-    ['time', 'Time', { type: 'date', label: 'Time', format: 'time' }],
-    ['dateTime', 'Date & time', { type: 'date', label: 'Date & time', format: 'datetime' }],
-    ['dateRange', 'Date range', range({ type: 'date' }, 'Dates')],
-    ['timeRange', 'Time range', range({ type: 'date', format: 'time' }, 'Times')],
-    ['month', 'Month', { type: 'date', label: 'Month', format: 'month' }],
-    ['week', 'Week', { type: 'date', label: 'Week', format: 'week' }],
-    ['year', 'Year', { type: 'date', label: 'Year', format: 'year' }],
-  ]],
-  ['Files', [
-    ['file', 'File', { type: 'file', label: 'File' }],
-    ['images', 'Images', { type: 'file', label: 'Images', accept: 'image/*', multiple: true }],
-    ['photo', 'Photo / camera', { type: 'file', label: 'Photo', widget: 'camera', accept: 'image/*' }],
-    ['document', 'Document', { type: 'file', label: 'Document', accept: '.pdf,.doc,.docx,.xls,.xlsx' }],
-    ['video', 'Video', { type: 'file', label: 'Video', accept: 'video/*' }],
-    ['audio', 'Audio', { type: 'file', label: 'Audio', accept: 'audio/*' }],
-  ]],
-  ['Advanced', [
-    ['richText', 'Rich text', { type: 'string', label: 'Description', widget: 'richtext' }],
-    ['map', 'Map location', { type: 'string', label: 'Location', widget: 'map', pattern: '-?\\d{1,2}(\\.\\d+)?, ?-?\\d{1,3}(\\.\\d+)?', messages: { pattern: 'Like 28.6139,77.2090' } }],
-    ['signature', 'Signature', { type: 'string', label: 'Signature', widget: 'signature' }],
-    ['otp', 'OTP / code', { type: 'string', label: 'OTP', widget: 'otp', minLength: 6, maxLength: 6, pattern: '[0-9]*', messages: { pattern: 'Digits only' } }],
-    ['location', 'Location', { type: 'string', label: 'Location', widget: 'location', pattern: '-?\\d{1,2}(\\.\\d+)?, ?-?\\d{1,3}(\\.\\d+)?', messages: { pattern: 'Like 28.6139,77.2090' } }],
-    ['barcode', 'QR / barcode', { type: 'string', label: 'Code', widget: 'barcode' }],
-    ['color', 'Colour', { type: 'string', label: 'Colour', format: 'color' }],
-    ['markdown', 'Markdown', { type: 'string', label: 'Notes', widget: 'markdown', help: 'Markdown: **bold**, _italic_, - lists' }],
-    ['code', 'Code', { type: 'string', label: 'Code', widget: 'code' }],
-    ['json', 'JSON', { type: 'string', label: 'JSON', widget: 'json', format: 'json' }],
-    ['hidden', 'Hidden value', { type: 'string', label: 'Hidden', widget: 'hidden' }],
-  ]],
-  ['Money & IDs', [
-    ['card', 'Card number', { type: 'string', label: 'Card number', format: 'card' }],
-    ['iban', 'IBAN', { type: 'string', label: 'IBAN', format: 'iban' }],
-    ['account', 'Bank account', id('Account number', '\\d{9,18}', '123456789012')],
-    ['ifsc', 'IFSC', id('IFSC', '[A-Z]{4}0[A-Z0-9]{6}', 'SBIN0001234')],
-    ['pan', 'PAN', id('PAN', '[A-Z]{5}\\d{4}[A-Z]', 'ABCDE1234F')],
-    ['aadhaar', 'Aadhaar', id('Aadhaar', '\\d{12}', '123412341234')],
-    ['gstin', 'GSTIN', id('GSTIN', '\\d{2}[A-Z]{5}\\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]', '27ABCDE1234F1Z5')],
-    ['pincode', 'PIN code', id('PIN code', '[1-9]\\d{5}', '411001')],
-  ]],
-  ['Groups & tables', [
-    ['group', 'Group', NEW.group()],
-    ['fullName', 'Full name', { type: 'group', label: 'Name', fields: { first: { type: 'string', label: 'First name' }, last: { type: 'string', label: 'Last name' } } }],
-    ['address', 'Address', { type: 'group', label: 'Address', fields: {
-      line1: { type: 'string', label: 'Address line 1' }, line2: { type: 'string', label: 'Address line 2' },
-      city: { type: 'string', label: 'City' }, state: { type: 'string', label: 'State' },
-      pincode: { type: 'string', label: 'PIN code', pattern: '[1-9]\\d{5}' }, country: { type: 'string', label: 'Country', format: 'country', default: 'IN' },
-    } }],
-    ['table', 'Table (add rows)', NEW.list()],
-    ['fixedTable', 'Table with fixed rows', { type: 'list', label: 'Table', widget: 'table', rows: ['Row 1', 'Row 2'], rowHeading: 'Item', fields: { value: { type: 'string', label: 'Answer' } } }],
-    ['cards', 'Repeating cards', { type: 'list', label: 'Entries', min: 1, fields: {} }],
-  ]],
-]
-
 interface Item { id: string; label: string; base: string; group: string; make(): Field }
 const ITEMS: Item[] = PALETTE.flatMap(([group, list]) => list.map(([base, label, f]) => ({ id: base, label, base, group, make: () => structuredClone(f) })))
 const itemOf = (id: string) => ITEMS.find((i) => i.id === id)!
@@ -954,6 +843,7 @@ const HELP: [string, string[]][] = [
   ]],
   ['Looks, import and saving', [
     'Form settings → Look → Paper draws the form like a printed one: title on top, boxed sections, lines to write on, and only the form when printed.',
+    'Scan / Import → Samples opens ready-made forms that use every input and layout piece (made-up data), to see how each one works or to start from.',
     'Scan / Import reads a PDF or photos into a form on this device (nothing is uploaded), or takes a pasted schema or JSON Schema.',
     'Every change is passed to your app, with any problems listed at the top; Preview fills the form for real.',
   ]],
@@ -1184,6 +1074,11 @@ function JsonTab({ schema, load, scan }: { schema: FormSchema; load(s: FormSchem
     }
   }
   return h('div', { className: 'fw-b-json' },
+    h('div', { className: 'fw-b-samples' },
+      h('h3', null, 'Samples'),
+      h('p', { className: 'fw-help' }, 'Ready-made forms that show every input and layout piece at work, with made-up data. Opening one replaces this form; Undo brings it back.'),
+      h('div', null, SAMPLES.map((x) => h('button', { key: x.id, type: 'button', onClick: () => { load(structuredClone(x.schema)); setDraft(JSON.stringify(x.schema, null, 2)); setNotes([`Opened "${x.title}". Undo brings back the form you had.`]) } },
+        h('strong', null, x.title), h('span', null, x.about))))),
     scan && h('div', { className: 'fw-b-scan' },
       h('h3', null, 'From a photo, scan or PDF'),
       h('p', { className: 'fw-help' }, 'Pick pictures of the pages (on a phone, take them with the camera) or a PDF. They are read on this device, nothing is uploaded, and the form found replaces this one.'),

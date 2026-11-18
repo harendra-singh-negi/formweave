@@ -330,7 +330,7 @@ function Shell({ path, field }: { path: string; field: Field }) {
       legend && h('legend', { className: c.classes.label }, legend, mark), control, notes)
   }
   if (field.type === 'boolean')
-    return h('div', { className: wrap('fw-check'), ...own }, h('label', { htmlFor: id, className: c.classes.label }, control, ' ', label, mark), notes)
+    return h('div', { className: wrap('fw-check'), ...own }, h('label', { htmlFor: id, className: c.classes.label }, control, ' ', c.compact ? h('span', { className: 'fw-sr' }, label) : label, mark), notes)
   return h('div', { className: wrap(), ...own }, h('label',{ htmlFor: id, className: cx(c.compact && 'fw-sr', c.classes.label) }, label, mark), control, notes)
 }
 

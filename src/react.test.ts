@@ -182,3 +182,13 @@ test('an image beside text: a grid with widths and lines; an unsafe picture is r
   const bad = { ...s, layout: [{ type: 'content', as: 'image', src: 'javascript:alert(1)' }] } as FormSchema
   assert.throws(() => renderToString(h(Form, { schema: bad })), /layout\.0\.src/) // lint() stops it before anything is drawn
 })
+
+test('every sample passes lint() and renders', async () => {
+  const { SAMPLES } = await import('./samples.ts')
+  const { lint } = await import('./lint.ts')
+  assert.ok(SAMPLES.length >= 6)
+  for (const s of SAMPLES) {
+    assert.deepEqual(lint(s.schema), [], s.id)
+    assert.match(renderToString(h(Form, { schema: s.schema })), /<form class="fw-form/, s.id)
+  }
+})

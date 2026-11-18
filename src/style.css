@@ -468,3 +468,10 @@
 /* copy, paste, duplicate */
 .fw-builder .fw-b-tools .fw-b-clip { font-size: 0.8125rem; padding: 0.2rem 0.5rem; }
 .fw-b-note { margin: 0; padding: 0.375rem 0.75rem; border-radius: var(--fw-radius); background: color-mix(in srgb, var(--fw-accent) 10%, var(--fw-bg)); color: var(--fw-text); font-size: 0.875rem; }
+/* samples to open */
+.fw-b-samples { display: grid; gap: 0.5rem; padding-bottom: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--fw-border); }
+.fw-b-samples p { margin: 0; }
+.fw-b-samples > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0.5rem; }
+.fw-builder .fw-b-samples button { display: grid; gap: 0.25rem; text-align: start; padding: 0.625rem 0.75rem; }
+.fw-builder .fw-b-samples button:hover { border-color: var(--fw-accent); }
+.fw-b-samples button span { color: var(--fw-muted); font-size: 0.8125rem; line-height: 1.4; }

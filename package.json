@@ -25,6 +25,10 @@
     "./scan": {
       "types": "./dist/scan.d.ts",
       "default": "./dist/scan.js"
+    },
+    "./samples": {
+      "types": "./dist/samples.d.ts",
+      "default": "./dist/samples.js"
     }
   },
   "files": [
