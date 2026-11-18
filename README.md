@@ -1,24 +1,42 @@
 # formweave
 
-Forms as JSON: one engine for validation, conditions and formulas that runs in the browser and on your server.
+Forms as JSON: one engine for validation, conditions and formulas that runs in the browser and on your server, a
+React renderer and web components to show forms, a visual builder, and paper forms read into forms on the device.
 
-Status: the engine, the renderer, the visual builder and scan import all work. Not on npm yet.
+Version 0.1: everything here works and is tested; names may still change before 1.0 (see [CHANGELOG.md](CHANGELOG.md)).
 
 ## Install
 
-It isn't on npm yet, so install it from this folder:
-
 ```sh
-cd formweave && npm install && npm run build   # makes dist/
-cd ../your-app && npm install ../formweave     # or: npm pack in formweave, then npm install ./formweave-0.0.0.tgz
+npm install formweave
 ```
 
-Run `npm run build` in formweave again after you change it. Only install what you use:
+Only add what you use:
 
-- `react` and `react-dom` for `formweave/react` and `formweave/builder`;
-- `tesseract.js` for `formweave/scan`, plus `pdfjs-dist` to read PDFs.
+| You use | Also install |
+|---|---|
+| `formweave` (the engine: schemas, lint, validate, createForm, JSON Schema) | nothing |
+| `formweave/react`, `formweave/builder`, `formweave/element` | `react` and `react-dom` (18 or newer) |
+| `formweave/scan` | `tesseract.js` (6+), and `pdfjs-dist` (5+) to read PDFs |
+| `formweave/samples` | nothing |
 
-The engine (`formweave`) needs none of them.
+| Entry point | What it gives |
+|---|---|
+| `formweave` | schema types, `lint`, `validate`, `createForm`, `text`, `toJsonSchema`, `fromJsonSchema` |
+| `formweave/react` | `<Form>`, `useForm`, `WIDGETS`, `cleanHtml` |
+| `formweave/element` | `<formweave-form>` and `<formweave-builder>` for Angular, Vue, Svelte or plain HTML |
+| `formweave/builder` | `<Builder>`, `BUILDER_LABELS`, and the schema edits it is made of |
+| `formweave/scan` | `scanForm`, `sketchToForm` |
+| `formweave/samples` | `SAMPLES`: ready-made forms |
+| `formweave/style.css` | the look of forms |
+| `formweave/builder.css` | the look of the builder (with `style.css`) |
+
+The package is ESM only, with TypeScript types. Node 18 or newer runs the engine; bundlers (Vite, webpack, Next.js,
+Angular) take it as it is. `require('formweave')` works where Node can load ES modules that way (Node 20.19+, 22.12+).
+
+**Network:** formweave sends nothing anywhere by itself, with two exceptions you can turn off. The `map` widget loads
+OpenStreetMap tiles (pass your own `mapTiles`), and the first scan downloads Tesseract's engine and language files from
+jsDelivr (pass `tesseract: { workerPath, corePath, langPath }` to serve them yourself).
 
 ```ts
 import { validate, createForm, lint, type FormSchema } from 'formweave'
@@ -238,7 +256,7 @@ Good to know:
 How a field looks (radio, toggle, textarea, table…) is its `widget`, which the renderer reads.
 Every field can have `visible`, `readOnly`, `check`, `validators` and `messages`; every value field also has `required` and `value` (calculated).
 
-The built-in widgets and formats. The builder's palette lists 64 ready-made inputs in groups, with a search box. Some are groups of fields: date, time and number ranges (To is checked against From), address, full name and cascading dropdowns. Others are text fields with a pattern: PAN, Aadhaar, GSTIN, IFSC, PIN code and bank account. Any of them can be a column of a table.
+The built-in widgets and formats. The builder's palette lists 67 ready-made inputs in groups, with a search box. Some are groups of fields: date, time and number ranges (To is checked against From), address, full name and cascading dropdowns. Others are text fields with a pattern: PAN, Aadhaar, GSTIN, IFSC, PIN code and bank account. Any of them can be a column of a table.
 
 | Type | `widget` / `format` |
 | --- | --- |
@@ -280,12 +298,18 @@ A group or table without a label shows no title, only its fields.
 
 ## Development
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the folders, the checks to run and how to send a change. In short:
+
 ```sh
-npm run demo      # opens the demo app at http://127.0.0.1:5180 (Build and Fill tabs, live reload)
-npm test          # node:test, Node 22.6+
+npm install
+npm run demo      # the demo app at http://127.0.0.1:5180 (Build and Fill tabs, live reload)
+npm test          # unit tests, node:test, Node 22.6+
+npm run test:e2e  # the builder in a real browser (Playwright)
 npm run typecheck
-npm run build     # dist/, no DOM or Node APIs in the engine
+npm run build     # dist/ from scratch
 ```
 
 The demo runs from `src/` through Vite, works offline, and listens on this computer only. What you build is kept in
 the browser. **Reset demo** brings back the sample form.
+
+Security: see [SECURITY.md](SECURITY.md). Licence: [MIT](LICENSE).
