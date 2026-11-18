@@ -701,9 +701,11 @@ function ChoiceInput(p: WidgetProps) {
           onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(!f.multiple ? o.value : e.target.checked ? [...picked, o.value] : picked.filter((x) => x !== o.value)),
         }), h('span', null, o.label))))
   }
+  // as many columns as the paper had
+  const grid = f.columns ? { className: 'fw-options fw-options-cols', style: { '--fw-opt-cols': f.columns } as CSSProperties } : { className: 'fw-options' }
   if (f.multiple && f.widget !== 'select') {
     const picked = Array.isArray(p.value) ? (p.value as string[]) : []
-    return h('div', { ...aria(p), role: 'group', 'aria-label': p.label, className: 'fw-options' },
+    return h('div', { ...aria(p), role: 'group', 'aria-label': p.label, ...grid },
       opts.map((o) => h('label', { key: o.value },
         h('input', {
           type: 'checkbox', disabled: p.readOnly, checked: picked.includes(o.value), onBlur: p.touch,
@@ -711,7 +713,7 @@ function ChoiceInput(p: WidgetProps) {
         }), ' ', o.label)))
   }
   if (f.widget === 'radio')
-    return h('div', { ...aria(p), role: 'radiogroup', 'aria-label': p.label, className: 'fw-options' },
+    return h('div', { ...aria(p), role: 'radiogroup', 'aria-label': p.label, ...grid },
       opts.map((o) => h('label', { key: o.value },
         h('input', { type: 'radio', name: p.id, disabled: p.readOnly, checked: p.value === o.value, onChange: () => p.set(o.value), onBlur: p.touch }),
         ' ', o.label)))

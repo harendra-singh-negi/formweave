@@ -81,3 +81,10 @@ test('fields printed side by side stay side by side; tables keep fixed rows and 
   assert.equal(crew.default.length, 3)
   assert.deepEqual([crew.fields.answer.widget, crew.fields.answer.allowOther], ['autocomplete', true])
 })
+
+test('boxes printed in rows keep their columns', () => {
+  const ops = { key: '', label: 'Operations', kind: 'many_of', required: false, help: '', options: ['Loading', 'Discharging', 'Bunkering', 'Idle'], columns: [], perRow: 3 }
+  const { schema } = sketchToForm({ title: '', sections: [{ title: '', fields: [ops, { ...ops, label: 'Mode', kind: 'one_of', perRow: 9 }] }] })
+  assert.equal((schema.fields.operations as { columns?: number }).columns, 3)
+  assert.equal((schema.fields.mode as { columns?: number }).columns, undefined) // more than the options: no columns
+})

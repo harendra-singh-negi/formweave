@@ -1,10 +1,10 @@
 // The visual builder. Its settings panel is itself a formweave form.
-import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { lint, type Issue } from './lint.ts'
 import { text } from './form.ts'
 import { fromJsonSchema, type Imported } from './jsonschema.ts'
-import { Form } from './react.ts'
-import { DATE_FORMATS, type ChoiceField, type Field, type Fields, type FormSchema, type Grid, type Layout, type ListField, type Values } from './schema.ts'
+import { Form, type WidgetProps } from './react.ts'
+import { DATE_FORMATS, type ChoiceField, type Field, type Fields, type FormSchema, type Grid, type Layout, type ListField, type Text, type Values } from './schema.ts'
 
 type Path = string[]
 type Kind = Field['type']
@@ -245,8 +245,10 @@ function settingsSchema(kind: Kind): FormSchema {
       break
     case 'choice':
       Object.assign(f, {
-        options: { type: 'list', label: 'Options', widget: 'table', min: 1, fields: { value: { type: 'string', label: 'Value', required: true }, label: { type: 'string', label: 'Label (if different)' }, visible: { type: 'string', label: 'Show only when', placeholder: "state == 'Maharashtra'" } },
-          help: '"Show only when" makes cascading choices: the option is offered only while its formula holds.' },
+        options: { type: 'list', label: 'Options', widget: 'options', min: 1, fields: { value: { type: 'string', label: 'Value', required: true }, label: { type: 'string', label: 'Label (if different)' }, visible: { type: 'string', label: 'Show only when' } },
+          help: 'Value is what is saved; Label is what people see, when it should read differently. Enter adds the next one.' },
+        columns: { type: 'number', label: 'Options per row', min: 1, max: 12, decimals: 0, placeholder: 'As many as fit',
+          help: 'Radios and tick boxes break into this many columns by themselves, like a printed form. Phones show one.', visible: "widget == 'radio' or (multiple and widget != 'select' and widget != 'tags' and widget != 'buttons')" },
         multiple: { type: 'boolean', widget: 'toggle', label: 'Allow several' },
         widget: pick('Shown as', ['radio', 'select', 'buttons', 'autocomplete', 'tags']),
         allowOther: { type: 'boolean', widget: 'toggle', label: 'Allow other answers', help: 'People may type answers that aren\'t in the list (tags, "Other").' },
@@ -284,7 +286,7 @@ const asColumn = (s: FormSchema): FormSchema => ({ ...s, fields: { ...s.fields, 
 const SETTINGS = Object.fromEntries(KINDS.map(([k]) => [k, settingsSchema(k)])) as Record<Kind, FormSchema>
 
 /** Settings names that map 1:1 onto field props. */
-const PLAIN = ['format', 'widget', 'minLength', 'maxLength', 'pattern', 'min', 'max', 'decimals', 'multiple', 'accept', 'maxSize', 'className', 'currency', 'allowOther', 'country']
+const PLAIN = ['format', 'widget', 'minLength', 'maxLength', 'pattern', 'min', 'max', 'decimals', 'multiple', 'accept', 'maxSize', 'className', 'currency', 'allowOther', 'country', 'columns']
 
 function toSettings(key: string, f: Field): Values {
   const any = f as unknown as Record<string, unknown>
@@ -564,8 +566,27 @@ export function Builder(props: BuilderProps) {
       set: (f) => { commit(edits.replace(schema, selected, f), selected, true); setPanel((n) => n + 1) },
     }),
     clash && h('p', { className: 'fw-b-clash', role: 'alert' }, `The key "${clash}" is already used by another field here. Keys must be unique, so this field keeps "${selected.at(-1)}" until you type a free one.`),
-    h(Form, { key: panel, schema: inTable(selected) ? asColumn(SETTINGS[field.type]) : SETTINGS[field.type], values: toSettings(selected.at(-1)!, field), labels: { submit: 'Done' }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
+    h(Form, { key: panel, schema: inTable(selected) ? asColumn(SETTINGS[field.type]) : SETTINGS[field.type], values: toSettings(selected.at(-1)!, field), labels: { submit: 'Done' }, widgets: { options: OptionsEditor }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
   const piece = node && schema.layout ? nodeAt(schema.layout, node) : undefined
+  /** Words typed over a label on the canvas: a field's label, a column heading, a section title, a heading or text. */
+  const relabel = (on: { path?: Path; ip?: Ip }, words: string) => {
+    const keep = (old: unknown) => (old && typeof old === 'object' ? { ...old, en: words } : words) // other languages stay
+    if (on.path) {
+      const f = fieldAt(schema.fields, on.path)
+      if (!f || text(f.label, 'en') === words) return
+      const next = { ...f } as Field
+      if (words) next.label = keep(f.label) as Field['label']
+      else delete next.label
+      commit(edits.replace(schema, on.path, next), on.path)
+    } else if (on.ip && schema.layout) {
+      const n = nodeAt(schema.layout, on.ip)
+      if (typeof n !== 'object' || (n.type !== 'section' && n.type !== 'content')) return
+      const next = n.type === 'section' ? { ...n, title: keep(n.title) as Text } : { ...n, text: keep(n.text) as Text }
+      commit({ ...schema, layout: layoutEdits.replace(schema.layout, on.ip, next) }, null)
+      setNode(on.ip)
+    }
+    setPanel((n) => n + 1)
+  }
   /** A section or grid goes but what was in it stays; a text or field place just goes. */
   const removeNode = () => {
     if (!node || !schema.layout) return
@@ -582,7 +603,7 @@ export function Builder(props: BuilderProps) {
     issues.length > 0 && h('ul', { className: 'fw-b-issues', role: 'status' }, issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message))),
     design && h('div', { className: `fw-b-main fw-b-design${wide ? ' fw-b-wide' : ''}` },
       (!wide || adding) && palette,
-      h(Canvas, { schema, issues: issues.length > 0, selected, node, select, selectNode, drop: canvasDrop, remove: () => (selected ? remove(selected) : removeNode()), wide, setWide, adding, setAdding }),
+      h(Canvas, { schema, issues: issues.length > 0, selected, node, select, selectNode, drop: canvasDrop, remove: () => (selected ? remove(selected) : removeNode()), wide, setWide, adding, setAdding, relabel }),
       // full width: the settings come back only while something is picked
       (!wide || field || typeof piece === 'object') && h('div', { className: 'fw-b-settings' },
         fieldSettings
@@ -606,6 +627,63 @@ export function Builder(props: BuilderProps) {
     tab === 'preview' && h('div', { className: 'fw-b-preview' },
       issues.length ? h('p', { className: 'fw-error' }, 'Fix the issues above to preview.') : h(Form, { schema, onSubmit: () => {} })),
     tab === 'json' && h(JsonTab, { schema, scan: props.scan, load: (s) => commit(s, null) }))
+}
+
+/**
+ * A choice's options, one line each: value, label, remove. Enter adds the next, "Paste a list" takes many at once
+ * (a line each, `value | label`), and "Conditions" shows a "show only when" box per option for cascading choices.
+ */
+function OptionsEditor(p: WidgetProps) {
+  const rows = (Array.isArray(p.value) ? p.value : []) as Values[]
+  const box = useRef<HTMLDivElement>(null)
+  const [conditions, setConditions] = useState(() => rows.some((r) => r.visible))
+  const [bulk, setBulk] = useState<string | null>(null)
+  const put = (i: number, k: string, v: string) => p.set(rows.map((r, j) => (j === i ? { ...r, [k]: v || null } : r)))
+  const focusRow = (i: number) => setTimeout(() => box.current?.querySelectorAll<HTMLInputElement>('.fw-b-opt > input:first-child')[i]?.focus())
+  const insert = (i: number) => {
+    p.set([...rows.slice(0, i), { value: null, label: null, visible: null }, ...rows.slice(i)])
+    focusRow(i)
+  }
+  const move = (i: number, by: number) => {
+    const j = i + by
+    if (j < 0 || j >= rows.length) return
+    p.set(rows.map((r, k) => (k === i ? rows[j] : k === j ? rows[i] : r)))
+  }
+  const paste = () => {
+    const lines = (bulk ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
+    if (lines.length) p.set(lines.map((l) => {
+      const [value, label] = l.split('|').map((x) => x.trim())
+      return { value, label: label || null, visible: null }
+    }))
+    setBulk(null)
+  }
+  const field = (i: number, k: string, label: string, extra: object = {}) => h('input', {
+    type: 'text', value: String(rows[i]?.[k] ?? ''), 'aria-label': `Option ${i + 1}: ${label}`, readOnly: p.readOnly, ...extra,
+    onChange: (e: ChangeEvent<HTMLInputElement>) => put(i, k, e.target.value),
+    onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); insert(i + 1) } },
+  })
+  const tool = (label: string, title: string, onClick: () => void, disabled = false) =>
+    h('button', { type: 'button', title, 'aria-label': title, disabled: disabled || p.readOnly, onClick }, label)
+  return h('div', { ref: box, className: 'fw-b-opts' },
+    bulk !== null
+      ? h('div', { className: 'fw-b-opts-bulk' },
+          h('textarea', { rows: 8, value: bulk, 'aria-label': 'Options, one per line', placeholder: 'Loading\nDischarging\nIGS | IGS in operation', onChange: (e: ChangeEvent<HTMLTextAreaElement>) => setBulk(e.target.value) }),
+          h('p', { className: 'fw-help' }, 'One option per line. "value | label" when people should read something else. This replaces the list.'),
+          h('div', { className: 'fw-b-bar' }, tool('Use these', 'Replace the options with these lines', paste), tool('Cancel', 'Keep the options as they are', () => setBulk(null))))
+      : h(Fragment, null,
+          h('div', { className: 'fw-b-opt fw-b-opt-head', 'aria-hidden': true }, h('span', null, 'Value'), h('span', null, 'Label (if different)')),
+          rows.map((r, i) => h('div', { key: i, className: 'fw-b-opt' },
+            field(i, 'value', 'value', { 'aria-invalid': !r.value || undefined }),
+            field(i, 'label', 'label', { placeholder: String(r.value ?? '') }),
+            h('span', { className: 'fw-b-tools' },
+              tool('↑', `Move option ${i + 1} up`, () => move(i, -1), i === 0),
+              tool('✕', `Remove option ${i + 1}`, () => p.set(rows.filter((_, j) => j !== i)), rows.length <= 1)),
+            conditions && field(i, 'visible', 'show only when', { className: 'fw-b-opt-when', placeholder: "Show only when, e.g. state == 'Maharashtra'" }))),
+          h('div', { className: 'fw-b-bar' },
+            tool('+ Option', 'Add an option at the end', () => insert(rows.length)),
+            tool('Paste a list', 'Type or paste many options at once', () => setBulk(rows.map((r) => (r.label ? `${r.value ?? ''} | ${r.label}` : String(r.value ?? ''))).join('\n'))),
+            h('label', { className: 'fw-b-opts-cond', title: 'Offer an option only while a formula holds: cascading choices' },
+              h('input', { type: 'checkbox', checked: conditions, onChange: (e: ChangeEvent<HTMLInputElement>) => setConditions(e.target.checked) }), ' Conditions'))))
 }
 
 const NEW_COLUMNS: [string, string, Field][] = [
@@ -749,6 +827,7 @@ interface CanvasProps {
   setWide(on: boolean): void
   adding: boolean
   setAdding(on: boolean): void
+  relabel(on: { path?: Path; ip?: Ip }, words: string): void
 }
 
 /** The form as people will see it. A click picks the field or section under it; dragging moves things or drops new ones in. */
@@ -769,6 +848,29 @@ function Canvas(p: CanvasProps) {
   // wider than the room there is: drawn at that width, then shrunk to fit, so it is the real layout, only smaller
   const outer = width + (device === 'desktop' ? 0 : 48) // the tablet / phone frame around it (see .fw-b-device)
   const zoom = room && room < outer ? room / outer : 1
+  /** Double-click a label to type over it: a box laid exactly over the words. */
+  const [typing, setTyping] = useState<{ on: { path?: Path; ip?: Ip }; words: string; style: CSSProperties } | null>(null)
+  const startTyping = (t: EventTarget) => {
+    const el = hit(t)
+    if (!el || !box.current) return
+    // the words: a field's label or legend, a column heading, a section's title, a heading or a line of text
+    const words = el.matches('th:not(.fw-m-opt), .fw-content:not(.fw-rich-block)') ? el : el.querySelector(':scope > label, :scope > legend, :scope > h3')
+    if (!words) return
+    const on = read(el)
+    const r = words.getBoundingClientRect()
+    const c = box.current.getBoundingClientRect()
+    const cs = getComputedStyle(words)
+    setTyping({
+      on,
+      words: on.path ? text(fieldAt(p.schema.fields, on.path)?.label, 'en') : (words.textContent ?? '').trim(),
+      style: { left: r.left - c.left + box.current.scrollLeft, top: r.top - c.top + box.current.scrollTop, width: Math.max(r.width, 120), height: r.height,
+        fontSize: `${parseFloat(cs.fontSize) * zoom}px`, fontWeight: cs.fontWeight, fontFamily: cs.fontFamily },
+    })
+  }
+  const stopTyping = (save: boolean) => {
+    if (typing && save) p.relabel(typing.on, typing.words.trim())
+    setTyping(null)
+  }
   const over = useRef<Element | null>(null)
   const mark = (el: Element | null) => {
     over.current?.classList.remove('fw-b-over')
@@ -782,10 +884,11 @@ function Canvas(p: CanvasProps) {
   // keys and places are checked by lint() (letters, digits, _), so they are safe inside the selector
   const sel = p.selected ? `[data-fw-path="${p.selected.join('.')}"]` : p.node ? `[data-fw-ip="${p.node.join('.')}"]` : ''
   return h('div', {
-    ref: box, className: 'fw-b-canvas', tabIndex: -1, 'aria-label': 'The form: click a part to change it',
+    ref: box, className: 'fw-b-canvas', tabIndex: -1, 'aria-label': 'The form: click a part to change it, double-click a label to retype it',
+    onDoubleClick: (e: MouseEvent) => startTyping(e.target),
     onClickCapture: (e: MouseEvent) => {
       const t = e.target as Element
-      if (t.closest('.fw-steps button, [role=tab], summary, .fw-nav button, .fw-b-devices')) return // moving between pages still works
+      if (t.closest('.fw-steps button, [role=tab], summary, .fw-nav button, .fw-b-devices, .fw-b-inline')) return // moving between pages still works
       e.preventDefault()
       e.stopPropagation()
       const at = read(hit(t))
@@ -814,6 +917,13 @@ function Canvas(p: CanvasProps) {
     },
   },
     sel && h('style', null, `.fw-b-canvas ${sel} { outline: 2px solid var(--fw-accent) !important; outline-offset: 3px; }`),
+    typing && h('input', {
+      className: 'fw-b-inline', autoFocus: true, value: typing.words, style: typing.style, 'aria-label': 'Label',
+      onChange: (e: ChangeEvent<HTMLInputElement>) => setTyping({ ...typing, words: e.target.value }),
+      onKeyDown: (e: KeyboardEvent) => { e.stopPropagation(); if (e.key === 'Enter') stopTyping(true); else if (e.key === 'Escape') stopTyping(false) },
+      onBlur: () => stopTyping(true),
+      onFocus: (e: { target: HTMLInputElement }) => e.target.select(),
+    }),
     h('div', { className: 'fw-b-devices', role: 'group', 'aria-label': 'Show it as on' },
       DEVICES.map(([k, label, w]) => h('button', { key: k, type: 'button', 'aria-pressed': device === k, title: `${w}px wide`, onClick: () => setDevice(k) }, label)),
       h('small', null, `${width}px${zoom < 1 ? ` · ${Math.round(zoom * 100)}%` : ''}`),

@@ -84,6 +84,7 @@ export function lint(schema: unknown): Issue[] {
         if (!values.length) add(`${path}.options`, 'A choice needs options')
         else if (!values.every((v) => typeof v === 'string')) add(`${path}.options`, 'Option values are text')
         else if (new Set(values).size !== values.length) add(`${path}.options`, 'An option value repeats')
+        if (f.columns !== undefined && !(Number.isInteger(f.columns) && f.columns >= 1 && f.columns <= 12)) add(`${path}.columns`, 'Columns is a whole number from 1 to 12')
         if (Array.isArray(f.options))
           f.options.forEach((o: unknown, i: number) => { if (isObj(o) && o.visible !== undefined && typeof o.visible !== 'boolean') formula(`${path}.options.${i}.visible`, o.visible, scope) })
       }

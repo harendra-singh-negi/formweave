@@ -90,3 +90,10 @@ test('lint: section looks, content kinds and the theme', () => {
   assert.deepEqual(lint(s({ theme: 'paper' }, [{ type: 'section', look: 'band', children: [] }, { type: 'content', as: 'rich', text: '<b>x</b>' }])), [])
   assert.deepEqual(lint(s({ theme: 'neon' }, [{ type: 'section', look: 'bold', children: [] }, { type: 'content', as: 'html' }])).map((i) => i.path), ['theme', 'layout.0.look', 'layout.1.as'])
 })
+
+test('lint: options per row is a whole number from 1 to 12', () => {
+  const s = (columns: unknown) => ({ version: 1, fields: { c: { type: 'choice', options: ['a', 'b'], columns } } })
+  assert.deepEqual(lint(s(3)), [])
+  assert.deepEqual(lint(s(0)).map((i) => i.path), ['c.columns'])
+  assert.deepEqual(lint(s(2.5)).map((i) => i.path), ['c.columns'])
+})

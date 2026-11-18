@@ -161,3 +161,10 @@ test('paper prints the title on top; sections take a look; rich text shows its w
   assert.match(html, /<section class="fw-section fw-look-band"><h3>Crew<\/h3>/)
   assert.doesNotMatch(renderToString(h(Form, { schema: { ...s, theme: undefined } })), /fw-title|fw-theme/) // without paper the app shows the title
 })
+
+test('options break into the columns asked for', () => {
+  const s: FormSchema = { version: 1, fields: { ops: { type: 'choice', multiple: true, columns: 3, options: ['A', 'B', 'C', 'D'] }, one: { type: 'choice', widget: 'radio', options: ['x', 'y'] } } }
+  const html = renderToString(h(Form, { schema: s }))
+  assert.match(html, /class="fw-options fw-options-cols" role="group" aria-label="Ops" style="--fw-opt-cols:3"/)
+  assert.match(html, /class="fw-options" role="radiogroup" aria-label="One">/) // without columns they run on in a line
+})

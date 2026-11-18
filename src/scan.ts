@@ -206,9 +206,11 @@ function toField(raw: Record<string, any>, at: string, warnings: string[]): Fiel
     }
     // short answers side by side (1 2 3 4 5 N/S, Y N): buttons, as on paper and easy in a table row
     const short = options.length <= 7 && options.every((o) => o.length <= 4)
+    // laid out on paper in rows and columns: keep the columns
+    const cols = typeof raw.perRow === 'number' && raw.perRow >= 1 && raw.perRow <= 6 && options.length > raw.perRow ? { columns: Math.round(raw.perRow) } : {}
     return multiple
-      ? { type: 'choice', multiple: true, options, ...base, ...req }
-      : { type: 'choice', ...(short ? { widget: 'buttons' } : options.length <= 4 ? { widget: 'radio' } : {}), options, ...base, ...req }
+      ? { type: 'choice', multiple: true, options, ...cols, ...base, ...req }
+      : { type: 'choice', ...(short ? { widget: 'buttons' } : options.length <= 4 || cols.columns ? { widget: 'radio' } : {}), options, ...cols, ...base, ...req }
   }
   switch (raw.kind as Kind) {
     case 'text': return { type: 'string', ...base, ...req, ...max }

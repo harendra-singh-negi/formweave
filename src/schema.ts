@@ -81,6 +81,8 @@ export interface ChoiceField extends Input {
   /** Fewest / most picks, when multiple. */
   min?: number
   max?: number
+  /** Radios or tick boxes in this many columns, as printed on paper. Without it they run on in a line. Phones get one column. */
+  columns?: number
 }
 
 export interface DateField extends Input {

@@ -71,6 +71,8 @@ export interface SketchField {
   rowHeading?: string
   /** Fields with the same number were printed side by side on one line. */
   line?: number
+  /** For boxes to tick in rows and columns: how many options a row had. */
+  perRow?: number
 }
 /** A form's outline: what scanning finds, before it becomes a formweave schema. */
 export interface Sketch {
@@ -628,7 +630,8 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
         // a grid of boxes with their words ("☐ Loading  ☐ Discharging…"): one question, its title in a row of its own or above
         const titleRow = Array.from({ length: rowCount }, (_, r) => r).find((r) => !Array.from({ length: cols }, (_, c) => tickIn(r, c)).some(Boolean) && textIn(r, 0))
         const title = titleRow !== undefined ? within.filter((p) => p.y0 >= ys[titleRow] - 2 && p.y1 <= ys[titleRow + 1] + 2).map((p) => p.text).join(' ') : (take(above(f, 2.5 * em))?.text ?? '')
-        add(f, title, 'many_of', { options: boxed.map(([r, c]) => cleanLabel(textIn(r, c))) })
+        const perRow = Math.max(...boxed.map(([r]) => boxed.filter(([x]) => x === r).length))
+        add(f, title, 'many_of', { options: boxed.map(([r, c]) => cleanLabel(textIn(r, c))), ...(boxed.length > perRow ? { perRow } : {}) })
         for (const p of within) p.used = true
         for (const t of ticksIn) busy.add(t)
         continue
@@ -901,7 +904,11 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
       // a graded scale (below average … above average, poor … excellent) takes one answer, even stacked
       const scale = opts.filter((o) => SCALE_WORDS.test(o)).length >= 2 && !/all that apply/i.test(text)
       const many = !scale && (stacked || q.grid || /all that apply|any|select|tick|✓/i.test(text))
-      add(at, text, many ? 'many_of' : 'one_of', { options: opts })
+      // boxes in rows of several: as many columns as the fullest row (stacked boxes are one column)
+      const rows: Rect[][] = []
+      for (const t of q.ticks) (rows.find((r) => Math.abs(r[0].y0 - t.y0) <= em / 2) ?? rows[rows.push([]) - 1]).push(t)
+      const perRow = Math.max(...rows.map((r) => r.length))
+      add(at, text, many ? 'many_of' : 'one_of', { options: opts, ...(rows.length > 1 && opts.length === q.ticks.length ? { perRow } : {}) })
     }
   }
 
