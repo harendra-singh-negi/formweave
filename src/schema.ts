@@ -120,6 +120,13 @@ export interface ListField extends Base {
   min?: number
   max?: number
   default?: Values[]
+  /**
+   * Fixed rows: one per text, shown in a first column people can't type in (Monday, Tuesday…).
+   * The list then always has exactly these rows, in this order; no rows are added or removed.
+   */
+  rows?: Text[]
+  /** The heading over the fixed rows' column. */
+  rowHeading?: Text
 }
 
 export type Field =
@@ -202,6 +209,7 @@ export const STRING_FORMATS = {
   /** http(s) only, so a stored link can't run script (javascript:). */
   url: /^https?:\/\/[^\s/?#]+(?:[/?#]\S*)?$/i,
   phone: /^\+?(?:[\s().-]*\d){6,15}[\s().-]*$/,
+  color: /^#[0-9a-fA-F]{6}$/,
 }
 
 /** How a date field stores its value: text, never a timestamp, so it can't shift with time zones. */

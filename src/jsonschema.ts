@@ -183,7 +183,10 @@ export function toJsonSchema(form: FormSchema): JS {
         Object.assign(s, object(f.fields))
         break
       case 'list':
-        Object.assign(s, { type: 'array', items: object(f.fields) }, f.min !== undefined ? { minItems: f.min } : {}, f.max !== undefined ? { maxItems: f.max } : {})
+        {
+          const { min, max } = f.rows ? { min: f.rows.length, max: f.rows.length } : f
+          Object.assign(s, { type: 'array', items: object(f.fields) }, min !== undefined ? { minItems: min } : {}, max !== undefined ? { maxItems: max } : {})
+        }
         break
     }
     return s

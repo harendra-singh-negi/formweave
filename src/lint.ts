@@ -85,6 +85,8 @@ export function lint(schema: unknown): Issue[] {
         else if (!values.every((v) => typeof v === 'string')) add(`${path}.options`, 'Option values are text')
         else if (new Set(values).size !== values.length) add(`${path}.options`, 'An option value repeats')
       }
+      if (f.type === 'list' && f.rows !== undefined && !(Array.isArray(f.rows) && f.rows.length && f.rows.every((r: unknown) => typeof r === 'string' || isObj(r))))
+        add(`${path}.rows`, 'Fixed rows are a list of texts')
       if (f.type === 'group' || f.type === 'list') {
         if (isObj(f.fields)) fields(f.fields, [{ fields: f.fields, prefix: path + '.' }, ...scope])
         else add(`${path}.fields`, `A ${f.type} needs fields`)

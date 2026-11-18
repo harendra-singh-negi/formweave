@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createForm, lint, text, validate, type FormSchema } from './index.ts'
+import { createForm, lint, text, toJsonSchema, validate, type FormSchema } from './index.ts'
 
 const loan: FormSchema = {
   version: 1,
@@ -132,4 +132,24 @@ test('the form store recomputes, keeps hidden answers, and tells subscribers', (
   assert.throws(() => form.set('items.5.qty', 1), /Unknown field/)
   assert.throws(() => form.set('__proto__', 1), /Unknown field/)
   assert.ok(calls >= 10)
+})
+
+test('fixed rows: exactly one row each, never added or removed, in order', () => {
+  const s: FormSchema = { version: 1, fields: { week: { type: 'list', widget: 'table', rows: ['Mon', 'Tue', 'Wed'], rowHeading: 'Day', fields: { hours: { type: 'number', required: true } } } } }
+  assert.deepEqual(lint(s), [])
+  const f = createForm(s)
+  assert.equal((f.getState().values.week as unknown[]).length, 3)
+  f.addRow('week')
+  assert.equal((f.getState().values.week as unknown[]).length, 3)
+  const short = validate(s, { week: [{ hours: 8 }] })
+  assert.equal(short.errors.week?.code, 'minItems')
+  assert.ok(validate(s, { week: [{ hours: 8 }, { hours: 7 }, { hours: 6 }] }).ok)
+  assert.equal(toJsonSchema(s).properties.week.minItems, 3)
+  assert.ok(lint({ version: 1, fields: { t: { type: 'list', rows: [] as string[], fields: { a: { type: 'string' } } } } }).length)
+})
+
+test('a drawn signature may be longer than typed text; a colour is #rrggbb', () => {
+  const s: FormSchema = { version: 1, fields: { sign: { type: 'string', widget: 'signature' }, c: { type: 'string', format: 'color' } } }
+  assert.ok(validate(s, { sign: 'x'.repeat(20_000), c: '#12abEF' }).ok)
+  assert.equal(validate(s, { c: 'red' }).errors.c?.code, 'format')
 })

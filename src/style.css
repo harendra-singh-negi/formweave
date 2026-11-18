@@ -47,6 +47,31 @@
 .fw-form :focus-visible { outline: 2px solid var(--fw-accent); outline-offset: 1px; }
 .fw-form [aria-invalid=true] { border-color: var(--fw-error); }
 .fw-form [readonly] { background: transparent; }
+/* more inputs */
+.fw-otp { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.fw-form .fw-otp input { width: 2.75rem; text-align: center; font-size: 1.25em; padding: 0.25rem; }
+.fw-signature { display: grid; gap: 0.375rem; justify-items: start; }
+.fw-signature svg { width: 100%; max-width: 32rem; aspect-ratio: 400 / 150; touch-action: none; cursor: crosshair; background: var(--fw-bg); border: 1px dashed var(--fw-border); border-radius: var(--fw-radius); }
+.fw-signature svg[aria-invalid] { border-color: var(--fw-error); }
+.fw-location, .fw-slider { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.fw-location input { flex: 1 1 12rem; }
+.fw-slider input { flex: 1 1 10rem; accent-color: var(--fw-accent); }
+.fw-slider output { min-width: 3ch; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fw-rating { display: flex; gap: 0.125rem; }
+.fw-rating label { cursor: pointer; font-size: 1.75rem; line-height: 1; color: var(--fw-border); }
+.fw-rating .fw-on { color: #f5a524; }
+.fw-rating label:hover span, .fw-rating label:has(~ label:hover) span { color: #f5a524; }
+.fw-rating label:has(input:focus-visible) { outline: 2px solid var(--fw-accent); outline-offset: 2px; border-radius: 4px; }
+.fw-affix { display: flex; align-items: stretch; }
+.fw-affix > span { display: grid; place-items: center; padding: 0 0.625rem; color: var(--fw-muted); background: color-mix(in srgb, var(--fw-border) 35%, var(--fw-bg)); border: 1px solid var(--fw-border); }
+.fw-affix > span:first-child { border-right: 0; border-radius: var(--fw-radius) 0 0 var(--fw-radius); }
+.fw-affix > span:last-child { border-left: 0; border-radius: 0 var(--fw-radius) var(--fw-radius) 0; }
+.fw-form .fw-affix > input:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.fw-form .fw-affix > input:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.fw-form input.fw-color { width: 4rem; padding: 0.125rem; }
+.fw-files { display: grid; gap: 0.375rem; padding: 0.75rem; border: 1px dashed var(--fw-border); border-radius: var(--fw-radius); }
+.fw-files.fw-over { border-color: var(--fw-accent); background: color-mix(in srgb, var(--fw-accent) 6%, var(--fw-bg)); }
+.fw-table .fw-fixed { text-align: start; font-weight: 600; white-space: normal; min-width: 7rem; }
 .fw-check > label { display: flex; gap: 0.5rem; align-items: center; font-weight: normal; }
 .fw-options { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
 
@@ -69,6 +94,7 @@
   .fw-table td.fw-n { grid-column: auto; grid-row: 1; width: auto; text-align: start; line-height: 2rem; }
   .fw-table td.fw-n:first-child { font-weight: 600; }
   .fw-table td.fw-n:first-child::before { content: attr(data-label) ' '; }
+  .fw-table th.fw-fixed { grid-row: 1; padding: 0; border: 0; line-height: 2rem; }
   .fw-table td .fw-field > label.fw-sr { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
 }
 .fw-table .fw-n { width: 1%; min-width: 0; text-align: center; color: var(--fw-muted); line-height: var(--fw-input-height); }
@@ -191,6 +217,12 @@
 .fw-b-list > li.fw-b-drop.fw-b-over { border-color: var(--fw-accent); color: var(--fw-accent); box-shadow: none; }
 .fw-builder .fw-b-palette button[draggable] { cursor: grab; }
 .fw-builder .fw-b-palette .fw-b-scan-go { margin-top: 0.5rem; border-style: dashed; }
+.fw-b-more { grid-column: 1 / -1; }
+.fw-b-more > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 0.375rem; }
+.fw-b-more h4 { grid-column: 1 / -1; }
+.fw-b-more > summary { cursor: pointer; padding: 0.375rem 0; font-weight: 600; color: var(--fw-accent); }
+.fw-b-more h4 { margin: 0.5rem 0 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fw-muted); }
+@container fwb (min-width: 52rem) { .fw-b-more > div { grid-template-columns: 1fr; } }
 .fw-b-drop { padding: 0.5rem; border: 1px dashed var(--fw-border); border-radius: var(--fw-radius); color: var(--fw-muted); font-size: 0.875rem; }
 .fw-b-scan { display: grid; gap: 0.5rem; justify-items: start; padding-bottom: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--fw-border); }
 .fw-b-scan p, .fw-b-json > p { margin: 0; }

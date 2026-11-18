@@ -161,6 +161,20 @@ Good to know:
 How a field looks (radio, toggle, textarea, table…) is its `widget`, which the renderer reads.
 Every field can have `visible`, `readOnly`, `check`, `validators` and `messages`; every value field also has `required` and `value` (calculated).
 
+The built-in widgets and formats. The builder's **More inputs** adds each one ready-made.
+
+| Type | `widget` / `format` |
+| --- | --- |
+| `string` | `textarea`, `password`, `search`, `otp` (one box per character, `maxLength` boxes), `signature` (drawn; the value is an SVG drawing), `location` ("lat,lng", with a "Use my location" button), `hidden`; formats `email`, `url`, `phone`, `color` |
+| `number` | `slider` (`min`..`max`), `rating` (`max` stars, 5 by default), `hidden`; formats `currency` (with `currency: 'INR'` it shows ₹ in front) and `percent` |
+| `boolean` | a checkbox, or `toggle` |
+| `choice` | `select`, `radio`, `autocomplete` (type to search), checkboxes with `multiple`, or `multiple` with `select` |
+| `date` | formats `date`, `time`, `datetime`, `month`, `week`, `year` |
+| `file` | a drop zone and a picker; `camera` opens the phone's camera. `accept` limits it to images, video, audio or documents |
+| `list` | rows as cards, or `table`. `rows: ['Monday', 'Tuesday']` makes a table with fixed rows: the text sits in the first column under `rowHeading`, and no rows are added or removed. The submitted rows come in the same order |
+
+Show a signature with `<img src={'data:image/svg+xml,' + encodeURIComponent(value)}>`. An `<img>` never runs script from an SVG, so a tampered value can't either. It can be drawn only with a mouse, finger or pen, so add a typed-name field next to it for people who can't draw.
+
 ## Formulas
 
 - Operators: `+ - * / %`, `== != < <= > >=`, `and or not` (also `&& || !`), `'text'`, `true false null`.

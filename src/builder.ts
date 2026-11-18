@@ -35,6 +35,60 @@ const NEW: Record<Kind, () => Field> = {
   group: () => ({ type: 'group', label: 'Group', fields: {} }),
   list: () => ({ type: 'list', label: 'List', widget: 'table', min: 1, fields: {} }),
 }
+/** Ready-made fields, so people find an email box or a signature pad without knowing the settings behind it. */
+const MORE: [string, [string, string, Field][]][] = [
+  ['Text', [
+    ['email', 'Email', { type: 'string', label: 'Email', format: 'email' }],
+    ['phone', 'Phone', { type: 'string', label: 'Phone', format: 'phone' }],
+    ['website', 'Website', { type: 'string', label: 'Website', format: 'url' }],
+    ['longText', 'Long text', { type: 'string', label: 'Long text', widget: 'textarea' }],
+    ['password', 'Password', { type: 'string', label: 'Password', widget: 'password' }],
+    ['search', 'Search', { type: 'string', label: 'Search', widget: 'search' }],
+    ['otp', 'OTP / code', { type: 'string', label: 'OTP', widget: 'otp', minLength: 6, maxLength: 6, pattern: '[0-9]*', messages: { pattern: 'Digits only' } }],
+    ['signature', 'Signature', { type: 'string', label: 'Signature', widget: 'signature' }],
+    ['location', 'Location', { type: 'string', label: 'Location', widget: 'location', pattern: '-?\\d{1,2}(\\.\\d+)?, ?-?\\d{1,3}(\\.\\d+)?', messages: { pattern: 'Like 28.6139,77.2090' } }],
+    ['color', 'Colour', { type: 'string', label: 'Colour', format: 'color' }],
+    ['hidden', 'Hidden value', { type: 'string', label: 'Hidden', widget: 'hidden' }],
+  ]],
+  ['Numbers', [
+    ['amount', 'Amount (₹)', { type: 'number', label: 'Amount', format: 'currency', currency: 'INR', decimals: 2, min: 0 }],
+    ['percent', 'Percent', { type: 'number', label: 'Percent', format: 'percent', min: 0, max: 100 }],
+    ['slider', 'Slider', { type: 'number', label: 'Slider', widget: 'slider', min: 0, max: 100 }],
+    ['rating', 'Rating (stars)', { type: 'number', label: 'Rating', widget: 'rating', min: 1, max: 5, decimals: 0 }],
+  ]],
+  ['Choices', [
+    ['toggle', 'Switch', { type: 'boolean', label: 'Switch', widget: 'toggle' }],
+    ['dropdown', 'Dropdown', { type: 'choice', label: 'Dropdown', widget: 'select', options: ['Option 1', 'Option 2'] }],
+    ['radio', 'Radio buttons', { type: 'choice', label: 'Pick one', widget: 'radio', options: ['Option 1', 'Option 2'] }],
+    ['checkboxes', 'Checkboxes', { type: 'choice', label: 'Pick any', multiple: true, options: ['Option 1', 'Option 2'] }],
+    ['multiSelect', 'Multi-select', { type: 'choice', label: 'Pick several', multiple: true, widget: 'select', options: ['Option 1', 'Option 2'] }],
+    ['autocomplete', 'Autocomplete', { type: 'choice', label: 'Search and pick', widget: 'autocomplete', options: ['Option 1', 'Option 2'] }],
+  ]],
+  ['Date & time', [
+    ['time', 'Time', { type: 'date', label: 'Time', format: 'time' }],
+    ['dateTime', 'Date & time', { type: 'date', label: 'Date & time', format: 'datetime' }],
+    ['month', 'Month', { type: 'date', label: 'Month', format: 'month' }],
+    ['week', 'Week', { type: 'date', label: 'Week', format: 'week' }],
+    ['year', 'Year', { type: 'date', label: 'Year', format: 'year' }],
+  ]],
+  ['Files', [
+    ['photo', 'Photo / camera', { type: 'file', label: 'Photo', widget: 'camera', accept: 'image/*' }],
+    ['images', 'Images', { type: 'file', label: 'Images', accept: 'image/*', multiple: true }],
+    ['document', 'Document', { type: 'file', label: 'Document', accept: '.pdf,.doc,.docx,.xls,.xlsx' }],
+    ['video', 'Video', { type: 'file', label: 'Video', accept: 'video/*' }],
+    ['audio', 'Audio', { type: 'file', label: 'Audio', accept: 'audio/*' }],
+  ]],
+  ['Tables', [
+    ['fixedTable', 'Table with fixed rows', { type: 'list', label: 'Table', widget: 'table', rows: ['Row 1', 'Row 2'], rowHeading: 'Item', fields: { value: { type: 'string', label: 'Answer' } } }],
+  ]],
+]
+
+interface Item { id: string; label: string; base: string; make(): Field }
+const ITEMS: Item[] = [
+  ...KINDS.map(([k, label]) => ({ id: k, label, base: k === 'string' ? 'text' : k, make: NEW[k] })),
+  ...MORE.flatMap(([, list]) => list.map(([base, label, f]) => ({ id: `more:${base}`, label, base, make: () => structuredClone(f) }))),
+]
+const itemOf = (id: string) => ITEMS.find((i) => i.id === id)!
 const EMPTY: FormSchema = { version: 1, fields: {} }
 
 // ---- schema edits: each returns a new schema ----
@@ -127,23 +181,30 @@ function settingsSchema(kind: Kind): FormSchema {
   const pick = (label: string, options: string[]): Field => ({ type: 'choice', label, options })
   switch (kind) {
     case 'string':
-      Object.assign(f, { format: pick('Format', ['email', 'url', 'phone']), widget: pick('Shown as', ['textarea', 'password']), minLength: num('Fewest characters'), maxLength: num('Most characters'), pattern: { type: 'string', label: 'Pattern (regular expression)' } })
+      Object.assign(f, { format: pick('Format', ['email', 'url', 'phone', 'color']), widget: pick('Shown as', ['textarea', 'password', 'search', 'otp', 'signature', 'location', 'hidden']), minLength: num('Fewest characters'), maxLength: num('Most characters'), pattern: { type: 'string', label: 'Pattern (regular expression)' } })
       break
     case 'number':
-      Object.assign(f, { min: num('Smallest'), max: num('Largest'), decimals: num('Decimal places'), format: pick('Format', ['currency', 'percent']) })
+      Object.assign(f, {
+        min: num('Smallest'), max: num('Largest'), decimals: num('Decimal places'), format: pick('Format', ['currency', 'percent']),
+        currency: { type: 'string', label: 'Currency code', placeholder: 'INR', help: 'Shown in front of the box, e.g. INR shows ₹.', pattern: '[A-Z]{3}', visible: "format == 'currency'" },
+        widget: { ...pick('Shown as', ['slider', 'rating', 'hidden']), help: 'A rating has as many stars as Largest (5 when empty).' },
+      })
       break
     case 'choice':
       Object.assign(f, {
         options: { type: 'list', label: 'Options', widget: 'table', min: 1, fields: { value: { type: 'string', label: 'Value', required: true }, label: { type: 'string', label: 'Label (if different)' } } },
         multiple: { type: 'boolean', widget: 'toggle', label: 'Allow several' },
-        widget: pick('Shown as', ['radio', 'select']),
+        widget: pick('Shown as', ['radio', 'select', 'autocomplete']),
       })
+      break
+    case 'boolean':
+      Object.assign(f, { widget: pick('Shown as', ['toggle']) })
       break
     case 'date':
       Object.assign(f, { format: pick('Format', Object.keys(DATE_FORMATS)), min: { type: 'string', label: 'Earliest' }, max: { type: 'string', label: 'Latest' } })
       break
     case 'file':
-      Object.assign(f, { accept: { type: 'string', label: 'Allowed types', placeholder: 'image/*,.pdf' }, multiple: { type: 'boolean', widget: 'toggle', label: 'Allow several' }, maxSize: num('Largest file (bytes)') })
+      Object.assign(f, { widget: { ...pick('Shown as', ['camera']), help: 'Camera opens the camera on a phone.' }, accept: { type: 'string', label: 'Allowed types', placeholder: 'image/*,.pdf' }, multiple: { type: 'boolean', widget: 'toggle', label: 'Allow several' }, maxSize: num('Largest file (bytes)') })
       break
     case 'list':
       Object.assign(f, {
@@ -151,8 +212,11 @@ function settingsSchema(kind: Kind): FormSchema {
           { value: 'table', label: 'Table: a row per line, fields as columns' },
           { value: 'list', label: 'List: each row a card, fields stacked' },
         ] },
-        min: { ...num('Rows at the start'), help: 'Also the fewest allowed. People add more with "+ Add row" while filling it in.' },
-        max: { ...num('Most rows'), help: 'Leave empty for no limit.' },
+        rows: { type: 'string', widget: 'textarea', label: 'Fixed rows (one per line)', placeholder: 'Monday\nTuesday\nWednesday',
+          help: 'Each line is a row with that text in its first column, which people can\'t change. Leave empty to let people add rows.' },
+        rowHeading: { type: 'string', label: 'Heading over the fixed rows', placeholder: 'Day', visible: 'not empty(rows)' },
+        min: { ...num('Rows at the start'), help: 'Also the fewest allowed. People add more with "+ Add row" while filling it in.', visible: 'empty(rows)' },
+        max: { ...num('Most rows'), help: 'Leave empty for no limit.', visible: 'empty(rows)' },
       })
       break
   }
@@ -164,7 +228,7 @@ const asColumn = (s: FormSchema): FormSchema => ({ ...s, fields: { ...s.fields, 
 const SETTINGS = Object.fromEntries(KINDS.map(([k]) => [k, settingsSchema(k)])) as Record<Kind, FormSchema>
 
 /** Settings names that map 1:1 onto field props. */
-const PLAIN = ['format', 'widget', 'minLength', 'maxLength', 'pattern', 'min', 'max', 'decimals', 'multiple', 'accept', 'maxSize', 'className']
+const PLAIN = ['format', 'widget', 'minLength', 'maxLength', 'pattern', 'min', 'max', 'decimals', 'multiple', 'accept', 'maxSize', 'className', 'currency']
 
 function toSettings(key: string, f: Field): Values {
   const any = f as unknown as Record<string, unknown>
@@ -172,7 +236,7 @@ function toSettings(key: string, f: Field): Values {
   if ('required' in f) s.required = !!f.required
   if ('value' in f) s.value = f.value ?? null
   for (const k of PLAIN) if (any[k] !== undefined) s[k] = any[k]
-  if (f.type === 'list') s.widget = f.widget ?? 'list'
+  if (f.type === 'list') Object.assign(s, { widget: f.widget ?? 'list', rows: f.rows?.map((r) => text(r, 'en')).join('\n') || null, rowHeading: text(f.rowHeading, 'en') || null })
   if (f.type === 'choice') s.options = f.options.map((o) => (typeof o === 'string' ? { value: o, label: null } : { value: o.value, label: text(o.label, 'en') || null }))
   return s
 }
@@ -192,6 +256,11 @@ function fromSettings(f: Field, s: Values): Field {
   if ('value' in s) put('value', s.value)
   for (const k of PLAIN) if (k in s) put(k, s[k])
   if (f.type === 'list' && s.widget === 'list') put('widget', null)
+  if (f.type === 'list' && 'rows' in s) {
+    const rows = String(s.rows ?? '').split('\n').map((r) => r.trim()).filter(Boolean)
+    put('rows', rows.length ? rows : null)
+    put('rowHeading', rows.length ? s.rowHeading : null)
+  }
   if (f.type === 'choice' && Array.isArray(s.options))
     out.options = (s.options as Values[]).filter((o) => o.value).map((o) => (o.label ? { value: o.value, label: o.label } : o.value))
   return out as unknown as Field
@@ -252,19 +321,21 @@ export function Builder(props: BuilderProps) {
     setSelected(path)
     setPanel((n) => n + 1)
   }
-  const add = (kind: Kind) => {
+  const add = (id: string) => {
+    const it = itemOf(id)
     const target = selected ? fieldAt(schema.fields, selected) : undefined
     // into a selected group or list, else after the selected field
     const inside = target && (target.type === 'group' || target.type === 'list')
     const parent = !selected ? [] : inside ? selected : selected.slice(0, -1)
-    const key = freeKey(schema.fields, parent, kind === 'string' ? 'text' : kind)
-    commit(edits.add(schema, parent, key, NEW[kind](), inside ? undefined : selected?.at(-1)), [...parent, key])
+    const key = freeKey(schema.fields, parent, it.base)
+    commit(edits.add(schema, parent, key, it.make(), inside ? undefined : selected?.at(-1)), [...parent, key])
     setPanel((n) => n + 1)
   }
   /** A field dragged from the palette: into `parent`, before `before` (null = the end). */
-  const place = (kind: Kind, parent: Path, before: string | null) => {
-    const key = freeKey(schema.fields, parent, kind === 'string' ? 'text' : kind)
-    const added = edits.add(schema, parent, key, NEW[kind]())
+  const place = (id: string, parent: Path, before: string | null) => {
+    const it = itemOf(id)
+    const key = freeKey(schema.fields, parent, it.base)
+    const added = edits.add(schema, parent, key, it.make())
     commit(before === null ? added : edits.move(added, [...parent, key], before), [...parent, key])
     setPanel((n) => n + 1)
   }
@@ -314,6 +385,10 @@ export function Builder(props: BuilderProps) {
   }
 
   const field = selected ? fieldAt(schema.fields, selected) : undefined
+  const paletteButton = (id: string) => h('button', {
+    key: id, type: 'button', draggable: true, title: 'Click to add, or drag it into place',
+    onClick: () => add(id), onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-kind', id),
+  }, '+ ', itemOf(id).label)
   /** Is this field a column of a table? */
   const inTable = (path: Path) => {
     const up = path.length > 1 ? fieldAt(schema.fields, path.slice(0, -1)) : undefined
@@ -330,7 +405,9 @@ export function Builder(props: BuilderProps) {
     tab === 'build' && h('div', { className: 'fw-b-main' },
       h('div', { className: 'fw-b-palette', 'aria-label': 'Add a field' },
         h('h3', null, field && (field.type === 'group' || field.type === 'list') ? `Add to ${text(field.label, 'en') || selected!.at(-1)}` : 'Add'),
-        KINDS.map(([k, label]) => h('button', { key: k, type: 'button', draggable: true, title: 'Click to add, or drag it into place', onClick: () => add(k), onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-kind', k) }, '+ ', label)),
+        KINDS.map(([k]) => paletteButton(k)),
+        h('details', { className: 'fw-b-more' }, h('summary', null, `More inputs (${ITEMS.length - KINDS.length})`),
+          h('div', null, MORE.map(([group, list]) => h(Fragment, { key: group }, h('h4', null, group), list.map(([base]) => paletteButton(`more:${base}`)))))),
         h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
         props.scan && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…')),
       h('div', { className: 'fw-b-tree' },
@@ -356,7 +433,7 @@ interface TreeProps {
   remove(p: Path): void
   duplicate(p: Path): void
   drop(p: Path, before: string | null): void
-  place(kind: Kind, parent: Path, before: string | null): void
+  place(id: string, parent: Path, before: string | null): void
   /** What an empty group or list says. */
   empty?: string
   /** These fields are a table's columns. */
@@ -367,7 +444,7 @@ function Tree(p: TreeProps): ReactNode {
   const same = (a: Path | null, b: Path) => !!a && a.join('.') === b.join('.')
   const onDrop = (e: DragEvent, before: string | null) => {
     dragEnd(e)
-    const kind = e.dataTransfer.getData('text/x-fw-kind') as Kind
+    const kind = e.dataTransfer.getData('text/x-fw-kind')
     if (kind) {
       e.preventDefault()
       e.stopPropagation()

@@ -2,7 +2,7 @@ import { empty, evaluate, parse, round, str, truthy, numeric, type Get, type Nod
 import { lint, type Issue } from './lint.ts'
 import {
   DATE_FORMATS, STRING_FORMATS,
-  type Errors, type Field, type FieldError, type Fields, type FileRef, type FormSchema, type Layout, type Text, type Values, type When,
+  type Errors, type Field, type FieldError, type Fields, type FileRef, type FormSchema, type Layout, type ListField, type StringField, type Text, type Values, type When,
 } from './schema.ts'
 
 export interface Options {
@@ -64,6 +64,10 @@ export class SchemaError extends Error {
 
 /** Default most characters for a string field: keeps huge payloads out. */
 const MAX_LENGTH = 10_000
+/** A drawn signature is an SVG drawing, longer than typed text. */
+const maxLength = (f: StringField) => f.maxLength ?? (f.widget === 'signature' ? 200_000 : MAX_LENGTH)
+/** Fixed rows make the row count exact. */
+const rowLimits = (f: ListField) => (f.rows ? { min: f.rows.length, max: f.rows.length } : f)
 
 const MESSAGES: Record<string, string> = {
   required: 'Required',
@@ -148,7 +152,8 @@ export function createForm(schema: FormSchema, opts: Options & { values?: Values
       change(path, (rows, c) => {
         const f = list(c, path)
         const old = rows as Values[]
-        return f.max != null && old.length >= f.max ? old : [...old, initial(c.kids!, row)]
+        const { max } = rowLimits(f)
+        return max != null && old.length >= max ? old : [...old, initial(c.kids!, row)]
       }),
     removeRow(path, index) {
       // row numbers after it shift, so forget what was touched in the list
@@ -362,7 +367,7 @@ function check(c: C, v: unknown, required: boolean, get: Get, path: string, opts
   const { f } = c
   const fail = (code: string, n?: unknown): FieldError => ({ code, message: message(f, code, n, opts.locale) })
   if (f.type === 'list') {
-    const bad = count((v as Values[]).length, f)
+    const bad = count((v as Values[]).length, rowLimits(f))
     if (bad) return fail(...bad)
   } else if (f.type !== 'group') {
     const multiple = (f.type === 'choice' || f.type === 'file') && f.multiple
@@ -385,7 +390,7 @@ function invalid({ f, pattern, options }: C, v: unknown): [string, unknown?] | u
   switch (f.type) {
     case 'string': {
       if (typeof v !== 'string') return ['type']
-      const max = f.maxLength ?? MAX_LENGTH
+      const max = maxLength(f)
       if (v.length > max) return ['maxLength', max]
       if (f.minLength != null && v.length < f.minLength) return ['minLength', f.minLength]
       if (f.format && !STRING_FORMATS[f.format].test(v)) return ['format']
@@ -482,7 +487,8 @@ function initial(kids: Level, given?: unknown): Values {
     const has = Object.hasOwn(src, key)
     if (f.type === 'group') out[key] = initial(sub!, src[key])
     else if (f.type === 'list') {
-      const rows: unknown[] = has && Array.isArray(src[key]) ? src[key] : (f.default ?? Array.from({ length: f.min ?? 0 }, () => ({})))
+      let rows: unknown[] = has && Array.isArray(src[key]) ? src[key] : (f.default ?? Array.from({ length: f.min ?? 0 }, () => ({})))
+      if (f.rows) rows = f.rows.map((_, i) => rows[i] ?? {})
       out[key] = rows.map((r) => initial(sub!, r))
     } else out[key] = has ? src[key] : ('default' in f ? f.default : null) ?? null
   }

@@ -75,3 +75,27 @@ test('a list shows each row as a card; a table numbers its rows', () => {
   assert.match(table, /<td class="fw-n" data-label="Row">2<\/td>/) // a phone shows "Row 2" on the row's card
   assert.match(table, /<label for="[^"]+items\.1\.qty" class="fw-sr">Qty<\/label>/) // the heading a phone shows above the box
 })
+
+test('more inputs: fixed rows, OTP boxes, ₹ in front, stars, slider, autocomplete, hidden', () => {
+  const s: FormSchema = { version: 1, fields: {
+    week: { type: 'list', widget: 'table', rows: ['Mon', 'Tue'], rowHeading: 'Day', fields: { hours: { type: 'number' } } },
+    otp: { type: 'string', widget: 'otp', maxLength: 4 },
+    amount: { type: 'number', format: 'currency', currency: 'INR' },
+    stars: { type: 'number', widget: 'rating', max: 5 },
+    level: { type: 'number', widget: 'slider', min: 0, max: 10 },
+    city: { type: 'choice', widget: 'autocomplete', options: ['Delhi', 'Pune'] },
+    secret: { type: 'string', widget: 'hidden', default: 'abc' },
+    sign: { type: 'string', widget: 'signature' },
+  } }
+  const html = renderToString(h(Form, { schema: s }))
+  assert.match(html, /<th class="fw-fixed">Day<\/th>/)
+  assert.match(html, /<th scope="row" class="fw-fixed">Tue<\/th>/)
+  assert.doesNotMatch(html, /Add row/) // fixed rows can't grow
+  assert.equal(html.match(/aria-label="Otp \d"/g)?.length, 4)
+  assert.match(html, /<div class="fw-affix"><span aria-hidden="true">₹<\/span><input/)
+  assert.equal(html.match(/★/g)?.length, 5)
+  assert.match(html, /type="range" min="0" max="10"/)
+  assert.match(html, /<datalist id="[^"]+city-list"><option value="Delhi">/)
+  assert.doesNotMatch(html, /secret/i)
+  assert.match(html, /<svg id="[^"]+sign" role="img"/)
+})

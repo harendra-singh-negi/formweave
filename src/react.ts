@@ -1,7 +1,7 @@
 // No JSX, so tests run in plain Node without a build step.
 import {
   createContext, createElement as h, Fragment, useContext, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore,
-  type ChangeEvent, type ComponentType, type CSSProperties, type FormEvent, type KeyboardEvent, type ReactNode,
+  type ChangeEvent, type ComponentType, type CSSProperties, type DragEvent, type FocusEvent, type FormEvent, type KeyboardEvent, type PointerEvent, type ReactNode,
 } from 'react'
 import { evaluate, parse, truthy, type Node } from './expr.ts'
 import { createForm, text, type Form as Store, type FormState, type Options } from './form.ts'
@@ -37,7 +37,7 @@ export type Classes = Partial<Record<'field' | 'label' | 'input' | 'help' | 'err
 /** Joins class names, skipping empty ones. */
 const cx = (...names: unknown[]) => names.filter(Boolean).join(' ') || undefined
 
-const LABELS = { row: 'Row', submit: 'Submit', next: 'Next', back: 'Back', addRow: '+ Add row', removeRow: 'Remove row', remove: 'Remove' }
+const LABELS = { row: 'Row', clear: 'Clear', useLocation: 'Use my location', dropFiles: 'or drop files here', submit: 'Submit', next: 'Next', back: 'Back', addRow: '+ Add row', removeRow: 'Remove row', remove: 'Remove' }
 
 export interface FormProps extends Options {
   schema: FormSchema
@@ -261,7 +261,7 @@ const at = (values: Values, path: string) => path.split('.').reduce<unknown>((v,
 function Shell({ path, field }: { path: string; field: Field }) {
   const c = useCtx()
   const st = c.state.fields[path]
-  if (!st?.visible) return null
+  if (!st?.visible || field.widget === 'hidden') return null
   const id = `${c.id}${path}`
   const parts = path.split('.')
   const touched = c.state.submitted || parts.some((_, i) => c.state.touched[parts.slice(0, i + 1).join('.')])
@@ -305,18 +305,133 @@ function StringInput(p: WidgetProps) {
     onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => p.set(e.target.value),
   }
   if (f.widget === 'textarea') return h('textarea', { ...attrs, rows: 4 })
-  const type = f.widget === 'password' ? 'password' : f.format === 'email' ? 'email' : f.format === 'url' ? 'url' : f.format === 'phone' ? 'tel' : 'text'
+  if (f.widget === 'otp') return h(Otp, p)
+  if (f.widget === 'signature') return h(Signature, p)
+  if (f.widget === 'location') return h(Location, p)
+  if (f.format === 'color') return h('input', { ...attrs, type: 'color', value: textValue(p.value) || '#000000', className: cx('fw-color', p.className) })
+  const type = f.widget === 'password' ? 'password' : f.widget === 'search' ? 'search' : f.format === 'email' ? 'email' : f.format === 'url' ? 'url' : f.format === 'phone' ? 'tel' : 'text'
   return h('input', { ...attrs, type, autoComplete: f.widget === 'password' ? 'off' : undefined })
+}
+
+/** One box per character; typing or pasting moves along, Backspace on an empty box goes back. */
+function Otp(p: WidgetProps) {
+  const f = p.field as StringField
+  const n = f.maxLength ?? 6
+  const v = textValue(p.value)
+  const boxes = useRef<(HTMLInputElement | null)[]>([])
+  const put = (i: number, typed: string) => {
+    const chars = Array.from({ length: n }, (_, j) => v[j] ?? '')
+    const add = typed.replace(/\s/g, '').split('')
+    if (!add.length) chars[i] = ''
+    add.forEach((ch, k) => { if (i + k < n) chars[i + k] = ch })
+    p.set(chars.join('') || null)
+    boxes.current[Math.min(i + add.length, n - 1)]?.focus()
+  }
+  return h('div', { role: 'group', 'aria-label': p.label, className: 'fw-otp' },
+    Array.from({ length: n }, (_, i) => h('input', {
+      key: i, ref: (el: HTMLInputElement | null) => { boxes.current[i] = el },
+      ...(i === 0 ? aria(p) : { className: p.className, 'aria-invalid': p.error ? true : undefined }),
+      'aria-label': `${p.label} ${i + 1}`, inputMode: 'numeric', autoComplete: i === 0 ? 'one-time-code' : 'off',
+      readOnly: p.readOnly, value: v[i] ?? '', onBlur: p.touch,
+      onChange: (e: ChangeEvent<HTMLInputElement>) => put(i, e.target.value.length === 2 && v[i] ? e.target.value.replace(v[i], '') : e.target.value),
+      onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Backspace' && !v[i] && i > 0) boxes.current[i - 1]?.focus() },
+      onFocus: (e: FocusEvent<HTMLInputElement>) => e.target.select(),
+    })))
+}
+
+const SIGN_W = 400
+const SIGN_H = 150
+/** Drawn with a finger, pen or mouse. The value is an SVG drawing: show it with <img src={'data:image/svg+xml,' + encodeURIComponent(value)}>. */
+function Signature(p: WidgetProps) {
+  const c = useCtx()
+  const [d, setD] = useState(() => /d="([^"]*)"/.exec(textValue(p.value))?.[1] ?? '')
+  const last = useRef<[number, number] | null>(null)
+  const at = (e: PointerEvent<SVGSVGElement>): [number, number] => {
+    const r = e.currentTarget.getBoundingClientRect()
+    return [Math.round(((e.clientX - r.left) / r.width) * SIGN_W), Math.round(((e.clientY - r.top) / r.height) * SIGN_H)]
+  }
+  const svg = (path: string) => path && `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIGN_W} ${SIGN_H}"><path d="${path}" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  const draw = !p.readOnly && {
+    onPointerDown: (e: PointerEvent<SVGSVGElement>) => {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      last.current = at(e)
+      setD((x) => `${x}M${last.current!.join(' ')}`)
+    },
+    onPointerMove: (e: PointerEvent<SVGSVGElement>) => {
+      if (!last.current) return
+      const pt = at(e)
+      if (Math.abs(pt[0] - last.current[0]) + Math.abs(pt[1] - last.current[1]) < 3) return // fewer points, a shorter value
+      last.current = pt
+      setD((x) => `${x}L${pt.join(' ')}`)
+    },
+    onPointerUp: () => {
+      last.current = null
+      p.set(svg(d) || null)
+      p.touch()
+    },
+  }
+  // ponytail: drawn only with a pointer; people who can't draw need another way in (a typed name field next to it)
+  return h('div', { className: 'fw-signature' },
+    h('svg', { id: p.id, role: 'img', 'aria-label': p.label, 'aria-invalid': p.error ? true : undefined, 'aria-describedby': p.describedBy, viewBox: `0 0 ${SIGN_W} ${SIGN_H}`, className: p.className, ...draw },
+      h('path', { d, fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round', strokeLinejoin: 'round' })),
+    !p.readOnly && d && h('button', { type: 'button', onClick: () => { setD(''); p.set(null) } }, c.labels.clear))
+}
+
+/** "lat,lng", typed or filled in from the device. */
+function Location(p: WidgetProps) {
+  const c = useCtx()
+  const [note, setNote] = useState('')
+  const locate = () => {
+    if (!navigator.geolocation) return setNote('This browser cannot tell where you are.')
+    setNote('…')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { p.set(`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`); p.touch(); setNote('') },
+      (err) => setNote(err.message || 'Could not get the location.'),
+      { enableHighAccuracy: true, timeout: 15_000 },
+    )
+  }
+  return h('div', { className: 'fw-location' },
+    h('input', { ...aria(p), type: 'text', inputMode: 'decimal', placeholder: '28.613900,77.209000', readOnly: p.readOnly, value: textValue(p.value), onBlur: p.touch, onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value) }),
+    !p.readOnly && h('button', { type: 'button', onClick: locate }, c.labels.useLocation),
+    note && h('span', { className: 'fw-help', role: 'status' }, note))
 }
 
 function NumberInput(p: WidgetProps) {
   const f = p.field as NumberField
-  return h('input', {
+  if (f.widget === 'slider') {
+    const min = f.min ?? 0
+    const max = f.max ?? 100
+    return h('div', { className: 'fw-slider' },
+      h('input', { ...aria(p), type: 'range', min, max, step: f.decimals != null ? 10 ** -f.decimals : 1, disabled: p.readOnly, value: p.value == null ? min : String(p.value),
+        onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value), onBlur: p.touch }),
+      h('output', { htmlFor: p.id }, p.value == null ? '—' : String(p.value)))
+  }
+  if (f.widget === 'rating') {
+    const n = f.max ?? 5
+    const v = Number(p.value) || 0
+    return h('div', { ...aria(p), role: 'radiogroup', 'aria-label': p.label, className: 'fw-rating' },
+      Array.from({ length: n }, (_, j) => j + 1).map((k) => h('label', { key: k },
+        h('input', { type: 'radio', className: 'fw-sr', name: p.id, value: k, checked: v === k, disabled: p.readOnly, onChange: () => p.set(k), onBlur: p.touch }),
+        h('span', { 'aria-hidden': true, className: k <= v ? 'fw-on' : undefined }, '★'),
+        h('span', { className: 'fw-sr' }, `${k} / ${n}`))))
+  }
+  const before = f.format === 'currency' && f.currency ? currencySymbol(f.currency, p.locale) : undefined
+  const after = f.format === 'percent' ? '%' : undefined
+  const input = h('input', {
     ...aria(p), type: 'number', inputMode: 'decimal', readOnly: p.readOnly, value: textValue(p.value),
     min: f.min, max: f.max, step: f.decimals != null ? 10 ** -f.decimals : 'any',
     placeholder: text(f.placeholder, p.locale) || undefined,
     onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value), onBlur: p.touch,
   })
+  return before || after ? h('div', { className: 'fw-affix' }, before && h('span', { 'aria-hidden': true }, before), input, after && h('span', { 'aria-hidden': true }, after)) : input
+}
+
+const currencySymbol = (code: string, locale?: string) => {
+  try {
+    return new Intl.NumberFormat(locale ?? 'en', { style: 'currency', currency: code }).formatToParts(0).find((x) => x.type === 'currency')?.value
+  } catch {
+    return code // an unknown code: show it as it is
+  }
 }
 
 function BooleanInput(p: WidgetProps) {
@@ -343,6 +458,20 @@ function ChoiceInput(p: WidgetProps) {
       opts.map((o) => h('label', { key: o.value },
         h('input', { type: 'radio', name: p.id, disabled: p.readOnly, checked: p.value === o.value, onChange: () => p.set(o.value), onBlur: p.touch }),
         ' ', o.label)))
+  if (f.widget === 'autocomplete' && !f.multiple) {
+    const shown = opts.find((o) => o.value === p.value)?.label ?? textValue(p.value)
+    return h(Fragment, null,
+      h('input', {
+        ...aria(p), type: 'text', list: `${p.id}-list`, autoComplete: 'off', readOnly: p.readOnly, value: shown, onBlur: p.touch,
+        placeholder: text(f.placeholder, p.locale) || undefined,
+        onChange: (e: ChangeEvent<HTMLInputElement>) => {
+          const t = e.target.value
+          const hit = opts.find((o) => o.label === t || o.value === t)
+          p.set(hit ? hit.value : t || null)
+        },
+      }),
+      h('datalist', { id: `${p.id}-list` }, opts.map((o) => h('option', { key: o.value, value: o.label }))))
+  }
   if (f.multiple)
     return h('select', {
       ...aria(p), multiple: true, disabled: p.readOnly, value: Array.isArray(p.value) ? (p.value as string[]) : [], onBlur: p.touch,
@@ -374,8 +503,15 @@ function FileInput(p: WidgetProps) {
     p.set(f.multiple ? [...files, ...refs] : (refs[0] ?? null))
     p.touch()
   }
-  return h('div', { className: 'fw-files' },
-    h('input', { ...aria(p), type: 'file', accept: f.accept, multiple: f.multiple, disabled: p.readOnly, onChange: (e: ChangeEvent<HTMLInputElement>) => pick(e.target.files) }),
+  const camera = f.widget === 'camera'
+  return h('div', {
+    className: 'fw-files',
+    onDragOver: (e: DragEvent) => { if (!p.readOnly) { e.preventDefault(); e.currentTarget.classList.add('fw-over') } },
+    onDragLeave: (e: DragEvent) => e.currentTarget.classList.remove('fw-over'),
+    onDrop: (e: DragEvent) => { e.currentTarget.classList.remove('fw-over'); if (p.readOnly) return; e.preventDefault(); pick(e.dataTransfer.files) },
+  },
+    h('input', { ...aria(p), type: 'file', accept: f.accept ?? (camera ? 'image/*' : undefined), capture: camera ? 'environment' : undefined, multiple: f.multiple, disabled: p.readOnly, onChange: (e: ChangeEvent<HTMLInputElement>) => pick(e.target.files) }),
+    !p.readOnly && !camera && h('span', { className: 'fw-help' }, c.labels.dropFiles),
     files.map((x, i) => h('div', { key: `${x.id}-${i}`, className: 'fw-file' }, x.name,
       !p.readOnly && h('button', { type: 'button', 'aria-label': `${c.labels.remove} ${x.name}`, onClick: () => p.set(f.multiple ? files.filter((_, j) => j !== i) : null) }, '×'))))
 }
@@ -390,24 +526,25 @@ function ListInput(p: WidgetProps) {
   const c = useCtx()
   const rows = Array.isArray(p.value) ? p.value : []
   const cols = Object.entries(f.fields)
-  const add = !p.readOnly && (f.max == null || rows.length < f.max) &&
+  const fixed = f.rows?.map((r) => text(r, c.locale))
+  const add = !p.readOnly && !fixed && (f.max == null || rows.length < f.max) &&
     h('button', { type: 'button', className: cx('fw-add', c.classes.button), onClick: () => c.form.addRow(p.path) }, c.labels.addRow)
-  const remove = (i: number) => !p.readOnly && rows.length > (f.min ?? 0) &&
+  const remove = (i: number) => !p.readOnly && !fixed && rows.length > (f.min ?? 0) &&
     h('button', { type: 'button', className: 'fw-remove', 'aria-label': `${c.labels.removeRow} ${i + 1}`, onClick: () => c.form.removeRow(p.path, i) }, '×')
   const cell = (i: number, k: string, field: Field) => h(Shell, { key: k, path: `${p.path}.${i}.${k}`, field })
   if (f.widget === 'table')
     return h(Fragment, null,
       h('div', { className: 'fw-table-wrap' },
         h('table', { className: 'fw-table' },
-          h('thead', null, h('tr', null, h('th', { className: 'fw-n' }, '#'), cols.map(([k, sf]) => h('th', { key: k }, text(sf.label, c.locale) || humanize(k))), h('th', { className: 'fw-n' }))),
+          h('thead', null, h('tr', null, h('th', { className: fixed ? 'fw-fixed' : 'fw-n' }, fixed ? text(f.rowHeading, c.locale) : '#'), cols.map(([k, sf]) => h('th', { key: k }, text(sf.label, c.locale) || humanize(k))), h('th', { className: 'fw-n' }))),
           h('tbody', null, rows.map((_, i) => h('tr', { key: i },
-            h('td', { className: 'fw-n', 'data-label': c.labels.row }, i + 1),
+            fixed ? h('th', { scope: 'row', className: 'fw-fixed' }, fixed[i]) : h('td', { className: 'fw-n', 'data-label': c.labels.row }, i + 1),
             cols.map(([k, sf]) => h('td', { key: k }, h(Context.Provider, { value: { ...c, compact: true } }, cell(i, k, sf)))),
             h('td', { className: 'fw-n' }, remove(i))))))),
       add)
   return h(Fragment, null,
     rows.map((_, i) => h('div', { key: i, className: 'fw-row' },
-      h('div', { className: 'fw-row-head' }, h('span', null, `${c.labels.row} ${i + 1}`), remove(i)),
+      h('div', { className: 'fw-row-head' }, h('span', null, fixed ? fixed[i] : `${c.labels.row} ${i + 1}`), remove(i)),
       cols.map(([k, sf]) => cell(i, k, sf)))),
     add)
 }
