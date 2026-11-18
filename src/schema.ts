@@ -14,7 +14,7 @@ export type When = boolean | Expr
 interface Base {
   label?: Text
   help?: Text
-  /** How it looks: 'textarea', 'radio', 'toggle', 'table', 'hidden'… Up to the renderer; the engine ignores it. */
+  /** How it looks: 'textarea', 'radio', 'toggle', 'table', 'matrix', 'hidden'… Up to the renderer; the engine ignores it. */
   widget?: string
   /** When false the field is not shown, not checked, and left out of submitted values. */
   visible?: When
@@ -132,6 +132,8 @@ export interface ListField extends Base {
   rows?: Text[]
   /** The heading over the fixed rows' column. */
   rowHeading?: Text
+  /** Number columns summed in a row under the table, e.g. ['qty', 'total']. Only shown; formulas use sum(items.total). */
+  totals?: string[]
 }
 
 export type Field =

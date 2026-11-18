@@ -75,3 +75,10 @@ test('layout edits move nodes between containers and keep pages to sections', as
   // removing a container keeps what was in it
   assert.deepEqual(layoutEdits.unwrap(l, [1]), ['c', { type: 'section', children: [] }, { type: 'section', children: ['b', 'a'] }])
 })
+
+test('lint: totals name number columns', () => {
+  const s = (totals: unknown) => ({ version: 1, fields: { t: { type: 'list', totals, fields: { qty: { type: 'number' }, name: { type: 'string' } } } } })
+  assert.deepEqual(lint(s(['qty'])), [])
+  assert.deepEqual(lint(s(['name'])).map((i) => i.path), ['t.totals'])
+  assert.deepEqual(lint(s(['nope'])).map((i) => i.path), ['t.totals'])
+})

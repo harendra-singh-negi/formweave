@@ -69,11 +69,14 @@ test('fields printed side by side stay side by side; tables keep fixed rows and 
   const { schema } = sketchToForm({ title: '', sections: [{ title: 'Ship', fields: [
     field('SHIP', 1), field('GT', 1), field('Place', 2),
     field('Week', 3, { kind: 'table', rows: ['Mon', 'Tue'], rowHeading: 'Day', columns: [{ key: '', label: 'Hours', kind: 'number', options: [] }] }),
+    field('Checks', 5, { kind: 'table', rows: ['Fire', 'Boat'], columns: [{ key: '', label: 'Answer', kind: 'one_of', options: ['Yes', 'No', 'NA'] }] }),
     field('Crew', 4, { kind: 'table', minRows: 3, columns: [{ key: '', label: 'Answer', kind: 'one_of', options: ['Yes', 'No', 'NA'], free: true }] }),
   ] }] })
   const section = schema.layout![0] as { children: unknown[] }
   assert.deepEqual(section.children.slice(0, 2), [{ type: 'grid', cols: { base: 1, md: 2 }, children: ['ship', 'gt'] }, 'place'])
   assert.deepEqual((schema.fields.week as { rows: string[] }).rows, ['Mon', 'Tue'])
+  assert.equal(schema.fields.week.widget, 'table')
+  assert.equal(schema.fields.checks.widget, 'matrix') // a question per row from one short scale
   const crew = schema.fields.crew as unknown as { default: unknown[]; fields: { answer: { widget: string; allowOther: boolean } } }
   assert.equal(crew.default.length, 3)
   assert.deepEqual([crew.fields.answer.widget, crew.fields.answer.allowOther], ['autocomplete', true])

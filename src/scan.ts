@@ -241,7 +241,10 @@ function toField(raw: Record<string, any>, at: string, warnings: string[]): Fiel
       const rows = list(raw.rows).map((r) => words(r, 200)).filter(Boolean).slice(0, 200)
       if (rows.length >= 2) {
         const rowHeading = words(raw.rowHeading)
-        return { type: 'list', widget: 'table', ...base, rows, ...(rowHeading ? { rowHeading } : {}), fields }
+        // a question per row answered from one short scale (Yes / No, Poor … Excellent): a matrix, as on paper
+        const first = Object.values(fields)[0]
+        const matrix = first.type === 'choice' && !first.multiple && !first.allowOther && first.options.length >= 2 && first.options.length <= 7
+        return { type: 'list', widget: matrix ? 'matrix' : 'table', ...base, rows, ...(rowHeading ? { rowHeading } : {}), fields }
       }
       // as many rows to start with as the paper had, without making them all required
       const start = typeof raw.minRows === 'number' && raw.minRows > 1 ? Math.min(50, Math.round(raw.minRows)) : 1

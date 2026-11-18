@@ -67,6 +67,8 @@ import 'formweave/style.css'
 - Accessibility: every label is tied to its input, and errors are announced through `aria-describedby`. Submitting focuses the first error and opens the page it is on.
 - Theming: change the `--fw-*` CSS variables. All styles stay under `.fw-form`.
 - Tables (`type: 'list', widget: 'table'`): each field in the list is a column, and its label is the column heading. People add rows with "+ Add row". On a narrow form each row becomes a card with every heading above its box, so nothing scrolls sideways. Without `widget: 'table'`, every row is a card at any width.
+- `totals: ['qty', 'total']` on a table adds a Total row that sums those number columns as people type. It is only shown; a formula such as `sum(items.total)` gives the number to your data.
+- Matrices (`widget: 'matrix'` with fixed `rows`): a statement per row and the options of the list's first choice field as columns, with a radio in each cell (tick boxes when it allows several). Its other fields follow as ordinary columns, such as a comment. The data is the same as a table's: `[{ rating: 'Good', note: '' }, …]`. On a phone each row becomes a card with its options listed. A scanned table that asks a question per row from one short scale (Yes / No / NA, Poor … Excellent) becomes a matrix.
 - Tabs and accordion: underlined tabs that scroll sideways when they don't fit, with arrow keys between them. The accordion has one bordered panel per page. When a form is sent with an error in a closed panel, that panel opens.
 
 ### Your own CSS and classes
@@ -95,6 +97,7 @@ import { Builder } from 'formweave/builder'
 Or `<formweave-builder>` from `formweave/element`, which fires `fw-change` with `{ schema, issues }`.
 
 - It opens on the Design tab: the form itself, as people will see it. Click a field, a section, a grid, a page or a text on it to change it in the panel beside it; the form updates as you type. Drag anything on it to move it, or drag an input or a layout piece from the palette onto the spot it should go. Fields hidden by "show only when" are shown faded, any step can be opened, and Delete removes what is picked. With nothing picked, the panel holds the form's own settings. `<Form design>` is what draws it, if you build a canvas of your own.
+- Pick a table or matrix and the panel shows it as a small table to type into: headings, fixed rows, ← → ↑ ↓ to reorder, ✕ to remove, "+ Column" (pick its type first), "+ Row", "Sum" under number columns, and a switch between fixed rows and rows people add. ⚙ opens a column's own settings. A matrix's columns are its options.
 - Add the 8 field types: click one, or drag it from the palette to the spot it should go, groups and lists included. Drag fields or use ↑ ↓ to reorder. A line shows where a drop will land.
 - Duplicate, delete, undo and redo (Ctrl+Z, Ctrl+Shift+Z).
 - The settings panel is itself a formweave form. It covers key, label, help, required, "show only when", "calculated value", options and limits.

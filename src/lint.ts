@@ -89,6 +89,8 @@ export function lint(schema: unknown): Issue[] {
       }
       if (f.type === 'list' && f.rows !== undefined && !(Array.isArray(f.rows) && f.rows.length && f.rows.every((r: unknown) => typeof r === 'string' || isObj(r))))
         add(`${path}.rows`, 'Fixed rows are a list of texts')
+      if (f.type === 'list' && f.totals !== undefined && !(Array.isArray(f.totals) && f.totals.every((k: unknown) => typeof k === 'string' && isObj(f.fields) && f.fields[k]?.type === 'number')))
+        add(`${path}.totals`, 'Totals are keys of number columns')
       if (f.type === 'group' || f.type === 'list') {
         if (isObj(f.fields)) fields(f.fields, [{ fields: f.fields, prefix: path + '.' }, ...scope])
         else add(`${path}.fields`, `A ${f.type} needs fields`)
