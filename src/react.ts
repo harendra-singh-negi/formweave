@@ -151,7 +151,8 @@ export function Form(props: FormProps) {
     design: !!props.design,
   }
   return h(Context.Provider, { value: ctx },
-    h('form', { ref, className: cx('fw-form', props.className), noValidate: true, onSubmit: props.design ? (e: FormEvent) => e.preventDefault() : submit },
+    h('form', { ref, className: cx('fw-form', schema.theme && `fw-theme-${schema.theme}`, props.className), noValidate: true, onSubmit: props.design ? (e: FormEvent) => e.preventDefault() : submit },
+      schema.theme === 'paper' && schema.title && h('h2', { className: 'fw-title' }, text(schema.title, props.locale)),
       h(Nodes, { items: layout, ip: [] }),
       !pages && h(SubmitButton)))
 }
@@ -170,15 +171,24 @@ function LayoutView({ item, ip }: { item: Layout; ip: number[] }): ReactNode {
   const own = c.design ? { 'data-fw-ip': ip.join('.'), 'data-fw-hidden': hidden || undefined, draggable: true } : {}
   switch (item.type) {
     case 'content':
+      if (item.as === 'rich') return h(RichBlock, { html: text(item.text, c.locale), className: item.className, own })
       return item.as === 'divider' ? h('hr', { className: cx('fw-divider', item.className), ...own })
         : h(item.as === 'heading' ? 'h3' : 'p', { className: cx('fw-content', item.className), ...own }, text(item.text, c.locale))
     case 'section':
-      return h('section', { className: cx('fw-section', item.className), ...own }, item.title && h('h3', null, text(item.title, c.locale)), h(Nodes, { items: item.children, ip }))
+      return h('section', { className: cx('fw-section', item.look && `fw-look-${item.look}`, item.className), ...own }, item.title && h('h3', null, text(item.title, c.locale)), h(Nodes, { items: item.children, ip }))
     case 'grid':
       return h('div', { className: cx('fw-grid', item.className), style: gridVars(item.cols), ...own }, h(Nodes, { items: item.children, ip }))
     case 'pages':
       return h(PagesView, { item, ip })
   }
+}
+
+/** Formatted text from the schema, cleaned first. Without a DOM (rendering on a server) its words show without formatting. */
+function RichBlock({ html, className, own }: { html: string; className?: string; own: object }) {
+  const props = { className: cx('fw-content', 'fw-rich-block', className), ...own }
+  return typeof DOMParser === 'undefined'
+    ? h('div', props, html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim())
+    : h('div', { ...props, dangerouslySetInnerHTML: { __html: cleanHtml(html) } })
 }
 
 /** A plain number is that many columns from medium width up, one on phones. */

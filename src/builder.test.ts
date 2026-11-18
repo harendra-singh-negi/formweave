@@ -38,7 +38,7 @@ test('opens on the design canvas: the form itself, every part marked so a click 
   assert.match(html, /data-fw-path="items.qty" draggable="true"/) // and from its cells, which name the column, not the row
   assert.match(html, /data-fw-path="secret" data-fw-hidden="true"/) // hidden by its condition, still shown here
   assert.match(html, /Form settings/)
-  assert.match(html, /<summary>Layout<small> 6<\/small>/) // sections and steps come from the same palette
+  assert.match(html, /<summary>Layout<small> 7<\/small>/) // sections and steps come from the same palette
 })
 
 test('relocate moves a field\'s place in the layout, ipOf finds it', async () => {
@@ -81,4 +81,10 @@ test('lint: totals name number columns', () => {
   assert.deepEqual(lint(s(['qty'])), [])
   assert.deepEqual(lint(s(['name'])).map((i) => i.path), ['t.totals'])
   assert.deepEqual(lint(s(['nope'])).map((i) => i.path), ['t.totals'])
+})
+
+test('lint: section looks, content kinds and the theme', () => {
+  const s = (extra: object, layout: unknown[] = []) => ({ version: 1, fields: {}, layout, ...extra })
+  assert.deepEqual(lint(s({ theme: 'paper' }, [{ type: 'section', look: 'band', children: [] }, { type: 'content', as: 'rich', text: '<b>x</b>' }])), [])
+  assert.deepEqual(lint(s({ theme: 'neon' }, [{ type: 'section', look: 'bold', children: [] }, { type: 'content', as: 'html' }])).map((i) => i.path), ['theme', 'layout.0.look', 'layout.1.as'])
 })

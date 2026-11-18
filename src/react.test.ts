@@ -149,3 +149,15 @@ test('a matrix: a row per statement, a radio per option, the other fields as col
   assert.doesNotMatch(html, /fw-error/) // untouched, so no error yet
   assert.match(html, /<tfoot><tr><th scope="row" class="fw-n">Total<\/th><td class="fw-total" data-label="Qty">5<\/td><td><\/td>/)
 })
+
+test('paper prints the title on top; sections take a look; rich text shows its words without a DOM', () => {
+  const s: FormSchema = { version: 1, title: 'Boat drill', theme: 'paper', fields: { name: { type: 'string' } }, layout: [
+    { type: 'content', as: 'rich', text: '<p><strong>Note:</strong> use <em>capitals</em> &amp; ink.</p><script>alert(1)</script>' },
+    { type: 'section', title: 'Crew', look: 'band', children: ['name'] },
+  ] }
+  const html = renderToString(h(Form, { schema: s }))
+  assert.match(html, /<form class="fw-form fw-theme-paper" noValidate=""><h2 class="fw-title">Boat drill<\/h2>/)
+  assert.match(html, /<div class="fw-content fw-rich-block">Note: use capitals &amp;amp; ink. alert\(1\)<\/div>/) // escaped by React: no tag gets through
+  assert.match(html, /<section class="fw-section fw-look-band"><h3>Crew<\/h3>/)
+  assert.doesNotMatch(renderToString(h(Form, { schema: { ...s, theme: undefined } })), /fw-title|fw-theme/) // without paper the app shows the title
+})

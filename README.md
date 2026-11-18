@@ -82,6 +82,8 @@ import 'formweave/style.css'
 ```
 
 - `classes` puts your classes on every field, label, input, help text, error and button, so Bootstrap, Tailwind or your own CSS all work. `input` goes on text boxes, numbers, dates, dropdowns and file pickers, but not on checkboxes or radio buttons.
+- Looks: `theme: 'paper'` on the schema draws the form like a printed one: a white sheet (also in dark mode) with the title on top, sections boxed under a shaded title band, answers on ruled lines, tables with full grid lines, and only the form when printed. A section's `look` is `'box'`, `'band'` (title on a shaded band) or `'line'` (title underlined), with or without paper.
+- Text between fields: `{ type: 'content', as: 'rich', text: '<p><strong>Note:</strong> …</p>' }` keeps bold, italic, lists, links, headings and quotes, and drops anything else (`cleanHtml`). The builder edits it with the rich text toolbar.
 - `className` on a field, section, grid, pages or content adds classes to just that part. The builder has a "CSS classes" box in every field's and layout part's settings.
 - For `<formweave-form>`, set `el.classes = { … }`.
 - Your classes are added next to formweave's own `fw-*` classes, so the layout stays responsive. Columns, steps and tabs still follow the form's width. If you want only your own styles, leave out `formweave/style.css`. Columns, the stepper and the tabs then need CSS of your own.

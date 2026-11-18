@@ -129,10 +129,13 @@ export function lint(schema: unknown): Issue[] {
           add(`${path}.children`, 'Each page is a section')
         if (item.type === 'pages' && item.position !== undefined && !['top', 'left', 'right', 'bottom'].includes(item.position as string))
           add(`${path}.position`, 'Position is top, left, right or bottom')
+        if (item.type === 'section' && item.look !== undefined && !['box', 'band', 'line'].includes(item.look as string)) add(`${path}.look`, 'Look is box, band or line')
+        if (item.type === 'content' && item.as !== undefined && !['heading', 'text', 'rich', 'divider'].includes(item.as as string)) add(`${path}.as`, 'As is heading, text, rich or divider')
         if (item.type !== 'content') layout(item.children, `${path}.children`)
       }
     })
   }
+  if (schema.theme !== undefined && schema.theme !== 'paper') add('theme', "The only theme is 'paper'")
   if (schema.layout !== undefined) layout(schema.layout, 'layout')
   return issues
 }

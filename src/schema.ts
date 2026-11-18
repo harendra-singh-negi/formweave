@@ -156,6 +156,8 @@ export interface Section {
   type: 'section'
   title?: Text
   visible?: When
+  /** How it is drawn: a bordered box, a box with its title on a shaded band, or the title underlined. Default: plain. */
+  look?: 'box' | 'band' | 'line'
   /** Your own CSS classes, separated by spaces. */
   className?: string
   children: Layout[]
@@ -183,7 +185,8 @@ export interface Pages {
 
 export interface Content {
   type: 'content'
-  as?: 'heading' | 'text' | 'divider'
+  /** 'rich': `text` is HTML with bold, italic, lists, links and headings; anything else in it is dropped (see cleanHtml). */
+  as?: 'heading' | 'text' | 'rich' | 'divider'
   text?: Text
   visible?: When
   /** Your own CSS classes, separated by spaces. */
@@ -195,6 +198,8 @@ export interface FormSchema {
   /** The format's version. Schemas are migrated when it changes. */
   version: 1
   title?: Text
+  /** 'paper': drawn like a printed form, a white sheet with the title on top, boxed sections and ruled lines to write on. */
+  theme?: 'paper'
   fields: Fields
   /** Without one, fields show in order. */
   layout?: Layout[]

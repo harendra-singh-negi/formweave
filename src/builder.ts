@@ -714,10 +714,18 @@ function TableDesigner({ field: f, set, pick }: TableDesignerProps) {
         : tool('Use fixed rows', 'Rows you name, the same for everyone (Monday, Tuesday…)', () => setRows(['Row 1', 'Row 2']))))
 }
 
-const FORM_SETTINGS: FormSchema = { version: 1, fields: { title: { type: 'string', label: 'Title', help: 'Shown above the form by your app; also the name it is saved under.' } } }
-const formSettings = (s: FormSchema): Values => ({ title: text(s.title, 'en') || null })
+const FORM_SETTINGS: FormSchema = { version: 1, fields: {
+  title: { type: 'string', label: 'Title', help: 'The name it is saved under. The paper look prints it on top; otherwise your app shows it.' },
+  theme: { type: 'choice', widget: 'radio', label: 'Look', required: true, options: [
+    { value: 'plain', label: 'Plain: takes your app\'s fonts and colours' },
+    { value: 'paper', label: 'Paper: a printed form, boxed sections, lines to write on' },
+  ] },
+} }
+const formSettings = (s: FormSchema): Values => ({ title: text(s.title, 'en') || null, theme: s.theme ?? 'plain' })
 function fromFormSettings(s: FormSchema, v: Values): FormSchema {
   const out: FormSchema = { ...s }
+  if (v.theme === 'paper') out.theme = 'paper'
+  else delete out.theme
   if (v.title) out.title = s.title && typeof s.title === 'object' ? { ...s.title, en: String(v.title) } : String(v.title)
   else delete out.title
   return out
@@ -976,13 +984,18 @@ const NODES: [string, string, () => Layout][] = [
   ['pages', 'Steps / tabs', () => ({ type: 'pages', display: 'steps', children: [{ type: 'section', title: 'Step 1', children: [] }] })],
   ['heading', 'Heading', () => ({ type: 'content', as: 'heading', text: 'Heading' })],
   ['text', 'Text', () => ({ type: 'content', as: 'text', text: 'Some text' })],
+  ['rich', 'Rich text', () => ({ type: 'content', as: 'rich', text: '<p><strong>Please note:</strong> write in capital letters.</p>' })],
   ['divider', 'Divider', () => ({ type: 'content', as: 'divider' })],
 ]
 
 const showWhen = formula('Show only when', "employment == 'Self Employed'")
 const cols = (label: string): Field => ({ type: 'number', label, min: 1, max: 12, decimals: 0 })
 const NODE_SETTINGS: Record<string, FormSchema> = {
-  section: { version: 1, fields: { title: { type: 'string', label: 'Title' }, visible: showWhen, className: cssClasses } },
+  section: { version: 1, fields: {
+    title: { type: 'string', label: 'Title' },
+    look: { type: 'choice', widget: 'buttons', label: 'Style', required: true, options: [{ value: 'plain', label: 'Plain' }, { value: 'box', label: 'Box' }, { value: 'band', label: 'Title band' }, { value: 'line', label: 'Underlined' }] },
+    visible: showWhen, className: cssClasses,
+  } },
   grid: { version: 1, fields: {
     base: cols('Columns on phones'), sm: cols('Columns from 480px'), md: cols('Columns from 640px'), lg: cols('Columns from 960px'), visible: showWhen, className: cssClasses,
   }, layout: [{ type: 'grid', cols: 2, children: ['base', 'sm', 'md', 'lg'] }, 'visible', 'className'] },
@@ -993,7 +1006,12 @@ const NODE_SETTINGS: Record<string, FormSchema> = {
     visible: showWhen,
     className: cssClasses,
   } },
-  content: { version: 1, fields: { as: { type: 'choice', label: 'Kind', options: ['heading', 'text', 'divider'], required: true }, text: { type: 'string', widget: 'textarea', label: 'Text' }, visible: showWhen, className: cssClasses } },
+  content: { version: 1, fields: {
+    as: { type: 'choice', label: 'Kind', options: [{ value: 'heading', label: 'Heading' }, { value: 'text', label: 'Text' }, { value: 'rich', label: 'Rich text (bold, lists, links)' }, { value: 'divider', label: 'Divider' }], required: true },
+    text: { type: 'string', widget: 'textarea', label: 'Text', visible: "as == 'heading' or as == 'text'" },
+    html: { type: 'string', widget: 'richtext', label: 'Text', visible: "as == 'rich'" },
+    visible: showWhen, className: cssClasses,
+  } },
 }
 
 function nodeSettings(n: Container | Extract<Layout, { type: 'content' }>): Values {
@@ -1002,13 +1020,13 @@ function nodeSettings(n: Container | Extract<Layout, { type: 'content' }>): Valu
 function nodeOwn(n: Container | Extract<Layout, { type: 'content' }>): Values {
   const visible = typeof n.visible === 'string' ? n.visible : null
   switch (n.type) {
-    case 'section': return { title: text(n.title, 'en') || null, visible }
+    case 'section': return { title: text(n.title, 'en') || null, look: n.look ?? 'plain', visible }
     case 'grid': {
       const c = typeof n.cols === 'number' ? { base: 1, md: n.cols } : (n.cols ?? {})
       return { base: c.base ?? null, sm: c.sm ?? null, md: c.md ?? null, lg: c.lg ?? null, visible }
     }
     case 'pages': return { display: n.display ?? 'steps', position: n.position ?? 'top', visible }
-    case 'content': return { as: n.as ?? 'text', text: text(n.text, 'en') || null, visible }
+    case 'content': return { as: n.as ?? 'text', text: n.as === 'rich' ? null : text(n.text, 'en') || null, html: n.as === 'rich' ? text(n.text, 'en') || null : null, visible }
   }
 }
 
@@ -1018,9 +1036,15 @@ function fromNodeSettings(n: Exclude<Layout, string>, s: Values): Layout {
   const words = (old: unknown, v: unknown) => (v && old && typeof old === 'object' ? { ...old, en: v } : v)
   put('visible', s.visible)
   put('className', s.className)
-  if (n.type === 'section') put('title', words(n.title, s.title))
+  if (n.type === 'section') { put('title', words(n.title, s.title)); put('look', s.look === 'plain' ? null : s.look) }
   if (n.type === 'pages') { put('display', s.display); put('position', s.position === 'top' ? null : s.position) }
-  if (n.type === 'content') { put('as', s.as); put('text', s.as === 'divider' ? null : words(n.text, s.text)) }
+  if (n.type === 'content') {
+    put('as', s.as)
+    // rich text is typed in its own box; switching kinds keeps the words (without formatting when leaving rich)
+    const plain = (html: unknown) => String(html ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || null
+    const typed = s.as === 'rich' ? (s.html ?? (n.as === 'rich' ? null : s.text)) : (s.text ?? (n.as === 'rich' ? plain(s.html) : null))
+    put('text', s.as === 'divider' ? null : words(n.text, typed))
+  }
   if (n.type === 'grid') {
     const c = Object.fromEntries(['base', 'sm', 'md', 'lg'].filter((k) => typeof s[k] === 'number').map((k) => [k, s[k]]))
     put('cols', Object.keys(c).length ? (c as Grid['cols']) : null)
@@ -1126,7 +1150,7 @@ function LayoutTree(p: LayoutTreeProps): ReactNode {
       case 'section': return [text(n.title, 'en') || 'Section', ' section']
       case 'grid': return ['Columns', ` grid · ${typeof n.cols === 'number' ? n.cols : Object.values(n.cols ?? { base: 1 }).join('/')}`]
       case 'pages': return ['Pages', ` ${n.display ?? 'steps'}${n.position && n.display !== 'accordion' ? ` · ${n.position}` : ''}`]
-      case 'content': return [n.as === 'divider' ? '———' : text(n.text, 'en').slice(0, 40) || '…', ` ${n.as ?? 'text'}`]
+      case 'content': return [n.as === 'divider' ? '———' : text(n.text, 'en').replace(/<[^>]*>/g, ' ').trim().slice(0, 40) || '…', ` ${n.as ?? 'text'}`]
     }
   }
   return h('ul', { className: 'fw-b-list', onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => drop(e, p.items.length) },
