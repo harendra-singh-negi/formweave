@@ -12,13 +12,24 @@ export type Get = (path: string[]) => unknown
 
 export class ExprError extends Error {}
 
-const TOKEN =
-  /\s*(?:(\d+(?:\.\d+)?)|'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)|(==|!=|<=|>=|&&|\|\||[-+*/%<>(),!]))/y
+const TOKEN = /\s*(?:(\d+(?:\.\d+)?)|'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)|(==|!=|<=|>=|&&|\|\||[-+*/%<>(),!]))/y
 const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'null'])
 const BINARY: Record<string, [number, string]> = {
-  or: [1, 'or'], '||': [1, 'or'], and: [2, 'and'], '&&': [2, 'and'],
-  '==': [4, '=='], '!=': [4, '!='], '<': [4, '<'], '<=': [4, '<='], '>': [4, '>'], '>=': [4, '>='],
-  '+': [5, '+'], '-': [5, '-'], '*': [6, '*'], '/': [6, '/'], '%': [6, '%'],
+  or: [1, 'or'],
+  '||': [1, 'or'],
+  and: [2, 'and'],
+  '&&': [2, 'and'],
+  '==': [4, '=='],
+  '!=': [4, '!='],
+  '<': [4, '<'],
+  '<=': [4, '<='],
+  '>': [4, '>'],
+  '>=': [4, '>='],
+  '+': [5, '+'],
+  '-': [5, '-'],
+  '*': [6, '*'],
+  '/': [6, '/'],
+  '%': [6, '%'],
 }
 /** `not a == b` is `not (a == b)`. */
 const NOT = 3
@@ -27,7 +38,7 @@ type Tok = { k: 'num' | 'str' | 'name' | 'op' | 'end'; v: string; at: number }
 
 function tokenize(src: string): Tok[] {
   const toks: Tok[] = []
-  for (let i = 0; ; ) {
+  for (let i = 0; ;) {
     TOKEN.lastIndex = i
     const m = TOKEN.exec(src)
     if (!m) {
@@ -137,17 +148,28 @@ export function evaluate(n: Node, get: Get): unknown {
       const a = evaluate(n.a, get)
       const b = evaluate(n.b, get)
       switch (n.op) {
-        case '==': return same(a, b)
-        case '!=': return !same(a, b)
-        case '<': return order(a, b) < 0
-        case '<=': return order(a, b) <= 0
-        case '>': return order(a, b) > 0
-        case '>=': return order(a, b) >= 0
-        case '+': return typeof a === 'string' || typeof b === 'string' ? str(a) + str(b) : clean(num(a) + num(b))
-        case '-': return clean(num(a) - num(b))
-        case '*': return clean(num(a) * num(b))
-        case '/': return clean(num(a) / num(b))
-        case '%': return clean(num(a) % num(b))
+        case '==':
+          return same(a, b)
+        case '!=':
+          return !same(a, b)
+        case '<':
+          return order(a, b) < 0
+        case '<=':
+          return order(a, b) <= 0
+        case '>':
+          return order(a, b) > 0
+        case '>=':
+          return order(a, b) >= 0
+        case '+':
+          return typeof a === 'string' || typeof b === 'string' ? str(a) + str(b) : clean(num(a) + num(b))
+        case '-':
+          return clean(num(a) - num(b))
+        case '*':
+          return clean(num(a) * num(b))
+        case '/':
+          return clean(num(a) / num(b))
+        case '%':
+          return clean(num(a) % num(b))
       }
     }
   }
@@ -173,11 +195,15 @@ export const numeric = (s: string): boolean => s.trim() !== '' && Number.isFinit
 
 /** Blank counts as 0, as in a spreadsheet. */
 const num = (x: unknown): number =>
-  x === null || x === undefined || x === '' ? 0
-  : typeof x === 'number' ? x
-  : typeof x === 'boolean' ? +x
-  : typeof x === 'string' && numeric(x) ? Number(x)
-  : NaN
+  x === null || x === undefined || x === ''
+    ? 0
+    : typeof x === 'number'
+      ? x
+      : typeof x === 'boolean'
+        ? +x
+        : typeof x === 'string' && numeric(x)
+          ? Number(x)
+          : NaN
 
 export const str = (x: unknown): string => (x == null ? '' : Array.isArray(x) ? x.map(str).join(', ') : String(x))
 
@@ -219,9 +245,30 @@ const numbers = (args: unknown[]) => filled(args).map(num).filter(Number.isFinit
 /** name → [function, fewest args, most args]. Lists (items.total) are flattened. */
 export const FUNCTIONS: Record<string, [(args: unknown[]) => unknown, number, number]> = {
   sum: [(a) => clean(numbers(a).reduce((s, x) => s + x, 0)), 1, Infinity],
-  avg: [(a) => { const n = numbers(a); return n.length ? clean(n.reduce((s, x) => s + x, 0) / n.length) : null }, 1, Infinity],
-  min: [(a) => { const n = numbers(a); return n.length ? n.reduce((m, x) => Math.min(m, x)) : null }, 1, Infinity],
-  max: [(a) => { const n = numbers(a); return n.length ? n.reduce((m, x) => Math.max(m, x)) : null }, 1, Infinity],
+  avg: [
+    (a) => {
+      const n = numbers(a)
+      return n.length ? clean(n.reduce((s, x) => s + x, 0) / n.length) : null
+    },
+    1,
+    Infinity,
+  ],
+  min: [
+    (a) => {
+      const n = numbers(a)
+      return n.length ? n.reduce((m, x) => Math.min(m, x)) : null
+    },
+    1,
+    Infinity,
+  ],
+  max: [
+    (a) => {
+      const n = numbers(a)
+      return n.length ? n.reduce((m, x) => Math.max(m, x)) : null
+    },
+    1,
+    Infinity,
+  ],
   count: [(a) => filled(a).length, 1, Infinity],
   round: [([x, d]) => (empty(x) ? null : round(num(x), num(d))), 1, 2],
   abs: [([x]) => (empty(x) ? null : clean(Math.abs(num(x)))), 1, 1],
@@ -229,5 +276,13 @@ export const FUNCTIONS: Record<string, [(args: unknown[]) => unknown, number, nu
   empty: [([x]) => empty(x), 1, 1],
   contains: [([h, n]) => (Array.isArray(h) ? h.some((x) => same(x, n)) : str(h).includes(str(n))), 2, 2],
   len: [([x]) => (Array.isArray(x) ? x.length : str(x).length), 1, 1],
-  days: [([from, to]) => { const a = day(from), b = day(to); return a === null || b === null ? null : b - a }, 2, 2],
+  days: [
+    ([from, to]) => {
+      const a = day(from),
+        b = day(to)
+      return a === null || b === null ? null : b - a
+    },
+    2,
+    2,
+  ],
 }

@@ -126,12 +126,18 @@ export function coerceOne({ f, kids }: C, v: unknown): unknown {
   if (v === undefined || v === null || v === '') return multiple ? [] : null
   const text = (x: unknown) => (typeof x === 'number' ? String(x) : x)
   switch (f.type) {
-    case 'number': return typeof v === 'string' && numeric(v) ? Number(v) : v
-    case 'boolean': return v === 'true' ? true : v === 'false' ? false : v
-    case 'string': return text(v)
-    case 'choice': return multiple ? (Array.isArray(v) ? v : [v]).map(text) : text(v)
-    case 'file': return multiple && !Array.isArray(v) ? [v] : v
-    default: return v
+    case 'number':
+      return typeof v === 'string' && numeric(v) ? Number(v) : v
+    case 'boolean':
+      return v === 'true' ? true : v === 'false' ? false : v
+    case 'string':
+      return text(v)
+    case 'choice':
+      return multiple ? (Array.isArray(v) ? v : [v]).map(text) : text(v)
+    case 'file':
+      return multiple && !Array.isArray(v) ? [v] : v
+    default:
+      return v
   }
 }
 
@@ -162,9 +168,12 @@ export function fit(f: Field, v: unknown): unknown {
       const n = typeof v === 'number' ? v : Number(v)
       return Number.isFinite(n) ? (f.decimals == null ? n : round(n, f.decimals)) : null
     }
-    case 'boolean': return truthy(v)
+    case 'boolean':
+      return truthy(v)
     case 'string':
-    case 'date': return str(v)
-    default: return v
+    case 'date':
+      return str(v)
+    default:
+      return v
   }
 }

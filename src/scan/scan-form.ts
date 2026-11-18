@@ -60,7 +60,7 @@ export async function scanForm(files: File[], opts: ScanOptions = {}): Promise<I
   if (pages.length > MAX_PAGES) throw new Error(`At most ${MAX_PAGES} pages at a time`)
 
   // a PDF made on a computer carries its words: read those, exactly and at once; OCR only the pages without them
-  let worker: Awaited<ReturnType<typeof TesseractLib['createWorker']>> | undefined
+  let worker: Awaited<ReturnType<(typeof TesseractLib)['createWorker']>> | undefined
   let tesseract: typeof TesseractLib | undefined
   if (pages.some((p) => !p.words)) {
     say('Getting the text reader ready… (the first time it downloads its language files)')
@@ -86,7 +86,14 @@ export async function scanForm(files: File[], opts: ScanOptions = {}): Promise<I
       const words: Word[] = (data.blocks ?? []).flatMap((b) =>
         b.paragraphs.flatMap((p) =>
           p.lines.flatMap((l) =>
-            l.words.map((w) => ({ text: w.text, confidence: w.confidence, x0: w.bbox.x0 / scale, y0: w.bbox.y0 / scale, x1: w.bbox.x1 / scale, y1: w.bbox.y1 / scale })),
+            l.words.map((w) => ({
+              text: w.text,
+              confidence: w.confidence,
+              x0: w.bbox.x0 / scale,
+              y0: w.bbox.y0 / scale,
+              x1: w.bbox.x1 / scale,
+              y1: w.bbox.y1 / scale,
+            })),
           ),
         ),
       )

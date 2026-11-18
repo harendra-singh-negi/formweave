@@ -7,7 +7,13 @@ const STORE = 'formweave-demo-schema' // where the demo keeps the builder's form
 /** Opens the builder on `schema` (or the demo's sample form). */
 export async function openBuilder(page: Page, schema?: FormSchema) {
   await page.goto('/#builder')
-  await page.evaluate(([key, s]) => { localStorage.clear(); if (s) localStorage.setItem(key, s) }, [STORE, schema ? JSON.stringify(schema) : ''] as const)
+  await page.evaluate(
+    ([key, s]) => {
+      localStorage.clear()
+      if (s) localStorage.setItem(key, s)
+    },
+    [STORE, schema ? JSON.stringify(schema) : ''] as const,
+  )
   await page.reload()
   await expect(page.locator('.fw-b-canvas form')).toBeVisible()
 }

@@ -15,9 +15,11 @@ export function strip(kids: Level, values: Values, fields: Record<string, FieldS
     if (!fields[path]?.visible) continue
     const v = values[key]
     out[key] =
-      c.f.type === 'group' ? strip(c.kids!, v as Values, fields, path + '.')
-      : c.f.type === 'list' ? (v as Values[]).map((row, i) => strip(c.kids!, row, fields, `${path}.${i}.`))
-      : v
+      c.f.type === 'group'
+        ? strip(c.kids!, v as Values, fields, path + '.')
+        : c.f.type === 'list'
+          ? (v as Values[]).map((row, i) => strip(c.kids!, row, fields, `${path}.${i}.`))
+          : v
   }
   return out
 }
@@ -33,7 +35,7 @@ export function initial(kids: Level, given?: unknown): Values {
       let rows: unknown[] = has && Array.isArray(src[key]) ? src[key] : (f.default ?? Array.from({ length: f.min ?? 0 }, () => ({})))
       if (f.rows) rows = f.rows.map((_, i) => rows[i] ?? {})
       out[key] = rows.map((r) => initial(sub!, r))
-    } else out[key] = has ? src[key] : ('default' in f ? f.default : null) ?? null
+    } else out[key] = has ? src[key] : (('default' in f ? f.default : null) ?? null)
   }
   return out
 }

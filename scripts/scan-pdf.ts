@@ -35,9 +35,20 @@ function words(pdf: string, page: number, dir: string, w: number): Word[] {
   const html = readFileSync(out, 'utf8')
   const pw = +(/<page width="([\d.]+)"/.exec(html)?.[1] ?? 1)
   const s = w / pw
-  const ent = (t: string) => t.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+  const ent = (t: string) =>
+    t
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
   return [...html.matchAll(/<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)<\/word>/g)].map((m) => ({
-    x0: +m[1] * s, y0: +m[2] * s, x1: +m[3] * s, y1: +m[4] * s, text: ent(m[5]), confidence: 99,
+    x0: +m[1] * s,
+    y0: +m[2] * s,
+    x1: +m[3] * s,
+    y1: +m[4] * s,
+    text: ent(m[5]),
+    confidence: 99,
   }))
 }
 
@@ -63,8 +74,11 @@ export function outline(schema: FormSchema): string {
   const field = (key: string, f: Field, pad: string) => {
     const label = typeof f.label === 'string' ? f.label : ''
     const extra =
-      f.type === 'choice' ? ` [${f.options.map((o) => (typeof o === 'string' ? o : o.value)).join(' | ')}]${f.multiple ? ' many' : ''}`
-      : f.type === 'list' ? ` rows=${f.rows ? JSON.stringify(f.rows) : `+${f.min ?? 0}`}` : ''
+      f.type === 'choice'
+        ? ` [${f.options.map((o) => (typeof o === 'string' ? o : o.value)).join(' | ')}]${f.multiple ? ' many' : ''}`
+        : f.type === 'list'
+          ? ` rows=${f.rows ? JSON.stringify(f.rows) : `+${f.min ?? 0}`}`
+          : ''
     out.push(`${pad}${f.type}${f.widget ? `/${f.widget}` : ''} "${label}"${extra}`)
     if (f.type === 'list' || f.type === 'group') for (const [k, c] of Object.entries(f.fields)) field(k, c, pad + '    ')
   }

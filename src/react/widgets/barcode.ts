@@ -15,25 +15,49 @@ export function Barcode(p: WidgetProps) {
     let stop = false
     let stream: MediaStream | undefined
     const Detector = (window as unknown as { BarcodeDetector: new () => { detect(v: HTMLVideoElement): Promise<{ rawValue: string }[]> } }).BarcodeDetector
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(async (s) => {
-      stream = s
-      if (stop || !video.current) return
-      video.current.srcObject = s
-      await video.current.play()
-      const detector = new Detector()
-      // oxlint-disable-next-line no-unmodified-loop-condition -- the effect's cleanup sets it
-      while (!stop) {
-        const [hit] = await detector.detect(video.current).catch(() => [])
-        if (hit) { p.set(hit.rawValue); p.touch(); setOn(false); return }
-        await new Promise((r) => setTimeout(r, 250))
-      }
-    }, (err: Error) => { setNote(err.message); setOn(false) })
-    return () => { stop = true; stream?.getTracks().forEach((t) => t.stop()) }
-  // oxlint-disable-next-line react-hooks/exhaustive-deps -- the camera starts and stops with `on` only
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(
+      async (s) => {
+        stream = s
+        if (stop || !video.current) return
+        video.current.srcObject = s
+        await video.current.play()
+        const detector = new Detector()
+        // oxlint-disable-next-line no-unmodified-loop-condition -- the effect's cleanup sets it
+        while (!stop) {
+          const [hit] = await detector.detect(video.current).catch(() => [])
+          if (hit) {
+            p.set(hit.rawValue)
+            p.touch()
+            setOn(false)
+            return
+          }
+          await new Promise((r) => setTimeout(r, 250))
+        }
+      },
+      (err: Error) => {
+        setNote(err.message)
+        setOn(false)
+      },
+    )
+    return () => {
+      stop = true
+      stream?.getTracks().forEach((t) => t.stop())
+    }
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- the camera starts and stops with `on` only
   }, [on])
-  return h('div', { className: 'fw-location' },
-    h('input', { ...aria(p), type: 'text', readOnly: p.readOnly, value: textValue(p.value), onBlur: p.touch, onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value) }),
+  return h(
+    'div',
+    { className: 'fw-location' },
+    h('input', {
+      ...aria(p),
+      type: 'text',
+      readOnly: p.readOnly,
+      value: textValue(p.value),
+      onBlur: p.touch,
+      onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value),
+    }),
     can && !p.readOnly && h('button', { type: 'button', 'aria-pressed': on, onClick: () => setOn(!on) }, c.labels.scan),
     on && h('video', { ref: video, className: 'fw-scan-video', muted: true, playsInline: true }),
-    note && h('span', { className: 'fw-help', role: 'status' }, note))
+    note && h('span', { className: 'fw-help', role: 'status' }, note),
+  )
 }

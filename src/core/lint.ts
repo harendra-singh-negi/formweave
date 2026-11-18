@@ -49,8 +49,7 @@ export function lint(schema: unknown): Issue[] {
   const fields = (fs: Record<string, unknown>, scope: Scope) => {
     for (const [key, f] of Object.entries(fs)) {
       const path = scope[0].prefix + key
-      if (!KEY.test(key) || RESERVED.has(key))
-        add(path, `"${key}" can't be a key: use letters, digits and _, starting with a letter (and not a formula word)`)
+      if (!KEY.test(key) || RESERVED.has(key)) add(path, `"${key}" can't be a key: use letters, digits and _, starting with a letter (and not a formula word)`)
       if (!isObj(f) || !TYPES.has(f.type)) {
         add(path, `Unknown type ${JSON.stringify(isObj(f) ? f.type : f)}`)
         continue
@@ -65,8 +64,7 @@ export function lint(schema: unknown): Issue[] {
       if (f.validators !== undefined && !(Array.isArray(f.validators) && f.validators.every((v: unknown) => typeof v === 'string')))
         add(`${path}.validators`, 'A list of validator names')
       if (f.type === 'string') {
-        if (f.format !== undefined && !Object.hasOwn(STRING_FORMATS, f.format))
-          add(`${path}.format`, `One of: ${Object.keys(STRING_FORMATS).join(', ')}`)
+        if (f.format !== undefined && !Object.hasOwn(STRING_FORMATS, f.format)) add(`${path}.format`, `One of: ${Object.keys(STRING_FORMATS).join(', ')}`)
         if (f.pattern !== undefined) {
           if (typeof f.pattern !== 'string' || f.pattern.length > 200) add(`${path}.pattern`, 'A regular expression of up to 200 characters')
           else
@@ -86,13 +84,24 @@ export function lint(schema: unknown): Issue[] {
         if (!values.length) add(`${path}.options`, 'A choice needs options')
         else if (!values.every((v) => typeof v === 'string')) add(`${path}.options`, 'Option values are text')
         else if (new Set(values).size !== values.length) add(`${path}.options`, 'An option value repeats')
-        if (f.columns !== undefined && !(Number.isInteger(f.columns) && f.columns >= 1 && f.columns <= 12)) add(`${path}.columns`, 'Columns is a whole number from 1 to 12')
+        if (f.columns !== undefined && !(Number.isInteger(f.columns) && f.columns >= 1 && f.columns <= 12))
+          add(`${path}.columns`, 'Columns is a whole number from 1 to 12')
         if (Array.isArray(f.options))
-          f.options.forEach((o: unknown, i: number) => { if (isObj(o) && o.visible !== undefined && typeof o.visible !== 'boolean') formula(`${path}.options.${i}.visible`, o.visible, scope) })
+          f.options.forEach((o: unknown, i: number) => {
+            if (isObj(o) && o.visible !== undefined && typeof o.visible !== 'boolean') formula(`${path}.options.${i}.visible`, o.visible, scope)
+          })
       }
-      if (f.type === 'list' && f.rows !== undefined && !(Array.isArray(f.rows) && f.rows.length && f.rows.every((r: unknown) => typeof r === 'string' || isObj(r))))
+      if (
+        f.type === 'list' &&
+        f.rows !== undefined &&
+        !(Array.isArray(f.rows) && f.rows.length && f.rows.every((r: unknown) => typeof r === 'string' || isObj(r)))
+      )
         add(`${path}.rows`, 'Fixed rows are a list of texts')
-      if (f.type === 'list' && f.totals !== undefined && !(Array.isArray(f.totals) && f.totals.every((k: unknown) => typeof k === 'string' && isObj(f.fields) && f.fields[k]?.type === 'number')))
+      if (
+        f.type === 'list' &&
+        f.totals !== undefined &&
+        !(Array.isArray(f.totals) && f.totals.every((k: unknown) => typeof k === 'string' && isObj(f.fields) && f.fields[k]?.type === 'number'))
+      )
         add(`${path}.totals`, 'Totals are keys of number columns')
       if (f.type === 'group' || f.type === 'list') {
         if (isObj(f.fields)) fields(f.fields, [{ fields: f.fields, prefix: path + '.' }, ...scope])
@@ -132,10 +141,18 @@ export function lint(schema: unknown): Issue[] {
           add(`${path}.children`, 'Each page is a section')
         if (item.type === 'pages' && item.position !== undefined && !['top', 'left', 'right', 'bottom'].includes(item.position as string))
           add(`${path}.position`, 'Position is top, left, right or bottom')
-        if (item.type === 'section' && item.look !== undefined && !['box', 'band', 'line'].includes(item.look as string)) add(`${path}.look`, 'Look is box, band or line')
-        if (item.type === 'content' && item.as !== undefined && !['heading', 'text', 'rich', 'divider', 'image'].includes(item.as as string)) add(`${path}.as`, 'As is heading, text, rich, divider or image')
-        if (item.type === 'content' && item.src !== undefined && !(typeof item.src === 'string' && SAFE_IMAGE.test(item.src))) add(`${path}.src`, 'An image is an https: address or a data:image/png, jpeg, gif or webp URL')
-        if (item.type === 'grid' && item.widths !== undefined && !(Array.isArray(item.widths) && item.widths.length && item.widths.every((w: unknown) => typeof w === 'number' && w > 0 && w <= 100))) add(`${path}.widths`, 'Widths are numbers above 0, one per column')
+        if (item.type === 'section' && item.look !== undefined && !['box', 'band', 'line'].includes(item.look as string))
+          add(`${path}.look`, 'Look is box, band or line')
+        if (item.type === 'content' && item.as !== undefined && !['heading', 'text', 'rich', 'divider', 'image'].includes(item.as as string))
+          add(`${path}.as`, 'As is heading, text, rich, divider or image')
+        if (item.type === 'content' && item.src !== undefined && !(typeof item.src === 'string' && SAFE_IMAGE.test(item.src)))
+          add(`${path}.src`, 'An image is an https: address or a data:image/png, jpeg, gif or webp URL')
+        if (
+          item.type === 'grid' &&
+          item.widths !== undefined &&
+          !(Array.isArray(item.widths) && item.widths.length && item.widths.every((w: unknown) => typeof w === 'number' && w > 0 && w <= 100))
+        )
+          add(`${path}.widths`, 'Widths are numbers above 0, one per column')
         if (item.type === 'grid' && item.look !== undefined && item.look !== 'lines') add(`${path}.look`, "A grid's look is 'lines'")
         if (item.type !== 'content') layout(item.children, `${path}.children`)
       }

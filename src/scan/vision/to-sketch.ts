@@ -29,16 +29,19 @@ export function toSketch(pages: Item[][]): Sketch {
     }
     const top = pages[n][0]
     const last = prev[prev.length - 1]
-    if (top && 'field' in top && !top.field.label && top.field.kind === 'long_text' && last && 'field' in last && last.field.kind === 'long_text') pages[n].shift()
+    if (top && 'field' in top && !top.field.label && top.field.kind === 'long_text' && last && 'field' in last && last.field.kind === 'long_text')
+      pages[n].shift()
   }
   // words printed on most pages (a running header or footer) are not part of the form
   if (pages.length >= 3) {
     const seen = new Map<string, number>()
     for (const items of pages) for (const t of new Set(items.map((it) => ('heading' in it ? it.heading : it.field.label)))) seen.set(t, (seen.get(t) ?? 0) + 1)
-    pages = pages.map((items) => items.filter((it) => {
-      const t = 'heading' in it ? it.heading : it.field.label
-      return !t || ('field' in it && it.field.kind === 'table') || (seen.get(t) ?? 0) < Math.max(3, 0.5 * pages.length)
-    }))
+    pages = pages.map((items) =>
+      items.filter((it) => {
+        const t = 'heading' in it ? it.heading : it.field.label
+        return !t || ('field' in it && it.field.kind === 'table') || (seen.get(t) ?? 0) < Math.max(3, 0.5 * pages.length)
+      }),
+    )
   }
   // a box or line with no words for it, or only a number (a page number), can't be asked about
   const nameless = (f: SketchField) => f.kind !== 'table' && !f.options.length && (!f.label || /^\d+$/.test(f.label))

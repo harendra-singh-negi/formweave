@@ -18,7 +18,8 @@ export const columnKind = (label: string): ColumnKind => {
   const k = kindOf(label, 'text')
   return k === 'number' || k === 'money' || k === 'date' || k === 'long_text' ? k : 'text'
 }
-export const SCALE_WORDS = /\b(?:below|above|average|poor|fair|good|very good|excellent|satisfactory|unsatisfactory|low|medium|high|never|rarely|sometimes|often|always|agree|disagree|neutral)\b/i
+export const SCALE_WORDS =
+  /\b(?:below|above|average|poor|fair|good|very good|excellent|satisfactory|unsatisfactory|low|medium|high|never|rarely|sometimes|often|always|agree|disagree|neutral)\b/i
 export const NUMBERING = /^(?:s\.?\s*no\.?|sr\.?\s*no\.?|no\.?|#|sl\.?\s*no\.?|क्र\.?\s*सं\.?)$/i
 export const CHOICE_WORDS = /^(yes|no|n\/?a|ok|not ok|done|pass|fail|true|false|हाँ|हां|नहीं|✓|✔|x)$/i
 

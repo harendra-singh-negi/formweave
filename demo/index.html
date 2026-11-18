@@ -1,66 +1,209 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>formweave demo</title>
-  <style>
-    :root { --bg: #f6f8fa; --card: #fff; --line: #d1d9e0; --text: #1f2328; --muted: #59636e; --accent: #0969da; color-scheme: light dark; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #010409; --card: #0d1117; --line: #3d444d; --text: #e6edf3; --muted: #9198a1; --accent: #4493f8; } }
-    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
-    header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.25rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--line); background: var(--card); }
-    header strong { font-size: 1.125rem; }
-    nav { display: flex; gap: 0.25rem; }
-    nav a { padding: 0.375rem 0.75rem; border-radius: 6px; color: var(--muted); text-decoration: none; }
-    nav a[aria-current=page] { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
-    header button { margin-left: auto; font: inherit; padding: 0.3rem 0.7rem; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: inherit; cursor: pointer; }
-    main { max-width: 80rem; margin: 0 auto; padding: 1rem; }
-    /* the builder takes the whole screen; filling in keeps a readable width */
-    main:has(#builder:not([hidden])) { max-width: none; }
-    .look { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-left: auto; font-size: 0.875rem; color: var(--muted); }
-    .look label { display: inline-flex; align-items: center; gap: 0.375rem; }
-    .look select, .look input { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 6px; }
-    .look input[type=color] { width: 2.25rem; height: 1.75rem; padding: 0.125rem; }
-    header .look + button { margin-left: 0; }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 1.25rem; min-width: 0; }
-    .fill { display: grid; gap: 1rem; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
-    @media (max-width: 50rem) { .fill { grid-template-columns: 1fr; } }
-    h2 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 0.5rem; }
-    pre { font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 0 0 1rem; }
-    .lang { display: block; margin-bottom: 1rem; font-size: 0.875rem; color: var(--muted); }
-    [hidden] { display: none !important; }
-  </style>
-</head>
-<body>
-  <header>
-    <strong>formweave</strong>
-    <nav aria-label="Demo">
-      <a href="#builder">Build</a>
-      <a href="#fill">Fill</a>
-    </nav>
-    <div class="look" id="look" title="The builder takes your colours, font, words and panel sizes: see README → Builder looks">
-      <label>Accent <input id="accent" type="color" value="#0969da" /></label>
-      <label>Font <select id="font"><option value="">System</option><option value="Georgia, serif">Georgia</option><option value="ui-monospace, monospace">Mono</option></select></label>
-      <label>Corners <select id="radius"><option value="6px">Round</option><option value="0">Square</option><option value="14px">Soft</option></select></label>
-      <label>Builder words <select id="words"><option value="en">English</option><option value="hi">हिंदी</option></select></label>
-    </div>
-    <button id="reset" type="button" title="Forget your changes and load the sample form">Reset demo</button>
-  </header>
-  <main>
-    <section id="builder" class="card" aria-label="Builder"><formweave-builder id="b"></formweave-builder></section>
-    <section id="fill" class="fill" aria-label="Fill" hidden>
-      <div class="card">
-        <label class="lang">Language <select id="lang"><option value="en">English</option><option value="hi">हिंदी</option></select></label>
-        <formweave-form id="f"></formweave-form>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>formweave demo</title>
+    <style>
+      :root {
+        --bg: #f6f8fa;
+        --card: #fff;
+        --line: #d1d9e0;
+        --text: #1f2328;
+        --muted: #59636e;
+        --accent: #0969da;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #010409;
+          --card: #0d1117;
+          --line: #3d444d;
+          --text: #e6edf3;
+          --muted: #9198a1;
+          --accent: #4493f8;
+        }
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1.25rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--line);
+        background: var(--card);
+      }
+      header strong {
+        font-size: 1.125rem;
+      }
+      nav {
+        display: flex;
+        gap: 0.25rem;
+      }
+      nav a {
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        color: var(--muted);
+        text-decoration: none;
+      }
+      nav a[aria-current='page'] {
+        color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        font-weight: 600;
+      }
+      header button {
+        margin-left: auto;
+        font: inherit;
+        padding: 0.3rem 0.7rem;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--card);
+        color: inherit;
+        cursor: pointer;
+      }
+      main {
+        max-width: 80rem;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+      /* the builder takes the whole screen; filling in keeps a readable width */
+      main:has(#builder:not([hidden])) {
+        max-width: none;
+      }
+      .look {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1rem;
+        margin-left: auto;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .look label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+      }
+      .look select,
+      .look input {
+        font: inherit;
+        color: var(--text);
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+      }
+      .look input[type='color'] {
+        width: 2.25rem;
+        height: 1.75rem;
+        padding: 0.125rem;
+      }
+      header .look + button {
+        margin-left: 0;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 1.25rem;
+        min-width: 0;
+      }
+      .fill {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        align-items: start;
+      }
+      @media (max-width: 50rem) {
+        .fill {
+          grid-template-columns: 1fr;
+        }
+      }
+      h2 {
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin: 0 0 0.5rem;
+      }
+      pre {
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 0 0 1rem;
+      }
+      .lang {
+        display: block;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>formweave</strong>
+      <nav aria-label="Demo">
+        <a href="#builder">Build</a>
+        <a href="#fill">Fill</a>
+      </nav>
+      <div class="look" id="look" title="The builder takes your colours, font, words and panel sizes: see README → Builder looks">
+        <label>Accent <input id="accent" type="color" value="#0969da" /></label>
+        <label
+          >Font
+          <select id="font">
+            <option value="">System</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="ui-monospace, monospace">Mono</option>
+          </select></label
+        >
+        <label
+          >Corners
+          <select id="radius">
+            <option value="6px">Round</option>
+            <option value="0">Square</option>
+            <option value="14px">Soft</option>
+          </select></label
+        >
+        <label
+          >Builder words
+          <select id="words">
+            <option value="en">English</option>
+            <option value="hi">हिंदी</option>
+          </select></label
+        >
       </div>
-      <div class="card">
-        <h2>What your app receives on submit</h2>
-        <pre id="sent">Nothing submitted yet.</pre>
-        <h2>Live state</h2>
-        <pre id="out"></pre>
-      </div>
-    </section>
-  </main>
-  <script type="module" src="./main.ts"></script>
-</body>
+      <button id="reset" type="button" title="Forget your changes and load the sample form">Reset demo</button>
+    </header>
+    <main>
+      <section id="builder" class="card" aria-label="Builder"><formweave-builder id="b"></formweave-builder></section>
+      <section id="fill" class="fill" aria-label="Fill" hidden>
+        <div class="card">
+          <label class="lang"
+            >Language
+            <select id="lang">
+              <option value="en">English</option>
+              <option value="hi">हिंदी</option>
+            </select></label
+          >
+          <formweave-form id="f"></formweave-form>
+        </div>
+        <div class="card">
+          <h2>What your app receives on submit</h2>
+          <pre id="sent">Nothing submitted yet.</pre>
+          <h2>Live state</h2>
+          <pre id="out"></pre>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
 </html>

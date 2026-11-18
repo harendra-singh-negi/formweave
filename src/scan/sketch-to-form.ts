@@ -13,10 +13,19 @@ export const RESERVED = new Set(['context', 'and', 'or', 'not', 'true', 'false',
 /** A safe, unique key: the given one if usable, else one made from the label, else field1… */
 export function keyFor(key: unknown, label: string, taken: Set<string>): string {
   const camel = (s: string) =>
-    s.replace(/[^A-Za-z0-9]+/g, ' ').trim().split(' ').filter(Boolean).slice(0, 5)
-      .map((w, i) => (i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase())).join('')
+    s
+      .replace(/[^A-Za-z0-9]+/g, ' ')
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 5)
+      .map((w, i) => (i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase()))
+      .join('')
   let k = (typeof key === 'string' ? key.replace(/[^A-Za-z0-9_]/g, '') : '').replace(/^[^A-Za-z]+/, '')
-  if (!k) k = camel(label).replace(/^[^A-Za-z]+/, '').replace(/^[A-Z]/, (c) => c.toLowerCase())
+  if (!k)
+    k = camel(label)
+      .replace(/^[^A-Za-z]+/, '')
+      .replace(/^[A-Z]/, (c) => c.toLowerCase())
   if (!k) k = 'field'
   k = k.slice(0, 40)
   if (RESERVED.has(k)) k += '_'
@@ -27,7 +36,13 @@ export function keyFor(key: unknown, label: string, taken: Set<string>): string 
 }
 
 export function choices(raw: Record<string, any>): string[] {
-  return [...new Set(list(raw.options).map((o) => words(o, 100)).filter(Boolean))].slice(0, 200)
+  return [
+    ...new Set(
+      list(raw.options)
+        .map((o) => words(o, 100))
+        .filter(Boolean),
+    ),
+  ].slice(0, 200)
 }
 
 export function toField(raw: Record<string, any>, at: string, warnings: string[]): Field | undefined {
@@ -48,23 +63,44 @@ export function toField(raw: Record<string, any>, at: string, warnings: string[]
     const cols = typeof raw.perRow === 'number' && raw.perRow >= 1 && raw.perRow <= 6 && options.length > raw.perRow ? { columns: Math.round(raw.perRow) } : {}
     return multiple
       ? { type: 'choice', multiple: true, options, ...cols, ...base, ...req }
-      : { type: 'choice', ...(short ? { widget: 'buttons' } : options.length <= 4 || cols.columns ? { widget: 'radio' } : {}), options, ...cols, ...base, ...req }
+      : {
+          type: 'choice',
+          ...(short ? { widget: 'buttons' } : options.length <= 4 || cols.columns ? { widget: 'radio' } : {}),
+          options,
+          ...cols,
+          ...base,
+          ...req,
+        }
   }
   switch (raw.kind as Kind) {
-    case 'text': return { type: 'string', ...base, ...req, ...max }
-    case 'long_text': return { type: 'string', widget: 'textarea', ...base, ...req }
-    case 'number': return { type: 'number', ...base, ...req }
-    case 'money': return { type: 'number', format: 'currency', decimals: 2, ...base, ...req }
-    case 'date': return { type: 'date', ...base, ...req }
-    case 'time': return { type: 'date', format: 'time', ...base, ...req }
-    case 'email': return { type: 'string', format: 'email', ...base, ...req }
-    case 'phone': return { type: 'string', format: 'phone', ...base, ...req }
-    case 'yes_no': return { type: 'choice', widget: 'radio', options: ['Yes', 'No'], ...base, ...req }
-    case 'checkbox': return { type: 'boolean', ...base, ...req }
-    case 'one_of': return pick(false)
-    case 'many_of': return pick(true)
-    case 'signature': return { type: 'string', widget: 'signature', ...base, ...req }
-    case 'file': return { type: 'file', ...base, ...req }
+    case 'text':
+      return { type: 'string', ...base, ...req, ...max }
+    case 'long_text':
+      return { type: 'string', widget: 'textarea', ...base, ...req }
+    case 'number':
+      return { type: 'number', ...base, ...req }
+    case 'money':
+      return { type: 'number', format: 'currency', decimals: 2, ...base, ...req }
+    case 'date':
+      return { type: 'date', ...base, ...req }
+    case 'time':
+      return { type: 'date', format: 'time', ...base, ...req }
+    case 'email':
+      return { type: 'string', format: 'email', ...base, ...req }
+    case 'phone':
+      return { type: 'string', format: 'phone', ...base, ...req }
+    case 'yes_no':
+      return { type: 'choice', widget: 'radio', options: ['Yes', 'No'], ...base, ...req }
+    case 'checkbox':
+      return { type: 'boolean', ...base, ...req }
+    case 'one_of':
+      return pick(false)
+    case 'many_of':
+      return pick(true)
+    case 'signature':
+      return { type: 'string', widget: 'signature', ...base, ...req }
+    case 'file':
+      return { type: 'file', ...base, ...req }
     case 'table': {
       const fields: Fields = {}
       const taken = new Set<string>()
@@ -78,7 +114,10 @@ export function toField(raw: Record<string, any>, at: string, warnings: string[]
         warnings.push(`${at}: a table without columns was left out`)
         return
       }
-      const rows = list(raw.rows).map((r) => words(r, 200)).filter(Boolean).slice(0, 200)
+      const rows = list(raw.rows)
+        .map((r) => words(r, 200))
+        .filter(Boolean)
+        .slice(0, 200)
       if (rows.length >= 2) {
         const rowHeading = words(raw.rowHeading)
         // a question per row answered from one short scale (Yes / No, Poor … Excellent): a matrix, as on paper
@@ -133,7 +172,8 @@ export function sketchToForm(sketch: unknown): Imported {
   if (typeof s.skipped === 'number' && s.skipped > 0) warnings.push(`${s.skipped} lines or boxes had no words saying what they are for, so they were left out`)
   const title = words(s.title)
   // one untitled part needs no layout
-  const plain = layout.length <= 1 && !layout.some((l) => typeof l === 'object' && l.type === 'section' && (l.title || l.children.some((c) => typeof c === 'object')))
+  const plain =
+    layout.length <= 1 && !layout.some((l) => typeof l === 'object' && l.type === 'section' && (l.title || l.children.some((c) => typeof c === 'object')))
   const schema: FormSchema = { version: 1, ...(title ? { title } : {}), fields, ...(plain ? {} : { layout }) }
   const issues = lint(schema)
   if (issues.length) throw new Error(`Could not build a valid form: ${issues[0].path}: ${issues[0].message}`)

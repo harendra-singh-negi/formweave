@@ -13,23 +13,23 @@ npm install formweave
 
 Only add what you use:
 
-| You use | Also install |
-|---|---|
-| `formweave` (the engine: schemas, lint, validate, createForm, JSON Schema) | nothing |
-| `formweave/react`, `formweave/builder`, `formweave/element` | `react` and `react-dom` (18 or newer) |
-| `formweave/scan` | `tesseract.js` (6+), and `pdfjs-dist` (5+) to read PDFs |
-| `formweave/samples` | nothing |
+| You use                                                                    | Also install                                            |
+| -------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `formweave` (the engine: schemas, lint, validate, createForm, JSON Schema) | nothing                                                 |
+| `formweave/react`, `formweave/builder`, `formweave/element`                | `react` and `react-dom` (18 or newer)                   |
+| `formweave/scan`                                                           | `tesseract.js` (6+), and `pdfjs-dist` (5+) to read PDFs |
+| `formweave/samples`                                                        | nothing                                                 |
 
-| Entry point | What it gives |
-|---|---|
-| `formweave` | schema types, `lint`, `validate`, `createForm`, `text`, `toJsonSchema`, `fromJsonSchema` |
-| `formweave/react` | `<Form>`, `useForm`, `WIDGETS`, `cleanHtml` |
-| `formweave/element` | `<formweave-form>` and `<formweave-builder>` for Angular, Vue, Svelte or plain HTML |
-| `formweave/builder` | `<Builder>`, `BUILDER_LABELS`, and the schema edits it is made of |
-| `formweave/scan` | `scanForm`, `sketchToForm` |
-| `formweave/samples` | `SAMPLES`: ready-made forms |
-| `formweave/style.css` | the look of forms |
-| `formweave/builder.css` | the look of the builder (with `style.css`) |
+| Entry point             | What it gives                                                                            |
+| ----------------------- | ---------------------------------------------------------------------------------------- |
+| `formweave`             | schema types, `lint`, `validate`, `createForm`, `text`, `toJsonSchema`, `fromJsonSchema` |
+| `formweave/react`       | `<Form>`, `useForm`, `WIDGETS`, `cleanHtml`                                              |
+| `formweave/element`     | `<formweave-form>` and `<formweave-builder>` for Angular, Vue, Svelte or plain HTML      |
+| `formweave/builder`     | `<Builder>`, `BUILDER_LABELS`, and the schema edits it is made of                        |
+| `formweave/scan`        | `scanForm`, `sketchToForm`                                                               |
+| `formweave/samples`     | `SAMPLES`: ready-made forms                                                              |
+| `formweave/style.css`   | the look of forms                                                                        |
+| `formweave/builder.css` | the look of the builder (with `style.css`)                                               |
 
 The package is ESM only, with TypeScript types. Node 20 or newer runs it (checked on 20, 22 and 24 for every change); bundlers (Vite, webpack, Next.js,
 Angular) take it as it is. `require('formweave')` works where Node can load ES modules that way (Node 20.19+, 22.12+).
@@ -46,18 +46,22 @@ const schema: FormSchema = {
   fields: {
     employment: { type: 'choice', options: ['Salaried', 'Self Employed'], required: true },
     business: { type: 'string', visible: "employment == 'Self Employed'", required: true },
-    items: { type: 'list', min: 1, fields: {
-      qty: { type: 'number', min: 1 },
-      price: { type: 'number', decimals: 2 },
-      total: { type: 'number', value: 'qty * price', decimals: 2 },
-    } },
+    items: {
+      type: 'list',
+      min: 1,
+      fields: {
+        qty: { type: 'number', min: 1 },
+        price: { type: 'number', decimals: 2 },
+        total: { type: 'number', value: 'qty * price', decimals: 2 },
+      },
+    },
     gst: { type: 'number', value: 'sum(items.total) * 18 / 100', decimals: 2 },
   },
 }
 
-lint(schema)                                // [] — run it on any schema you load
+lint(schema) // [] — run it on any schema you load
 const { ok, values, errors } = validate(schema, req.body) // on your server
-const form = createForm(schema)             // in any UI: set(), subscribe(), submit()
+const form = createForm(schema) // in any UI: set(), subscribe(), submit()
 ```
 
 ## Show it
@@ -66,7 +70,7 @@ const form = createForm(schema)             // in any UI: set(), subscribe(), su
 // React
 import { Form } from 'formweave/react'
 import 'formweave/style.css'
-<Form schema={schema} locale="hi" widgets={{ signature: MySignaturePad }} onSubmit={save} />
+;<Form schema={schema} locale="hi" widgets={{ signature: MySignaturePad }} onSubmit={save} />
 ```
 
 ```html
@@ -95,7 +99,14 @@ import 'formweave/style.css'
 <Form
   schema={schema}
   className="my-form"
-  classes={{ field: 'mb-3', label: 'form-label', input: 'form-control', error: 'invalid-feedback d-block', button: 'btn btn-outline-secondary', submit: 'btn btn-primary' }}
+  classes={{
+    field: 'mb-3',
+    label: 'form-label',
+    input: 'form-control',
+    error: 'invalid-feedback d-block',
+    button: 'btn btn-outline-secondary',
+    submit: 'btn btn-primary',
+  }}
 />
 ```
 
@@ -114,9 +125,9 @@ import 'formweave/style.css'
 
 ```tsx
 import { Builder } from 'formweave/builder'
-import 'formweave/style.css'   // the forms on its canvas and in its panels
+import 'formweave/style.css' // the forms on its canvas and in its panels
 import 'formweave/builder.css' // the builder itself
-<Builder schema={saved} onChange={(schema, issues) => issues.length || save(schema)} />
+;<Builder schema={saved} onChange={(schema, issues) => issues.length || save(schema)} />
 ```
 
 Or `<formweave-builder>` from `formweave/element`, which fires `fw-change` with `{ schema, issues }`.
@@ -145,10 +156,10 @@ The builder is yours to fit into your app: its words, which parts show, and how 
 ```tsx
 <Builder
   schema={saved}
-  tabs={['design', 'preview']}                 // which tabs, in this order; the first opens
+  tabs={['design', 'preview']} // which tabs, in this order; the first opens
   palette={['text', 'email', 'phone', 'Choices']} // only these inputs (by key) or groups (by name)
-  samples={false}                               // or your own: [{ id, title, about, schema }]
-  help={false}                                  // no Help button
+  samples={false} // or your own: [{ id, title, about, schema }]
+  help={false} // no Help button
   labels={{ design: 'डिज़ाइन', undo: 'पूर्ववत', add: 'जोड़ें' }} // any of BUILDER_LABELS, e.g. another language
   className="my-builder"
   vars={{ '--fw-accent': '#7c3aed', '--fw-b-font': 'Georgia, serif', '--fw-radius': '0', '--fw-b-palette': '16rem', '--fw-b-settings': '26rem' }}
@@ -157,13 +168,13 @@ The builder is yours to fit into your app: its words, which parts show, and how 
 
 `<formweave-builder>` takes the same as properties (`tabs`, `palette`, `samples`, `labels`, `help`, `vars`).
 
-| Variable | What |
-|---|---|
-| `--fw-accent`, `--fw-text`, `--fw-muted`, `--fw-bg`, `--fw-border`, `--fw-error` | colours of the builder and its panels |
-| `--fw-radius` | corners |
-| `--fw-b-font` | the builder's font (default: your page's) |
-| `--fw-b-palette`, `--fw-b-settings` | widths of the palette and the settings panel |
-| `--fw-b-top` | how far below the top the tab bar's sticky panels start (raise it under a fixed app header) |
+| Variable                                                                         | What                                                                                        |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `--fw-accent`, `--fw-text`, `--fw-muted`, `--fw-bg`, `--fw-border`, `--fw-error` | colours of the builder and its panels                                                       |
+| `--fw-radius`                                                                    | corners                                                                                     |
+| `--fw-b-font`                                                                    | the builder's font (default: your page's)                                                   |
+| `--fw-b-palette`, `--fw-b-settings`                                              | widths of the palette and the settings panel                                                |
+| `--fw-b-top`                                                                     | how far below the top the tab bar's sticky panels start (raise it under a fixed app header) |
 
 The form on the canvas keeps its own colours and corners: the `--fw-*` variables, `className` and `classes` you give `<Form>` (see Show it), so what you design is what people get. Its font follows the page around it, as in your app. The palette's group names and the settings panels' own wording are in English for now. The demo's header has accent, font, corner and language controls to try these out.
 
@@ -171,14 +182,14 @@ The form on the canvas keeps its own colours and corners: the `--fw-*` variables
 
 Six ready-made forms show every input and layout piece at work, with made-up names and data:
 
-| Sample | Shows |
-|---|---|
-| Every input | all inputs of the palette, a section per group |
-| Cake order | steps, a field shown only for "Other", cascading town by region, a table with a Total row, calculated tax and total |
-| Gym membership | tabs on the left, a name group, plan buttons, dates with limits, a slider, tags, stars, OTP, a signature |
-| Garden club survey | an accordion, radios and tick boxes in columns, a rating matrix with a comment column, a percent, rich text |
-| Library card | the paper look, a picture beside coloured text, label \| text rows, section looks, a table with fixed rows of tick boxes |
-| Kite festival registration | guests as repeating cards, a calculated count, a colour, a map, several photos, markdown |
+| Sample                     | Shows                                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Every input                | all inputs of the palette, a section per group                                                                           |
+| Cake order                 | steps, a field shown only for "Other", cascading town by region, a table with a Total row, calculated tax and total      |
+| Gym membership             | tabs on the left, a name group, plan buttons, dates with limits, a slider, tags, stars, OTP, a signature                 |
+| Garden club survey         | an accordion, radios and tick boxes in columns, a rating matrix with a comment column, a percent, rich text              |
+| Library card               | the paper look, a picture beside coloured text, label \| text rows, section looks, a table with fixed rows of tick boxes |
+| Kite festival registration | guests as repeating cards, a calculated count, a colour, a map, several photos, markdown                                 |
 
 In the builder: Scan / Import → Samples (Undo brings back your form). In code:
 
@@ -221,6 +232,7 @@ const scan = (files: File[], progress: (m: string) => void) =>
 ```
 
 What it turns into fields:
+
 - **Answer lines** after a label ("Name: ______"), or with the label below or above them. Dotted lines, dashes and typed underscores count as answer lines too.
 - **Dates and long answers:** `__/__/____` becomes a date. Several lines under one label become one long answer.
 - **Tick boxes:**
@@ -231,17 +243,18 @@ What it turns into fields:
 - **Boxes to fill**, with the label inside them, beside them or above them. A box with a lot of room becomes a long answer.
 - **One box per character** (PAN, PIN code): one text field whose length is the number of boxes.
 - **Tables:**
-  - An empty table becomes a table people add rows to. It starts with as many rows as the paper has, and a "No." column is left out because rows are numbered anyway. Lines in columns under headings (RANK  NAME  SIGNATURE  DATE) count as a table too, and so do numbered empty rows.
+  - An empty table becomes a table people add rows to. It starts with as many rows as the paper has, and a "No." column is left out because rows are numbered anyway. Lines in columns under headings (RANK NAME SIGNATURE DATE) count as a table too, and so do numbered empty rows.
   - A table whose first column lists questions becomes a table with a fixed row per question. Its box columns become one choice (1 2 3 4 5 N/S, Yes / No), and "Yes/No" printed in the cells becomes the choices.
   - Column lines that stop at some rows (a title row, "Label | value" rows, then the table) are read part by part.
   - A table printed again at the top of the next page is kept once.
   - Columns already printed full of data (a payslip) are not asked for.
 - **Kinds from the label:** email, phone, date, time, amount, number, signature, photo or file, and address or remarks.
 - **Required** when the label has a `*`.
-- **Fields side by side** on one line ("SHIP ___  GT ___") stay side by side, in a grid that becomes one column on a phone. "LAST PSC INSPECTION: Place ___ Date ___" names both fields after the lead-in.
+- **Fields side by side** on one line ("SHIP ___ GT ___") stay side by side, in a grid that becomes one column on a phone. "LAST PSC INSPECTION: Place ___ Date ___" names both fields after the lead-in.
 - **Headings** (numbered, in capitals or larger) become sections, and the first one becomes the title. Running page headers and footers, and lines or boxes that nothing names, are left out, and the warnings say how many.
 
 Good to know:
+
 - **Languages:** pass Tesseract's language codes, for example `['eng', 'hin']`. The first scan downloads the engine and the language files (a few MB) from a public CDN and caches them. Pass `tesseract: { workerPath, corePath, langPath }` to serve them yourself and work offline.
 - **What reads well:** clear printed forms, such as scans, screenshots, PDFs, and photos taken straight on.
 - **What reads less well:** skewed or curled photos, handwriting, and forms without lines or boxes.
@@ -258,24 +271,26 @@ Every field can have `visible`, `readOnly`, `check`, `validators` and `messages`
 
 The built-in widgets and formats. The builder's palette lists 67 ready-made inputs in groups, with a search box. Some are groups of fields: date, time and number ranges (To is checked against From), address, full name and cascading dropdowns. Others are text fields with a pattern: PAN, Aadhaar, GSTIN, IFSC, PIN code and bank account. Any of them can be a column of a table.
 
-| Type | `widget` / `format` |
-| --- | --- |
-| `string` | `textarea`, `password`, `search`, `phone` (country code + number, `country: 'IN'` first), `otp` (one box per character, `maxLength` boxes), `signature` (drawn; the value is an SVG drawing), `location` ("lat,lng", with a "Use my location" button), `barcode` (typed, or read with the camera where the browser has BarcodeDetector), `markdown`, `code`, `json`, `hidden`; formats `email`, `url`, `phone`, `color`, `country` (ISO code, names in the form's language), `card` (Luhn-checked), `iban` (check digits), `json` |
-| `number` | `stepper` (− / +), `slider` (`min`..`max`), `rating` (`max` stars, 5 by default), `hidden`; formats `currency` (with `currency: 'INR'` it shows ₹ in front) and `percent` |
-| `boolean` | a checkbox, or `toggle` |
-| `choice` | `select`, `radio` (radio group), `buttons` (button group; checkboxes with `multiple`), `autocomplete` (type to search), `tags` (with `allowOther`), a checkbox group with `multiple`, or `multiple` with `select`. An option's `visible` formula makes cascading choices: `{ value: 'Pune', visible: "state == 'Maharashtra'" }`. `allowOther` accepts typed answers that aren't options |
-| `date` | formats `date`, `time`, `datetime`, `month`, `week`, `year` |
-| `file` | a drop zone and a picker; `camera` opens the phone's camera. `accept` limits it to images, video, audio or documents |
-| `list` | rows as cards, or `table`. `rows: ['Monday', 'Tuesday']` makes a table with fixed rows: the text sits in the first column under `rowHeading`, and no rows are added or removed. The submitted rows come in the same order |
+| Type      | `widget` / `format`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `string`  | `textarea`, `password`, `search`, `phone` (country code + number, `country: 'IN'` first), `otp` (one box per character, `maxLength` boxes), `signature` (drawn; the value is an SVG drawing), `location` ("lat,lng", with a "Use my location" button), `barcode` (typed, or read with the camera where the browser has BarcodeDetector), `markdown`, `code`, `json`, `hidden`; formats `email`, `url`, `phone`, `color`, `country` (ISO code, names in the form's language), `card` (Luhn-checked), `iban` (check digits), `json` |
+| `number`  | `stepper` (− / +), `slider` (`min`..`max`), `rating` (`max` stars, 5 by default), `hidden`; formats `currency` (with `currency: 'INR'` it shows ₹ in front) and `percent`                                                                                                                                                                                                                                                                                                                                                         |
+| `boolean` | a checkbox, or `toggle`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `choice`  | `select`, `radio` (radio group), `buttons` (button group; checkboxes with `multiple`), `autocomplete` (type to search), `tags` (with `allowOther`), a checkbox group with `multiple`, or `multiple` with `select`. An option's `visible` formula makes cascading choices: `{ value: 'Pune', visible: "state == 'Maharashtra'" }`. `allowOther` accepts typed answers that aren't options                                                                                                                                          |
+| `date`    | formats `date`, `time`, `datetime`, `month`, `week`, `year`                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `file`    | a drop zone and a picker; `camera` opens the phone's camera. `accept` limits it to images, video, audio or documents                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `list`    | rows as cards, or `table`. `rows: ['Monday', 'Tuesday']` makes a table with fixed rows: the text sits in the first column under `rowHeading`, and no rows are added or removed. The submitted rows come in the same order                                                                                                                                                                                                                                                                                                         |
 
 Show a signature with `<img src={'data:image/svg+xml,' + encodeURIComponent(value)}>`. An `<img>` never runs script from an SVG, so a tampered value can't either. It can be drawn only with a mouse, finger or pen, so add a typed-name field next to it for people who can't draw.
 
 **Rich text** (`widget: 'richtext'`): bold, italic, underline, strike, a heading, lists, quotes and links.
+
 - The value is HTML, cleaned in the browser by `cleanHtml` from `formweave/react`. Only those tags are kept, and links only to http, https and mailto.
 - Clean it again on your server (with DOMPurify, for example) before you show it anywhere, because a client can send anything.
 - For a full editor, pass Tiptap, Lexical or similar as your own widget.
 
 **Map** (`widget: 'map'`): a "lat,lng" box, "Use my location", and a map to drag, zoom with + / −, and click to place the pin.
+
 - Tiles come from OpenStreetMap by default. Their usage policy asks busy sites to use their own tiles or a provider's, so pass `<Form mapTiles={{ url: 'https://…/{z}/{x}/{y}.png', attribution: '…' }}>`.
 - Each person's browser fetches the tiles from that server.
 

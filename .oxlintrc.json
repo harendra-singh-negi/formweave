@@ -1,12 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "typescript",
-    "react",
-    "import",
-    "unicorn",
-    "oxc"
-  ],
+  "plugins": ["typescript", "react", "import", "unicorn", "oxc"],
   "env": {
     "browser": true,
     "node": true,
@@ -29,10 +23,7 @@
     "react-hooks/exhaustive-deps": "warn",
     "typescript/consistent-type-imports": "error",
     "typescript/no-explicit-any": "warn",
-    "eqeqeq": [
-      "error",
-      "smart"
-    ],
+    "eqeqeq": ["error", "smart"],
     "no-eval": "error",
     "no-new-func": "error",
     "no-shadow": "off",
@@ -51,28 +42,18 @@
   },
   "overrides": [
     {
-      "files": [
-        "test/**",
-        "e2e/**"
-      ],
+      "files": ["test/**", "e2e/**"],
       "rules": {
         "typescript/no-explicit-any": "off",
         "no-new": "off"
       }
     },
     {
-      "files": [
-        "demo/**"
-      ],
+      "files": ["demo/**"],
       "rules": {
         "import/default": "off"
       }
     }
   ],
-  "ignorePatterns": [
-    "dist",
-    "node_modules",
-    "test-results",
-    "playwright-report"
-  ]
+  "ignorePatterns": ["dist", "node_modules", "test-results", "playwright-report"]
 }

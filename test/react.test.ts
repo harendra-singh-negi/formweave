@@ -16,16 +16,23 @@ const schema: FormSchema = {
     sign: { type: 'string', widget: 'signature' },
   },
   layout: [
-    { type: 'pages', display: 'steps', children: [
-      { type: 'section', title: 'You', children: [{ type: 'grid', cols: 2, children: ['name', 'employment', 'business'] }] },
-      { type: 'section', title: 'Order', children: ['agree', 'items', 'sign'] },
-    ] },
+    {
+      type: 'pages',
+      display: 'steps',
+      children: [
+        { type: 'section', title: 'You', children: [{ type: 'grid', cols: 2, children: ['name', 'employment', 'business'] }] },
+        { type: 'section', title: 'Order', children: ['agree', 'items', 'sign'] },
+      ],
+    },
   ],
 }
 
 test('renders the first step with labels tied to inputs, in the chosen language', () => {
   const html = renderToString(h(Form, { schema, locale: 'hi' }))
-  assert.match(html, /data-position="top"><ol class="fw-steps"><li data-state="current" aria-current="step"><span class="fw-step"><span class="fw-step-n" aria-hidden="true">1<\/span><span class="fw-step-t">You</)
+  assert.match(
+    html,
+    /data-position="top"><ol class="fw-steps"><li data-state="current" aria-current="step"><span class="fw-step"><span class="fw-step-n" aria-hidden="true">1<\/span><span class="fw-step-t">You</,
+  )
   assert.match(html, /data-state="next"[^>]*><span class="fw-step">.*Order</) // a later step isn't a button: Next checks this one first
   const id = /<label for="([^"]+name)">नाम/.exec(html)?.[1]
   assert.ok(id, 'label for name')
@@ -47,8 +54,14 @@ test('your own widget replaces one by name, and errors wait for a touch', () => 
 })
 
 test('your own classes go on the form, its parts, a field and a layout node', () => {
-  const one: FormSchema = { version: 1, fields: { name: { type: 'string', className: 'wide' }, ok: { type: 'boolean' } }, layout: [{ type: 'section', className: 'card', children: ['name', 'ok'] }] }
-  const html = renderToString(h(Form, { schema: one, className: 'mine', classes: { field: 'mb-3', label: 'form-label', input: 'form-control', submit: 'btn btn-primary' } }))
+  const one: FormSchema = {
+    version: 1,
+    fields: { name: { type: 'string', className: 'wide' }, ok: { type: 'boolean' } },
+    layout: [{ type: 'section', className: 'card', children: ['name', 'ok'] }],
+  }
+  const html = renderToString(
+    h(Form, { schema: one, className: 'mine', classes: { field: 'mb-3', label: 'form-label', input: 'form-control', submit: 'btn btn-primary' } }),
+  )
   assert.match(html, /<form class="fw-form mine"/)
   assert.match(html, /<section class="fw-section card"/)
   assert.match(html, /class="fw-field mb-3 wide"><label for="[^"]+" class="form-label">/)
@@ -77,16 +90,19 @@ test('a list shows each row as a card; a table numbers its rows', () => {
 })
 
 test('more inputs: fixed rows, OTP boxes, ₹ in front, stars, slider, autocomplete, hidden', () => {
-  const s: FormSchema = { version: 1, fields: {
-    week: { type: 'list', widget: 'table', rows: ['Mon', 'Tue'], rowHeading: 'Day', fields: { hours: { type: 'number' } } },
-    otp: { type: 'string', widget: 'otp', maxLength: 4 },
-    amount: { type: 'number', format: 'currency', currency: 'INR' },
-    stars: { type: 'number', widget: 'rating', max: 5 },
-    level: { type: 'number', widget: 'slider', min: 0, max: 10 },
-    city: { type: 'choice', widget: 'autocomplete', options: ['Delhi', 'Pune'] },
-    secret: { type: 'string', widget: 'hidden', default: 'abc' },
-    sign: { type: 'string', widget: 'signature' },
-  } }
+  const s: FormSchema = {
+    version: 1,
+    fields: {
+      week: { type: 'list', widget: 'table', rows: ['Mon', 'Tue'], rowHeading: 'Day', fields: { hours: { type: 'number' } } },
+      otp: { type: 'string', widget: 'otp', maxLength: 4 },
+      amount: { type: 'number', format: 'currency', currency: 'INR' },
+      stars: { type: 'number', widget: 'rating', max: 5 },
+      level: { type: 'number', widget: 'slider', min: 0, max: 10 },
+      city: { type: 'choice', widget: 'autocomplete', options: ['Delhi', 'Pune'] },
+      secret: { type: 'string', widget: 'hidden', default: 'abc' },
+      sign: { type: 'string', widget: 'signature' },
+    },
+  }
   const html = renderToString(h(Form, { schema: s }))
   assert.match(html, /<th class="fw-fixed">Day<\/th>/)
   assert.match(html, /<th scope="row" class="fw-fixed">Tue<\/th>/)
@@ -101,15 +117,25 @@ test('more inputs: fixed rows, OTP boxes, ₹ in front, stars, slider, autocompl
 })
 
 test('button groups, tags, phone with country code, country, stepper and cascading options render', () => {
-  const s: FormSchema = { version: 1, fields: {
-    yes: { type: 'choice', widget: 'buttons', options: ['Yes', 'No'] },
-    tags: { type: 'choice', widget: 'tags', multiple: true, allowOther: true, options: ['a'], default: ['a', 'mine'] },
-    phone: { type: 'string', widget: 'phone', format: 'phone', country: 'IN' },
-    country: { type: 'string', format: 'country' },
-    qty: { type: 'number', widget: 'stepper', min: 0 },
-    state: { type: 'choice', options: ['MH', 'KA'], default: 'KA' },
-    city: { type: 'choice', widget: 'radio', options: [{ value: 'Pune', visible: "state == 'MH'" }, { value: 'Mysuru', visible: "state == 'KA'" }] },
-  } }
+  const s: FormSchema = {
+    version: 1,
+    fields: {
+      yes: { type: 'choice', widget: 'buttons', options: ['Yes', 'No'] },
+      tags: { type: 'choice', widget: 'tags', multiple: true, allowOther: true, options: ['a'], default: ['a', 'mine'] },
+      phone: { type: 'string', widget: 'phone', format: 'phone', country: 'IN' },
+      country: { type: 'string', format: 'country' },
+      qty: { type: 'number', widget: 'stepper', min: 0 },
+      state: { type: 'choice', options: ['MH', 'KA'], default: 'KA' },
+      city: {
+        type: 'choice',
+        widget: 'radio',
+        options: [
+          { value: 'Pune', visible: "state == 'MH'" },
+          { value: 'Mysuru', visible: "state == 'KA'" },
+        ],
+      },
+    },
+  }
   const html = renderToString(h(Form, { schema: s, locale: 'hi' }))
   assert.match(html, /class="fw-buttons" role="radiogroup" aria-label="Yes"/)
   assert.match(html, /class="fw-tag">mine/)
@@ -120,11 +146,14 @@ test('button groups, tags, phone with country code, country, stepper and cascadi
 })
 
 test('a table without a label has no title; rich text and a map render', () => {
-  const s: FormSchema = { version: 1, fields: {
-    list1: { type: 'list', widget: 'table', min: 1, fields: { n: { type: 'number', label: 'S No.' } } },
-    about: { type: 'string', widget: 'richtext' },
-    where: { type: 'string', widget: 'map', default: '28.6139,77.209' },
-  } }
+  const s: FormSchema = {
+    version: 1,
+    fields: {
+      list1: { type: 'list', widget: 'table', min: 1, fields: { n: { type: 'number', label: 'S No.' } } },
+      about: { type: 'string', widget: 'richtext' },
+      where: { type: 'string', widget: 'map', default: '28.6139,77.209' },
+    },
+  }
   const html = renderToString(h(Form, { schema: s }))
   assert.doesNotMatch(html, /<legend/)
   assert.match(html, /<fieldset class="fw-field fw-list" aria-label="List1">/)
@@ -135,26 +164,54 @@ test('a table without a label has no title; rich text and a map render', () => {
 })
 
 test('a matrix: a row per statement, a radio per option, the other fields as columns; a table sums its ticked columns', () => {
-  const s: FormSchema = { version: 1, fields: {
-    rate: { type: 'list', widget: 'matrix', rows: ['Quality', 'Speed'], rowHeading: 'Aspect', fields: {
-      score: { type: 'choice', options: ['Poor', { value: 'ok', label: 'Fine' }], required: true },
-      note: { type: 'string', label: 'Note' },
-    }, default: [{ score: 'ok' }] },
-    items: { type: 'list', widget: 'table', totals: ['qty'], default: [{ qty: 2, price: 5 }, { qty: 3 }], fields: { qty: { type: 'number' }, price: { type: 'number', format: 'currency', currency: 'INR' } } },
-  } }
+  const s: FormSchema = {
+    version: 1,
+    fields: {
+      rate: {
+        type: 'list',
+        widget: 'matrix',
+        rows: ['Quality', 'Speed'],
+        rowHeading: 'Aspect',
+        fields: {
+          score: { type: 'choice', options: ['Poor', { value: 'ok', label: 'Fine' }], required: true },
+          note: { type: 'string', label: 'Note' },
+        },
+        default: [{ score: 'ok' }],
+      },
+      items: {
+        type: 'list',
+        widget: 'table',
+        totals: ['qty'],
+        default: [{ qty: 2, price: 5 }, { qty: 3 }],
+        fields: { qty: { type: 'number' }, price: { type: 'number', format: 'currency', currency: 'INR' } },
+      },
+    },
+  }
   const html = renderToString(h(Form, { schema: s }))
-  assert.match(html, /<table class="fw-table fw-matrix"><thead><tr><th class="fw-fixed">Aspect<\/th><th class="fw-m-opt">Poor<\/th><th class="fw-m-opt">Fine<\/th><th>Note<\/th>/)
-  assert.match(html, /<th scope="row" class="fw-fixed">Quality<\/th><td class="fw-m-opt" data-label="Poor"><input type="radio" aria-label="Quality: Poor" name="[^"]+rate\.0\.score" value="Poor"\/>/)
+  assert.match(
+    html,
+    /<table class="fw-table fw-matrix"><thead><tr><th class="fw-fixed">Aspect<\/th><th class="fw-m-opt">Poor<\/th><th class="fw-m-opt">Fine<\/th><th>Note<\/th>/,
+  )
+  assert.match(
+    html,
+    /<th scope="row" class="fw-fixed">Quality<\/th><td class="fw-m-opt" data-label="Poor"><input type="radio" aria-label="Quality: Poor" name="[^"]+rate\.0\.score" value="Poor"\/>/,
+  )
   assert.match(html, /aria-label="Quality: Fine" name="[^"]+" checked="" value="ok"/)
   assert.doesNotMatch(html, /fw-error/) // untouched, so no error yet
   assert.match(html, /<tfoot><tr><th scope="row" class="fw-n">Total<\/th><td class="fw-total" data-label="Qty">5<\/td><td><\/td>/)
 })
 
 test('paper prints the title on top; sections take a look; rich text shows its words without a DOM', () => {
-  const s: FormSchema = { version: 1, title: 'Boat drill', theme: 'paper', fields: { name: { type: 'string' } }, layout: [
-    { type: 'content', as: 'rich', text: '<p><strong>Note:</strong> use <em>capitals</em> &amp; ink.</p><script>alert(1)</script>' },
-    { type: 'section', title: 'Crew', look: 'band', children: ['name'] },
-  ] }
+  const s: FormSchema = {
+    version: 1,
+    title: 'Boat drill',
+    theme: 'paper',
+    fields: { name: { type: 'string' } },
+    layout: [
+      { type: 'content', as: 'rich', text: '<p><strong>Note:</strong> use <em>capitals</em> &amp; ink.</p><script>alert(1)</script>' },
+      { type: 'section', title: 'Crew', look: 'band', children: ['name'] },
+    ],
+  }
   const html = renderToString(h(Form, { schema: s }))
   assert.match(html, /<form class="fw-form fw-theme-paper" noValidate=""><h2 class="fw-title">Boat drill<\/h2>/)
   assert.match(html, /<div class="fw-content fw-rich-block">Note: use capitals &amp;amp; ink. alert\(1\)<\/div>/) // escaped by React: no tag gets through
@@ -163,22 +220,41 @@ test('paper prints the title on top; sections take a look; rich text shows its w
 })
 
 test('options break into the columns asked for', () => {
-  const s: FormSchema = { version: 1, fields: { ops: { type: 'choice', multiple: true, columns: 3, options: ['A', 'B', 'C', 'D'] }, one: { type: 'choice', widget: 'radio', options: ['x', 'y'] } } }
+  const s: FormSchema = {
+    version: 1,
+    fields: {
+      ops: { type: 'choice', multiple: true, columns: 3, options: ['A', 'B', 'C', 'D'] },
+      one: { type: 'choice', widget: 'radio', options: ['x', 'y'] },
+    },
+  }
   const html = renderToString(h(Form, { schema: s }))
   assert.match(html, /class="fw-options fw-options-cols" role="group" aria-label="Ops" style="--fw-opt-cols:3"/)
   assert.match(html, /class="fw-options" role="radiogroup" aria-label="One">/) // without columns they run on in a line
 })
 
 test('an image beside text: a grid with widths and lines; an unsafe picture is refused', () => {
-  const s: FormSchema = { version: 1, fields: {}, layout: [
-    { type: 'grid', cols: { base: 1, md: 2 }, widths: [1, 4], look: 'lines', children: [
-      { type: 'content', as: 'image', src: 'https://example.com/icon.png', alt: 'Rotational', width: 80 },
-      { type: 'content', as: 'rich', text: '<p>This is a <span style="color: #1a7f37">Rotational</span> question</p>' },
-    ] },
-  ] }
+  const s: FormSchema = {
+    version: 1,
+    fields: {},
+    layout: [
+      {
+        type: 'grid',
+        cols: { base: 1, md: 2 },
+        widths: [1, 4],
+        look: 'lines',
+        children: [
+          { type: 'content', as: 'image', src: 'https://example.com/icon.png', alt: 'Rotational', width: 80 },
+          { type: 'content', as: 'rich', text: '<p>This is a <span style="color: #1a7f37">Rotational</span> question</p>' },
+        ],
+      },
+    ],
+  }
   const html = renderToString(h(Form, { schema: s }))
   assert.match(html, /<div class="fw-grid fw-grid-w fw-grid-lines" style="--fw-cols:1;--fw-cols-md:2;--fw-widths:minmax\(0, 1fr\) minmax\(0, 4fr\)">/)
-  assert.match(html, /<figure class="fw-content fw-image"><img src="https:\/\/example.com\/icon.png" alt="Rotational" loading="lazy" style="width:80px"\/><\/figure>/)
+  assert.match(
+    html,
+    /<figure class="fw-content fw-image"><img src="https:\/\/example.com\/icon.png" alt="Rotational" loading="lazy" style="width:80px"\/><\/figure>/,
+  )
   const bad = { ...s, layout: [{ type: 'content', as: 'image', src: 'javascript:alert(1)' }] } as FormSchema
   assert.throws(() => renderToString(h(Form, { schema: bad })), /layout\.0\.src/) // lint() stops it before anything is drawn
 })

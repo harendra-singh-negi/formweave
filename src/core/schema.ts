@@ -138,15 +138,7 @@ export interface ListField extends Base {
   totals?: string[]
 }
 
-export type Field =
-  | StringField
-  | NumberField
-  | BooleanField
-  | ChoiceField
-  | DateField
-  | FileField
-  | GroupField
-  | ListField
+export type Field = StringField | NumberField | BooleanField | ChoiceField | DateField | FileField | GroupField | ListField
 
 export type Fields = Record<string, Field>
 

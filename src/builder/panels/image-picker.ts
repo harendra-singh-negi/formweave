@@ -22,9 +22,15 @@ export function ImagePicker(p: WidgetProps) {
   const src = typeof p.value === 'string' ? p.value : ''
   const [note, setNote] = useState('')
   const inline = src.startsWith('data:')
-  return h('div', { className: 'fw-b-image' },
+  return h(
+    'div',
+    { className: 'fw-b-image' },
     src && SAFE_IMAGE.test(src) && h('img', { src, alt: '' }),
-    h('input', { type: 'file', accept: 'image/png,image/jpeg,image/gif,image/webp', 'aria-label': 'Pick a picture', disabled: p.readOnly,
+    h('input', {
+      type: 'file',
+      accept: 'image/png,image/jpeg,image/gif,image/webp',
+      'aria-label': 'Pick a picture',
+      disabled: p.readOnly,
       onChange: async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         e.target.value = ''
@@ -36,11 +42,19 @@ export function ImagePicker(p: WidgetProps) {
         } catch {
           setNote('That picture could not be read. Try a PNG or JPEG.')
         }
-      } }),
-    h('input', { type: 'url', placeholder: 'or its address: https://…', 'aria-label': 'Picture address', value: inline ? '' : src, readOnly: p.readOnly,
-      onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value.trim() || null) }),
+      },
+    }),
+    h('input', {
+      type: 'url',
+      placeholder: 'or its address: https://…',
+      'aria-label': 'Picture address',
+      value: inline ? '' : src,
+      readOnly: p.readOnly,
+      onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value.trim() || null),
+    }),
     inline && h('p', { className: 'fw-help' }, `Kept inside the form (${Math.round((src.length * 3) / 4 / 1024)} KB).`),
     src && !SAFE_IMAGE.test(src) && h('p', { className: 'fw-error' }, 'Use an https:// address.'),
     note && h('p', { className: 'fw-help', role: 'status' }, note),
-    src && h('button', { type: 'button', onClick: () => p.set(null) }, 'Remove the picture'))
+    src && h('button', { type: 'button', onClick: () => p.set(null) }, 'Remove the picture'),
+  )
 }

@@ -153,7 +153,10 @@ export function splitBands(f: Frame, own: Own, em: number): Frame[] {
   const colsOf = (ya: number, yb: number) => {
     const found: number[] = []
     let run: number[] = []
-    const flush = () => { if (run.length) found.push(Math.round((run[0] + run[run.length - 1]) / 2)); run = [] }
+    const flush = () => {
+      if (run.length) found.push(Math.round((run[0] + run[run.length - 1]) / 2))
+      run = []
+    }
     const len = yb - ya - 4 * t
     if (len <= 0) return found
     for (let x = f.x0 + 2 * t; x < f.x1 - 2 * t; x++) {
@@ -190,8 +193,7 @@ export function chains(pieces: Comp[], em: number): Chain[] {
     for (let i = open.length - 1; i >= 0; i--) if (open[i].x1 + gap < p.x0) done.push(...open.splice(i, 1))
     const yc = (p.y0 + p.y1) / 2
     let best: Chain | undefined
-    for (const ch of open)
-      if (Math.abs(ch.yc - yc) <= tol && p.x0 >= ch.x1 - 2 && (!best || Math.abs(ch.yc - yc) < Math.abs(best.yc - yc))) best = ch
+    for (const ch of open) if (Math.abs(ch.yc - yc) <= tol && p.x0 >= ch.x1 - 2 && (!best || Math.abs(ch.yc - yc) < Math.abs(best.yc - yc))) best = ch
     if (best) {
       best.x1 = Math.max(best.x1, p.x1)
       best.y0 = Math.min(best.y0, p.y0)

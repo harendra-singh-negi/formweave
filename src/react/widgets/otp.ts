@@ -14,18 +14,34 @@ export function Otp(p: WidgetProps) {
     const chars = Array.from({ length: n }, (_, j) => v[j] ?? '')
     const add = typed.replace(/\s/g, '').split('')
     if (!add.length) chars[i] = ''
-    add.forEach((ch, k) => { if (i + k < n) chars[i + k] = ch })
+    add.forEach((ch, k) => {
+      if (i + k < n) chars[i + k] = ch
+    })
     p.set(chars.join('') || null)
     boxes.current[Math.min(i + add.length, n - 1)]?.focus()
   }
-  return h('div', { role: 'group', 'aria-label': p.label, className: 'fw-otp' },
-    Array.from({ length: n }, (_, i) => h('input', {
-      key: i, ref: (el: HTMLInputElement | null) => { boxes.current[i] = el },
-      ...(i === 0 ? aria(p) : { className: p.className, 'aria-invalid': p.error ? true : undefined }),
-      'aria-label': `${p.label} ${i + 1}`, inputMode: 'numeric', autoComplete: i === 0 ? 'one-time-code' : 'off',
-      readOnly: p.readOnly, value: v[i] ?? '', onBlur: p.touch,
-      onChange: (e: ChangeEvent<HTMLInputElement>) => put(i, e.target.value.length === 2 && v[i] ? e.target.value.replace(v[i], '') : e.target.value),
-      onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Backspace' && !v[i] && i > 0) boxes.current[i - 1]?.focus() },
-      onFocus: (e: FocusEvent<HTMLInputElement>) => e.target.select(),
-    })))
+  return h(
+    'div',
+    { role: 'group', 'aria-label': p.label, className: 'fw-otp' },
+    Array.from({ length: n }, (_, i) =>
+      h('input', {
+        key: i,
+        ref: (el: HTMLInputElement | null) => {
+          boxes.current[i] = el
+        },
+        ...(i === 0 ? aria(p) : { className: p.className, 'aria-invalid': p.error ? true : undefined }),
+        'aria-label': `${p.label} ${i + 1}`,
+        inputMode: 'numeric',
+        autoComplete: i === 0 ? 'one-time-code' : 'off',
+        readOnly: p.readOnly,
+        value: v[i] ?? '',
+        onBlur: p.touch,
+        onChange: (e: ChangeEvent<HTMLInputElement>) => put(i, e.target.value.length === 2 && v[i] ? e.target.value.replace(v[i], '') : e.target.value),
+        onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
+          if (e.key === 'Backspace' && !v[i] && i > 0) boxes.current[i - 1]?.focus()
+        },
+        onFocus: (e: FocusEvent<HTMLInputElement>) => e.target.select(),
+      }),
+    ),
+  )
 }

@@ -24,11 +24,19 @@ const outline = {
     {
       title: 'Experience',
       fields: [
-        { key: '', label: 'Previous jobs', kind: 'table', required: false, help: '', options: [], columns: [
-          { key: '', label: 'Company', kind: 'text', options: [] },
-          { key: '', label: 'From', kind: 'date', options: [] },
-          { key: '', label: 'Salary', kind: 'money', options: [] },
-        ] },
+        {
+          key: '',
+          label: 'Previous jobs',
+          kind: 'table',
+          required: false,
+          help: '',
+          options: [],
+          columns: [
+            { key: '', label: 'Company', kind: 'text', options: [] },
+            { key: '', label: 'From', kind: 'date', options: [] },
+            { key: '', label: 'Salary', kind: 'money', options: [] },
+          ],
+        },
         { key: '', label: 'Willing to relocate?', kind: 'yes_no', required: true, help: '', options: [], columns: [] },
         { key: '', label: 'and', kind: 'one_of', required: false, help: '', options: ['Day'], columns: [] },
         { key: '', label: 'Signature', kind: 'signature', required: true, help: '', options: [], columns: [] },
@@ -42,7 +50,18 @@ test('an outline becomes a valid form with sections', () => {
   const { schema, warnings } = sketchToForm(outline)
   assert.deepEqual(lint(schema), [])
   assert.equal(schema.title, 'Job application')
-  assert.deepEqual(Object.keys(schema.fields), ['fullName', 'field1', 'fullName2', 'gender', 'pan', 'previousJobs', 'willingToRelocate', 'and_', 'signature', 'weird'])
+  assert.deepEqual(Object.keys(schema.fields), [
+    'fullName',
+    'field1',
+    'fullName2',
+    'gender',
+    'pan',
+    'previousJobs',
+    'willingToRelocate',
+    'and_',
+    'signature',
+    'weird',
+  ])
   const f = schema.fields as any
   assert.deepEqual(f.fullName, { type: 'string', label: 'Full name', help: 'IN CAPITALS', required: true })
   assert.deepEqual(f.field1, { type: 'date', label: 'जन्म तिथि' })
@@ -70,13 +89,33 @@ test('anything that is not an outline gives an empty form, not a crash', () => {
 })
 
 test('fields printed side by side stay side by side; tables keep fixed rows and starting rows', () => {
-  const field = (label: string, line?: number, extra = {}) => ({ key: '', label, kind: 'text', required: false, help: '', options: [], columns: [], ...(line ? { line } : {}), ...extra })
-  const { schema } = sketchToForm({ title: '', sections: [{ title: 'Ship', fields: [
-    field('SHIP', 1), field('GT', 1), field('Place', 2),
-    field('Week', 3, { kind: 'table', rows: ['Mon', 'Tue'], rowHeading: 'Day', columns: [{ key: '', label: 'Hours', kind: 'number', options: [] }] }),
-    field('Checks', 5, { kind: 'table', rows: ['Fire', 'Boat'], columns: [{ key: '', label: 'Answer', kind: 'one_of', options: ['Yes', 'No', 'NA'] }] }),
-    field('Crew', 4, { kind: 'table', minRows: 3, columns: [{ key: '', label: 'Answer', kind: 'one_of', options: ['Yes', 'No', 'NA'], free: true }] }),
-  ] }] })
+  const field = (label: string, line?: number, extra = {}) => ({
+    key: '',
+    label,
+    kind: 'text',
+    required: false,
+    help: '',
+    options: [],
+    columns: [],
+    ...(line ? { line } : {}),
+    ...extra,
+  })
+  const { schema } = sketchToForm({
+    title: '',
+    sections: [
+      {
+        title: 'Ship',
+        fields: [
+          field('SHIP', 1),
+          field('GT', 1),
+          field('Place', 2),
+          field('Week', 3, { kind: 'table', rows: ['Mon', 'Tue'], rowHeading: 'Day', columns: [{ key: '', label: 'Hours', kind: 'number', options: [] }] }),
+          field('Checks', 5, { kind: 'table', rows: ['Fire', 'Boat'], columns: [{ key: '', label: 'Answer', kind: 'one_of', options: ['Yes', 'No', 'NA'] }] }),
+          field('Crew', 4, { kind: 'table', minRows: 3, columns: [{ key: '', label: 'Answer', kind: 'one_of', options: ['Yes', 'No', 'NA'], free: true }] }),
+        ],
+      },
+    ],
+  })
   const section = schema.layout![0] as { children: unknown[] }
   assert.deepEqual(section.children.slice(0, 2), [{ type: 'grid', cols: { base: 1, md: 2 }, children: ['ship', 'gt'] }, 'place'])
   assert.deepEqual((schema.fields.week as { rows: string[] }).rows, ['Mon', 'Tue'])
@@ -88,7 +127,16 @@ test('fields printed side by side stay side by side; tables keep fixed rows and 
 })
 
 test('boxes printed in rows keep their columns', () => {
-  const ops = { key: '', label: 'Operations', kind: 'many_of', required: false, help: '', options: ['Loading', 'Discharging', 'Bunkering', 'Idle'], columns: [], perRow: 3 }
+  const ops = {
+    key: '',
+    label: 'Operations',
+    kind: 'many_of',
+    required: false,
+    help: '',
+    options: ['Loading', 'Discharging', 'Bunkering', 'Idle'],
+    columns: [],
+    perRow: 3,
+  }
   const { schema } = sketchToForm({ title: '', sections: [{ title: '', fields: [ops, { ...ops, label: 'Mode', kind: 'one_of', perRow: 9 }] }] })
   assert.equal((schema.fields.operations as { columns?: number }).columns, 3)
   assert.equal((schema.fields.mode as { columns?: number }).columns, undefined) // more than the options: no columns

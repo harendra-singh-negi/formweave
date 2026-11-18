@@ -39,7 +39,22 @@ export interface Shapes {
   mask: Uint8Array
 }
 
-export type Kind = 'text' | 'long_text' | 'number' | 'money' | 'date' | 'time' | 'email' | 'phone' | 'yes_no' | 'checkbox' | 'one_of' | 'many_of' | 'signature' | 'file' | 'table'
+export type Kind =
+  | 'text'
+  | 'long_text'
+  | 'number'
+  | 'money'
+  | 'date'
+  | 'time'
+  | 'email'
+  | 'phone'
+  | 'yes_no'
+  | 'checkbox'
+  | 'one_of'
+  | 'many_of'
+  | 'signature'
+  | 'file'
+  | 'table'
 export type ColumnKind = 'text' | 'long_text' | 'number' | 'money' | 'date' | 'yes_no' | 'one_of' | 'checkbox'
 export interface SketchColumn {
   key: string

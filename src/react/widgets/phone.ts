@@ -15,10 +15,33 @@ export function Phone(p: WidgetProps) {
   const rest = m ? m[2] : v
   const put = (k: string, num: string) => p.set(num.trim() ? `+${DIAL[k]} ${num.trim()}` : null)
   const c = useCtx()
-  return h('div', { className: 'fw-phone' },
-    h('select', { 'aria-label': `${p.label}: ${c.labels.country}`, disabled: p.readOnly, value: iso, className: p.className,
-      onChange: (e: ChangeEvent<HTMLSelectElement>) => { setIso(e.target.value); put(e.target.value, rest) } },
-      COUNTRIES.map((k) => [k, countryName(k, p.locale)]).sort((a, b) => a[1].localeCompare(b[1])).map(([k, name]) => h('option', { key: k, value: k }, `${name} (+${DIAL[k]})`))),
-    h('input', { ...aria(p), type: 'tel', autoComplete: 'tel-national', readOnly: p.readOnly, value: rest, onBlur: p.touch,
-      onChange: (e: ChangeEvent<HTMLInputElement>) => put(iso, e.target.value) }))
+  return h(
+    'div',
+    { className: 'fw-phone' },
+    h(
+      'select',
+      {
+        'aria-label': `${p.label}: ${c.labels.country}`,
+        disabled: p.readOnly,
+        value: iso,
+        className: p.className,
+        onChange: (e: ChangeEvent<HTMLSelectElement>) => {
+          setIso(e.target.value)
+          put(e.target.value, rest)
+        },
+      },
+      COUNTRIES.map((k) => [k, countryName(k, p.locale)])
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([k, name]) => h('option', { key: k, value: k }, `${name} (+${DIAL[k]})`)),
+    ),
+    h('input', {
+      ...aria(p),
+      type: 'tel',
+      autoComplete: 'tel-national',
+      readOnly: p.readOnly,
+      value: rest,
+      onBlur: p.touch,
+      onChange: (e: ChangeEvent<HTMLInputElement>) => put(iso, e.target.value),
+    }),
+  )
 }

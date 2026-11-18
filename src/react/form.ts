@@ -14,7 +14,7 @@ export function useForm(schema: FormSchema, opts: Options & { values?: Values; f
   const contextKey = JSON.stringify(opts.context ?? null)
   useEffect(() => {
     if (opts.context) form.setContext(opts.context)
-  // oxlint-disable-next-line react-hooks/exhaustive-deps -- contextKey stands for opts.context, compared by value
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- contextKey stands for opts.context, compared by value
   }, [form, contextKey])
   return { form, state }
 }
@@ -30,11 +30,12 @@ export function Form(props: FormProps) {
   useEffect(() => props.onChange?.(state), [state])
   const layout = schema.layout ?? Object.keys(schema.fields)
   const pages = layout.find((l): l is Pages => typeof l === 'object' && l.type === 'pages')
-  const focusError = () => setTimeout(() => {
-    const el = ref.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
-    el?.closest('details')?.setAttribute('open', '') // an accordion panel that was closed
-    el?.focus()
-  })
+  const focusError = () =>
+    setTimeout(() => {
+      const el = ref.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      el?.closest('details')?.setAttribute('open', '') // an accordion panel that was closed
+      el?.focus()
+    })
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -54,7 +55,13 @@ export function Form(props: FormProps) {
   }
 
   const ctx: Ctx = {
-    form, state, schema, id, page, setPage, busy,
+    form,
+    state,
+    schema,
+    id,
+    page,
+    setPage,
+    busy,
     widgets: { ...WIDGETS, ...props.widgets },
     labels: { ...LABELS, ...props.labels },
     classes: props.classes ?? {},
@@ -65,11 +72,22 @@ export function Form(props: FormProps) {
     compact: false,
     design: !!props.design,
   }
-  return h(Context.Provider, { value: ctx },
-    h('form', { ref, className: cx('fw-form', schema.theme && `fw-theme-${schema.theme}`, props.className), noValidate: true, onSubmit: props.design ? (e: FormEvent) => e.preventDefault() : submit },
+  return h(
+    Context.Provider,
+    { value: ctx },
+    h(
+      'form',
+      {
+        ref,
+        className: cx('fw-form', schema.theme && `fw-theme-${schema.theme}`, props.className),
+        noValidate: true,
+        onSubmit: props.design ? (e: FormEvent) => e.preventDefault() : submit,
+      },
       schema.theme === 'paper' && schema.title && h('h2', { className: 'fw-title' }, text(schema.title, props.locale)),
       h(Nodes, { items: layout, ip: [] }),
-      !pages && h(SubmitButton)))
+      !pages && h(SubmitButton),
+    ),
+  )
 }
 
 // ---- layout ----

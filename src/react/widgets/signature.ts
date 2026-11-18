@@ -14,7 +14,9 @@ export function Signature(p: WidgetProps) {
     const r = e.currentTarget.getBoundingClientRect()
     return [Math.round(((e.clientX - r.left) / r.width) * SIGN_W), Math.round(((e.clientY - r.top) / r.height) * SIGN_H)]
   }
-  const svg = (path: string) => path && `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIGN_W} ${SIGN_H}"><path d="${path}" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  const svg = (path: string) =>
+    path &&
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIGN_W} ${SIGN_H}"><path d="${path}" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
   const draw = !p.readOnly && {
     onPointerDown: (e: PointerEvent<SVGSVGElement>) => {
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -35,8 +37,35 @@ export function Signature(p: WidgetProps) {
     },
   }
   // ponytail: drawn only with a pointer; people who can't draw need another way in (a typed name field next to it)
-  return h('div', { className: 'fw-signature' },
-    h('svg', { id: p.id, role: 'img', 'aria-label': p.label, 'aria-invalid': p.error ? true : undefined, 'aria-describedby': p.describedBy, viewBox: `0 0 ${SIGN_W} ${SIGN_H}`, className: p.className, ...draw },
-      h('path', { d, fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round', strokeLinejoin: 'round' })),
-    !p.readOnly && d && h('button', { type: 'button', onClick: () => { setD(''); p.set(null) } }, c.labels.clear))
+  return h(
+    'div',
+    { className: 'fw-signature' },
+    h(
+      'svg',
+      {
+        id: p.id,
+        role: 'img',
+        'aria-label': p.label,
+        'aria-invalid': p.error ? true : undefined,
+        'aria-describedby': p.describedBy,
+        viewBox: `0 0 ${SIGN_W} ${SIGN_H}`,
+        className: p.className,
+        ...draw,
+      },
+      h('path', { d, fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+    ),
+    !p.readOnly &&
+      d &&
+      h(
+        'button',
+        {
+          type: 'button',
+          onClick: () => {
+            setD('')
+            p.set(null)
+          },
+        },
+        c.labels.clear,
+      ),
+  )
 }

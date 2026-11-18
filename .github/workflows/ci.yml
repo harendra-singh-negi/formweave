@@ -22,7 +22,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test                 # unit tests read TypeScript directly: Node 22.6+
+      - run: npm test # unit tests read TypeScript directly: Node 22.6+
       - run: npm run build
       - run: npm run test:dist
       - run: npm pack --dry-run
@@ -52,4 +52,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npm run test:dist      # plain JavaScript against dist/, through the package's own exports
+      - run: npm run test:dist # plain JavaScript against dist/, through the package's own exports

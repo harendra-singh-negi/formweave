@@ -18,9 +18,15 @@ export function cleanHtml(html: string): string {
     // oxlint-disable-next-line unicorn/no-useless-spread
     for (const child of [...node.childNodes]) {
       if (child.nodeType === 3) continue // text
-      if (child.nodeType !== 1) { child.remove(); continue } // comments and the like
+      if (child.nodeType !== 1) {
+        child.remove()
+        continue
+      } // comments and the like
       let el = child as Element
-      if (DROP.has(el.tagName)) { el.remove(); continue }
+      if (DROP.has(el.tagName)) {
+        el.remove()
+        continue
+      }
       // <font color> (older browsers' colour) becomes a span with that colour
       if (el.tagName === 'FONT' && /^#[0-9a-f]{3,6}$/i.test(el.getAttribute('color') ?? '')) {
         const span = el.ownerDocument.createElement('span')
@@ -31,8 +37,14 @@ export function cleanHtml(html: string): string {
       }
       clean(el)
       // a span is kept only for its colour
-      if (el.tagName === 'SPAN' && !COLOUR.test(el.getAttribute('style') ?? '')) { el.replaceWith(...el.childNodes); continue }
-      if (!KEEP.has(el.tagName)) { el.replaceWith(...el.childNodes); continue }
+      if (el.tagName === 'SPAN' && !COLOUR.test(el.getAttribute('style') ?? '')) {
+        el.replaceWith(...el.childNodes)
+        continue
+      }
+      if (!KEEP.has(el.tagName)) {
+        el.replaceWith(...el.childNodes)
+        continue
+      }
       // a copy, for the same reason: attributes are removed while looping
       // oxlint-disable-next-line unicorn/no-useless-spread
       for (const a of [...el.attributes]) {

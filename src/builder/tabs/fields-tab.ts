@@ -38,25 +38,58 @@ export function Tree(p: TreeProps): ReactNode {
     e.stopPropagation()
     if (from.at(-1) !== before) p.drop(from, before)
   }
-  return h('ul', { className: 'fw-b-list', onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => onDrop(e, null) },
-    Object.keys(p.fields).length === 0 && h('li', { className: 'fw-b-drop', onDragOver: dragOver, onDragLeave: dragLeave, onDrop: (e: DragEvent) => onDrop(e, null) },
-      p.parent.length ? p.empty : 'Drag a field here, or click one on the left'),
+  return h(
+    'ul',
+    { className: 'fw-b-list', onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => onDrop(e, null) },
+    Object.keys(p.fields).length === 0 &&
+      h(
+        'li',
+        { className: 'fw-b-drop', onDragOver: dragOver, onDragLeave: dragLeave, onDrop: (e: DragEvent) => onDrop(e, null) },
+        p.parent.length ? p.empty : 'Drag a field here, or click one on the left',
+      ),
     Object.entries(p.fields).map(([key, f]): ReactNode => {
       const path = [...p.parent, key]
       const on = same(p.selected, path)
-      return h('li', { key, onDragOver: dragOver, onDragLeave: dragLeave, onDrop: (e: DragEvent) => onDrop(e, key) },
-        h('div', { className: 'fw-b-item', 'aria-current': on || undefined },
-          h('button', {
-            type: 'button', className: 'fw-b-pick', draggable: true, onClick: () => p.select(path),
-            onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-path', path.join('.')),
-          }, h('span', null, text(f.label, 'en') || key), h('small', null, ` ${key} · ${f.type}${p.columns ? ' · column' : ''}`)),
-          on && h('span', { className: 'fw-b-tools' },
-            h('button', { type: 'button', 'aria-label': 'Move up', onClick: () => p.move(path, -1) }, '↑'),
-            h('button', { type: 'button', 'aria-label': 'Move down', onClick: () => p.move(path, 1) }, '↓'),
-            h('button', { type: 'button', 'aria-label': 'Duplicate', onClick: () => p.duplicate(path) }, '⧉'),
-            h('button', { type: 'button', 'aria-label': 'Delete', onClick: () => p.remove(path) }, '✕'))),
-        (f.type === 'group' || f.type === 'list') && h(Tree, { ...p, fields: f.fields, parent: path, columns: f.type === 'list' && f.widget === 'table', empty: f.type === 'list' && f.widget === 'table'
-          ? 'No columns yet. Each field you add here is a column: select the table and click a field type, or drag one here.'
-          : 'Empty. Select it and click a field type, or drag one here.' }))
-    }))
+      return h(
+        'li',
+        { key, onDragOver: dragOver, onDragLeave: dragLeave, onDrop: (e: DragEvent) => onDrop(e, key) },
+        h(
+          'div',
+          { className: 'fw-b-item', 'aria-current': on || undefined },
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'fw-b-pick',
+              draggable: true,
+              onClick: () => p.select(path),
+              onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-path', path.join('.')),
+            },
+            h('span', null, text(f.label, 'en') || key),
+            h('small', null, ` ${key} · ${f.type}${p.columns ? ' · column' : ''}`),
+          ),
+          on &&
+            h(
+              'span',
+              { className: 'fw-b-tools' },
+              h('button', { type: 'button', 'aria-label': 'Move up', onClick: () => p.move(path, -1) }, '↑'),
+              h('button', { type: 'button', 'aria-label': 'Move down', onClick: () => p.move(path, 1) }, '↓'),
+              h('button', { type: 'button', 'aria-label': 'Duplicate', onClick: () => p.duplicate(path) }, '⧉'),
+              h('button', { type: 'button', 'aria-label': 'Delete', onClick: () => p.remove(path) }, '✕'),
+            ),
+        ),
+        (f.type === 'group' || f.type === 'list') &&
+          h(Tree, {
+            ...p,
+            fields: f.fields,
+            parent: path,
+            columns: f.type === 'list' && f.widget === 'table',
+            empty:
+              f.type === 'list' && f.widget === 'table'
+                ? 'No columns yet. Each field you add here is a column: select the table and click a field type, or drag one here.'
+                : 'Empty. Select it and click a field type, or drag one here.',
+          }),
+      )
+    }),
+  )
 }

@@ -34,7 +34,16 @@ export function fromJsonSchema(root: unknown): Imported {
       const real = Array.isArray(s[k]) ? s[k].map((b: JS) => resolve(b, seen)).filter((b: JS) => b.type !== 'null') : []
       if (real.length === 1) return unwrap({ ...s, [k]: undefined, ...real[0] }, seen)
     }
-    if (Array.isArray(s.allOf)) return s.allOf.reduce((acc: JS, b: JS) => ({ ...acc, ...unwrap(b, seen), properties: { ...acc.properties, ...unwrap(b, seen).properties }, required: [...(acc.required ?? []), ...(unwrap(b, seen).required ?? [])] }), { ...s, allOf: undefined })
+    if (Array.isArray(s.allOf))
+      return s.allOf.reduce(
+        (acc: JS, b: JS) => ({
+          ...acc,
+          ...unwrap(b, seen),
+          properties: { ...acc.properties, ...unwrap(b, seen).properties },
+          required: [...(acc.required ?? []), ...(unwrap(b, seen).required ?? [])],
+        }),
+        { ...s, allOf: undefined },
+      )
     const type = Array.isArray(s.type) ? s.type.filter((t: string) => t !== 'null') : s.type
     return { ...s, type: Array.isArray(type) ? (type.length === 1 ? type[0] : undefined) : type }
   }
@@ -86,7 +95,8 @@ export function fromJsonSchema(root: unknown): Imported {
         const format = ({ email: 'email', 'idn-email': 'email', uri: 'url', url: 'url' } as Record<string, 'email' | 'url'>)[s.format]
         if (s.format && !format) warnings.push(`${path}: format "${s.format}" is not checked`)
         return {
-          type: 'string', ...base,
+          type: 'string',
+          ...base,
           ...(format ? { format } : {}),
           ...(s.minLength !== undefined ? { minLength: s.minLength } : {}),
           ...(s.maxLength !== undefined ? { maxLength: s.maxLength } : {}),
@@ -102,8 +112,10 @@ export function fromJsonSchema(root: unknown): Imported {
         if (typeof s.exclusiveMinimum === 'number' || typeof s.exclusiveMaximum === 'number') warnings.push(`${path}: exclusive limits became inclusive`)
         const decimals = s.type === 'integer' ? 0 : typeof s.multipleOf === 'number' && s.multipleOf < 1 ? Math.round(-Math.log10(s.multipleOf)) : undefined
         return {
-          type: 'number', ...base,
-          ...(min !== undefined ? { min } : {}), ...(max !== undefined ? { max } : {}),
+          type: 'number',
+          ...base,
+          ...(min !== undefined ? { min } : {}),
+          ...(max !== undefined ? { max } : {}),
           ...(decimals !== undefined ? { decimals } : {}),
           ...(typeof s.default === 'number' ? { default: s.default } : {}),
         }
@@ -118,7 +130,8 @@ export function fromJsonSchema(root: unknown): Imported {
         const counts = { ...(s.minItems ? { min: s.minItems } : {}), ...(s.maxItems !== undefined ? { max: s.maxItems } : {}) }
         if (opts) return { type: 'choice', ...base, options: opts, multiple: true, ...counts } satisfies ChoiceField
         if (items.type === 'object') return { type: 'list', ...base, widget: 'table', ...counts, fields: fields(items, `${path}[]`, seen) }
-        if (items.type === 'string' && (items.contentEncoding === 'base64' || items.format === 'binary')) return { type: 'file', ...base, multiple: true, ...counts }
+        if (items.type === 'string' && (items.contentEncoding === 'base64' || items.format === 'binary'))
+          return { type: 'file', ...base, multiple: true, ...counts }
         // a list of plain values becomes rows with one column
         const one = field(items, `${path}[]`, seen)
         if (!one) return
@@ -165,17 +178,37 @@ export function toJsonSchema(form: FormSchema): JS {
         break
       case 'choice': {
         const values = f.options.map((o) => (typeof o === 'string' ? o : o.value))
-        if (f.multiple) Object.assign(s, { type: 'array', items: { enum: values }, uniqueItems: true }, f.min !== undefined ? { minItems: f.min } : {}, f.max !== undefined ? { maxItems: f.max } : {})
+        if (f.multiple)
+          Object.assign(
+            s,
+            { type: 'array', items: { enum: values }, uniqueItems: true },
+            f.min !== undefined ? { minItems: f.min } : {},
+            f.max !== undefined ? { maxItems: f.max } : {},
+          )
         else s.enum = [...values, null]
         break
       }
       case 'date': {
         const fmt = f.format ?? 'date'
-        Object.assign(s, { type: nullable('string') }, fmt === 'date' ? { format: 'date' } : fmt === 'time' ? { pattern: '^\\d{2}:\\d{2}(:\\d{2})?$' } : fmt === 'datetime' ? { pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$' } : {})
+        Object.assign(
+          s,
+          { type: nullable('string') },
+          fmt === 'date'
+            ? { format: 'date' }
+            : fmt === 'time'
+              ? { pattern: '^\\d{2}:\\d{2}(:\\d{2})?$' }
+              : fmt === 'datetime'
+                ? { pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$' }
+                : {},
+        )
         break
       }
       case 'file': {
-        const ref = { type: 'object', required: ['id', 'name', 'size', 'type'], properties: { id: { type: 'string' }, name: { type: 'string' }, size: { type: 'number' }, type: { type: 'string' } } }
+        const ref = {
+          type: 'object',
+          required: ['id', 'name', 'size', 'type'],
+          properties: { id: { type: 'string' }, name: { type: 'string' }, size: { type: 'number' }, type: { type: 'string' } },
+        }
         Object.assign(s, f.multiple ? { type: 'array', items: ref } : { anyOf: [ref, { type: 'null' }] })
         break
       }

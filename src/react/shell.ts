@@ -4,8 +4,14 @@ import { text } from '../core/form.ts'
 import type { Field, Values } from '../core/schema.ts'
 import { cx, useCtx, type WidgetProps } from './context.ts'
 
-export const humanize = (key: string) => key.replace(/([a-z\d])([A-Z])/g, '$1 $2').replace(/_/g, ' ').replace(/^./, (s) => s.toUpperCase()).replace(/ \w/g, (s) => s.toLowerCase())
-export const at = (values: Values, path: string) => path.split('.').reduce<unknown>((v, k) => (v && typeof v === 'object' ? (v as Values)[k] : undefined), values)
+export const humanize = (key: string) =>
+  key
+    .replace(/([a-z\d])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .replace(/^./, (s) => s.toUpperCase())
+    .replace(/ \w/g, (s) => s.toLowerCase())
+export const at = (values: Values, path: string) =>
+  path.split('.').reduce<unknown>((v, k) => (v && typeof v === 'object' ? (v as Values)[k] : undefined), values)
 
 /** Label, help and error around a widget. */
 export function Shell({ path, field }: { path: string; field: Field }) {
@@ -25,24 +31,47 @@ export function Shell({ path, field }: { path: string; field: Field }) {
   const describedBy = [help && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
   const Widget = c.widgets[field.widget ?? ''] ?? c.widgets[field.type]
   const control = h(Widget, {
-    field, path, id, label, error, describedBy, locale: c.locale,
-    value: at(c.state.values, path), required: st.required, readOnly: st.readOnly, className: c.classes.input,
-    set: (v: unknown) => c.form.set(path, v), touch: () => c.form.touch(path),
+    field,
+    path,
+    id,
+    label,
+    error,
+    describedBy,
+    locale: c.locale,
+    value: at(c.state.values, path),
+    required: st.required,
+    readOnly: st.readOnly,
+    className: c.classes.input,
+    set: (v: unknown) => c.form.set(path, v),
+    touch: () => c.form.touch(path),
   })
   const mark = st.required && h('span', { className: 'fw-required', 'aria-hidden': true }, ' *')
-  const notes = h(Fragment, null,
+  const notes = h(
+    Fragment,
+    null,
     help && h('div', { id: `${id}-help`, className: cx('fw-help', c.classes.help) }, help),
-    error && h('div', { id: `${id}-error`, className: cx('fw-error', c.classes.error) }, error))
+    error && h('div', { id: `${id}-error`, className: cx('fw-error', c.classes.error) }, error),
+  )
   const wrap = (kind?: string) => cx('fw-field', kind, c.classes.field, field.className)
   if (field.type === 'group' || field.type === 'list') {
     // no label: no title on screen, the key still names it for screen readers
     const legend = text(field.label, c.locale)
-    return h('fieldset', { className: wrap(`fw-${field.type}`), 'aria-label': legend ? undefined : label, ...own },
-      legend && h('legend', { className: c.classes.label }, legend, mark), control, notes)
+    return h(
+      'fieldset',
+      { className: wrap(`fw-${field.type}`), 'aria-label': legend ? undefined : label, ...own },
+      legend && h('legend', { className: c.classes.label }, legend, mark),
+      control,
+      notes,
+    )
   }
   if (field.type === 'boolean')
-    return h('div', { className: wrap('fw-check'), ...own }, h('label', { htmlFor: id, className: c.classes.label }, control, ' ', c.compact ? h('span', { className: 'fw-sr' }, label) : label, mark), notes)
-  return h('div', { className: wrap(), ...own }, h('label',{ htmlFor: id, className: cx(c.compact && 'fw-sr', c.classes.label) }, label, mark), control, notes)
+    return h(
+      'div',
+      { className: wrap('fw-check'), ...own },
+      h('label', { htmlFor: id, className: c.classes.label }, control, ' ', c.compact ? h('span', { className: 'fw-sr' }, label) : label, mark),
+      notes,
+    )
+  return h('div', { className: wrap(), ...own }, h('label', { htmlFor: id, className: cx(c.compact && 'fw-sr', c.classes.label) }, label, mark), control, notes)
 }
 
 export const aria = (p: WidgetProps) => ({

@@ -71,6 +71,4 @@ export function relocate(s: FormSchema, key: string, parent: Ip, index: number):
 
 // ---- copy and paste ----
 
-
-
 export const placedKeys = (items: Layout[]): string[] => items.flatMap((n) => (typeof n === 'string' ? [n] : isContainer(n) ? placedKeys(n.children) : []))

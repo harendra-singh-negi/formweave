@@ -12,11 +12,20 @@ const order = {
     email: { type: 'string', format: 'email', title: 'Email' },
     'full-name': { type: ['string', 'null'], maxLength: 80 },
     age: { type: 'integer', minimum: 18 },
-    country: { oneOf: [{ const: 'IN', title: 'India' }, { const: 'AE', title: 'UAE' }] },
+    country: {
+      oneOf: [
+        { const: 'IN', title: 'India' },
+        { const: 'AE', title: 'UAE' },
+      ],
+    },
     tags: { type: 'array', items: { enum: ['gift', 'urgent'] }, maxItems: 2 },
     delivery: { type: 'string', format: 'date' },
     address: { $ref: '#/$defs/Address' },
-    items: { type: 'array', minItems: 1, items: { type: 'object', required: ['sku'], properties: { sku: { type: 'string' }, qty: { type: 'integer', minimum: 1 } } } },
+    items: {
+      type: 'array',
+      minItems: 1,
+      items: { type: 'object', required: ['sku'], properties: { sku: { type: 'string' }, qty: { type: 'integer', minimum: 1 } } },
+    },
     notes: { anyOf: [{ type: 'string' }, { type: 'null' }], description: 'Anything else' },
   },
   $defs: { Address: { type: 'object', properties: { city: { type: 'string' }, pin: { type: 'string', pattern: '^[0-9]{6}$' } } } },
@@ -30,7 +39,10 @@ test('a JSON Schema becomes a valid form', () => {
   const f = schema.fields as any
   assert.deepEqual(f.email, { type: 'string', label: 'Email', format: 'email', required: true })
   assert.deepEqual(f.age, { type: 'number', min: 18, decimals: 0 })
-  assert.deepEqual(f.country.options, [{ value: 'IN', label: 'India' }, { value: 'AE', label: 'UAE' }])
+  assert.deepEqual(f.country.options, [
+    { value: 'IN', label: 'India' },
+    { value: 'AE', label: 'UAE' },
+  ])
   assert.equal(f.tags.multiple, true)
   assert.equal(f.delivery.type, 'date')
   assert.equal(f.address.fields.pin.pattern, '[0-9]{6}')

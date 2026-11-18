@@ -9,7 +9,11 @@ export const gymMembership: Sample = {
     version: 1,
     title: 'Gym membership',
     fields: {
-      name: { type: 'group', label: 'Name', fields: { first: { type: 'string', label: 'First name', required: true }, last: { type: 'string', label: 'Last name' } } },
+      name: {
+        type: 'group',
+        label: 'Name',
+        fields: { first: { type: 'string', label: 'First name', required: true }, last: { type: 'string', label: 'Last name' } },
+      },
       email: { type: 'string', format: 'email', label: 'Email', required: true },
       born: { type: 'date', label: 'Date of birth', max: '2010-12-31' },
       plan: { type: 'choice', widget: 'buttons', label: 'Plan', options: ['Monthly', 'Quarterly', 'Yearly'], required: true },
@@ -20,14 +24,38 @@ export const gymMembership: Sample = {
       trainerTime: { type: 'date', format: 'time', label: 'Preferred time', visible: 'trainer' },
       fitness: { type: 'number', widget: 'rating', label: 'How fit do you feel?', min: 1, max: 5, decimals: 0 },
       conditions: { type: 'string', widget: 'textarea', label: 'Anything we should know about your health?' },
-      code: { type: 'string', widget: 'otp', label: 'Code sent to your email', minLength: 6, maxLength: 6, pattern: '[0-9]*', messages: { pattern: 'Digits only' } },
+      code: {
+        type: 'string',
+        widget: 'otp',
+        label: 'Code sent to your email',
+        minLength: 6,
+        maxLength: 6,
+        pattern: '[0-9]*',
+        messages: { pattern: 'Digits only' },
+      },
       signature: { type: 'string', widget: 'signature', label: 'Sign here', required: true },
     },
-    layout: [{ type: 'pages', display: 'tabs', position: 'left', children: [
-      { type: 'section', title: 'About you', children: ['name', { type: 'grid', cols: { base: 1, md: 2 }, children: ['email', 'born'] }] },
-      { type: 'section', title: 'Plan', children: ['plan', { type: 'grid', cols: { base: 1, md: 2 }, children: ['start', 'sessions'] }, 'goals', { type: 'grid', cols: { base: 1, md: 2 }, children: ['trainer', 'trainerTime'] }] },
-      { type: 'section', title: 'Health', children: ['fitness', 'conditions'] },
-      { type: 'section', title: 'Sign', children: ['code', 'signature'] },
-    ] }],
+    layout: [
+      {
+        type: 'pages',
+        display: 'tabs',
+        position: 'left',
+        children: [
+          { type: 'section', title: 'About you', children: ['name', { type: 'grid', cols: { base: 1, md: 2 }, children: ['email', 'born'] }] },
+          {
+            type: 'section',
+            title: 'Plan',
+            children: [
+              'plan',
+              { type: 'grid', cols: { base: 1, md: 2 }, children: ['start', 'sessions'] },
+              'goals',
+              { type: 'grid', cols: { base: 1, md: 2 }, children: ['trainer', 'trainerTime'] },
+            ],
+          },
+          { type: 'section', title: 'Health', children: ['fitness', 'conditions'] },
+          { type: 'section', title: 'Sign', children: ['code', 'signature'] },
+        ],
+      },
+    ],
   },
 }

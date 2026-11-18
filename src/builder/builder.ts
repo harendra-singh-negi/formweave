@@ -1,5 +1,17 @@
 // <Builder>: the visual form builder. Holds the schema and its history, and lays out the tabs and panels.
-import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type ClipboardEvent } from 'react'
+import {
+  createElement as h,
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type CSSProperties,
+  type DragEvent,
+  type KeyboardEvent,
+  type ClipboardEvent,
+} from 'react'
 import { lint } from '../core/lint.ts'
 import { text } from '../core/form.ts'
 import { Form } from '../react.ts'
@@ -50,7 +62,7 @@ export function Builder(props: BuilderProps) {
   useEffect(() => {
     if (!first.current) props.onChange?.(schema, issues)
     first.current = false
-  // oxlint-disable-next-line react-hooks/exhaustive-deps -- the app hears of each new schema once; issues follow from it
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- the app hears of each new schema once; issues follow from it
   }, [schema])
 
   /** Typing in the settings panel makes one undo step per pause, not per key. */
@@ -133,7 +145,7 @@ export function Builder(props: BuilderProps) {
     if (kind) {
       const it = itemOf(kind)
       const into = target && (target.type === 'group' || target.type === 'list')
-      const parent = into ? on.path! : on.path?.slice(0, -1) ?? []
+      const parent = into ? on.path! : (on.path?.slice(0, -1) ?? [])
       const key = freeKey(schema.fields, parent, it.base)
       let next = edits.add(s, parent, key, it.make())
       if (!into && on.path) next = edits.move(next, [...parent, key], on.path.at(-1)!)
@@ -153,7 +165,10 @@ export function Builder(props: BuilderProps) {
       const fromIp = moved.split('.').map(Number)
       const to = where(nodeAt(s.layout!, fromIp)!)
       const next = to && layoutEdits.move(s.layout!, fromIp, ...to)
-      if (next) { commit({ ...s, layout: next }, null); selectNode(null) }
+      if (next) {
+        commit({ ...s, layout: next }, null)
+        selectNode(null)
+      }
       return
     }
     if (!from) return
@@ -175,7 +190,10 @@ export function Builder(props: BuilderProps) {
   /** The last thing copied in this builder; Ctrl+V also takes one copied in another tab or builder. */
   const [clip, setClip] = useState<Clip | null>(null)
   const [note, setNote] = useState('')
-  const say = (m: string) => { setNote(m); setTimeout(() => setNote((x) => (x === m ? '' : x)), 2500) }
+  const say = (m: string) => {
+    setNote(m)
+    setTimeout(() => setNote((x) => (x === m ? '' : x)), 2500)
+  }
   const picked = (): Part => (selected ? { path: selected } : node ? { ip: node } : 'all')
   const CLIP_MARK = 'formweave-clip'
   const copy = (part: Part = picked(), data?: DataTransfer) => {
@@ -186,7 +204,11 @@ export function Builder(props: BuilderProps) {
     if (data) data.setData('text/plain', textOut)
     else navigator.clipboard?.writeText(textOut).catch(() => {})
     const n = Object.keys(c.fields).length
-    say(part === 'all' ? `Copied the whole form (${n} fields)` : `Copied ${n === 1 && 'path' in part ? 'the field' : `it with ${n} field${n === 1 ? '' : 's'}`}. Paste with Ctrl+V or Paste.`)
+    say(
+      part === 'all'
+        ? `Copied the whole form (${n} fields)`
+        : `Copied ${n === 1 && 'path' in part ? 'the field' : `it with ${n} field${n === 1 ? '' : 's'}`}. Paste with Ctrl+V or Paste.`,
+    )
   }
   /** Pastes after what is picked (inside a picked group or list, or a picked section on the canvas), else at the end. */
   const paste = (c: Clip | null = clip, at?: { parent: Path; after?: string; place?: [Ip, number] }) => {
@@ -197,21 +219,36 @@ export function Builder(props: BuilderProps) {
     const after = at ? at.after : parent.length && !intoField ? selected!.at(-1) : !parent.length && selected?.length === 1 ? selected[0] : undefined
     // a pasted section or grid goes after the picked one, not into it
     const first = c.layout?.[0]
-    const afterNode: [Ip, number] | undefined = node && typeof first === 'object' && first.type !== 'content' ? [node.slice(0, -1), node.at(-1)! + 1] : undefined
-    const place = at?.place ?? (parent.length ? undefined : afterNode ?? spot(schema.layout ? schema : { ...schema, layout: Object.keys(schema.fields) }, first ?? 'x'))
+    const afterNode: [Ip, number] | undefined =
+      node && typeof first === 'object' && first.type !== 'content' ? [node.slice(0, -1), node.at(-1)! + 1] : undefined
+    const place =
+      at?.place ?? (parent.length ? undefined : (afterNode ?? spot(schema.layout ? schema : { ...schema, layout: Object.keys(schema.fields) }, first ?? 'x')))
     const { schema: next, keys, placed } = pasteClip(schema, c, parent, after, place)
     const piece = c.layout?.length === 1 && typeof c.layout[0] === 'object'
     commit(next, piece || !keys.length ? null : [...parent, keys[0]])
     if (piece) selectNode(placed ?? null)
     else setPanel((n) => n + 1)
-    say(`Pasted ${keys.length} field${keys.length === 1 ? '' : 's'}${keys.length ? `: ${keys.slice(0, 4).join(', ')}${keys.length > 4 ? '…' : ''}` : ''}. Change the keys in the settings if you like.`)
+    say(
+      `Pasted ${keys.length} field${keys.length === 1 ? '' : 's'}${keys.length ? `: ${keys.slice(0, 4).join(', ')}${keys.length > 4 ? '…' : ''}` : ''}. Change the keys in the settings if you like.`,
+    )
   }
   /** A copy right after the original, without touching what was copied. */
   const duplicate = (path?: Path) => {
     const part: Part = path ? { path } : picked()
     const c = copyPart(schema, part)
     if (!c || part === 'all') return
-    if ('path' in part) paste(c, { parent: part.path.slice(0, -1), after: part.path.at(-1), place: part.path.length === 1 && schema.layout ? (() => { const ip = ipOf(schema.layout!, part.path[0]); return ip ? [ip.slice(0, -1), ip.at(-1)! + 1] as [Ip, number] : undefined })() : undefined })
+    if ('path' in part)
+      paste(c, {
+        parent: part.path.slice(0, -1),
+        after: part.path.at(-1),
+        place:
+          part.path.length === 1 && schema.layout
+            ? (() => {
+                const ip = ipOf(schema.layout!, part.path[0])
+                return ip ? ([ip.slice(0, -1), ip.at(-1)! + 1] as [Ip, number]) : undefined
+              })()
+            : undefined,
+      })
     else paste(c, { parent: [], place: [part.ip.slice(0, -1), part.ip.at(-1)! + 1] })
   }
   const remove = (path: Path) => {
@@ -242,7 +279,8 @@ export function Builder(props: BuilderProps) {
       path = [...selected.slice(0, -1), key]
     }
     // compare ignoring prop order: the panel rebuilds a field's props in its own order
-    const stable = (x: unknown) => JSON.stringify(x, (_, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v))
+    const stable = (x: unknown) =>
+      JSON.stringify(x, (_, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v))
     if (path !== selected || stable(next) !== stable(schema)) commit(next, path, true)
   }
 
@@ -274,46 +312,131 @@ export function Builder(props: BuilderProps) {
   }
 
   const field = selected ? fieldAt(schema.fields, selected) : undefined
-  const paletteButton = (id: string) => h('button', {
-    key: id, type: 'button', draggable: true, title: 'Click to add, or drag it into place',
-    onClick: () => add(id), onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-kind', id),
-  }, '+ ', itemOf(id).label)
+  const paletteButton = (id: string) =>
+    h(
+      'button',
+      {
+        key: id,
+        type: 'button',
+        draggable: true,
+        title: 'Click to add, or drag it into place',
+        onClick: () => add(id),
+        onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-kind', id),
+      },
+      '+ ',
+      itemOf(id).label,
+    )
   /** Is this field a column of a table? */
   const inTable = (path: Path) => {
     const up = path.length > 1 ? fieldAt(schema.fields, path.slice(0, -1)) : undefined
     return up?.type === 'list' && up.widget === 'table'
   }
   const design = tab === 'design'
-  const palette = h('div', { className: 'fw-b-palette', 'aria-label': 'Add a field' },
+  const palette = h(
+    'div',
+    { className: 'fw-b-palette', 'aria-label': 'Add a field' },
     h('h3', null, field && (field.type === 'group' || field.type === 'list') ? fill(L.addTo, { name: text(field.label, 'en') || selected!.at(-1)! }) : L.add),
-    h('input', { type: 'search', className: 'fw-b-find', placeholder: fill(L.find, { n: ITEMS.filter((i) => shows(i.id, i.group)).length }), 'aria-label': fill(L.find, { n: '' }).replace(/\s*\(\)/, ''), value: find, onChange: (e: ChangeEvent<HTMLInputElement>) => setFind(e.target.value) }),
-    [...PALETTE, ...(design ? [['Layout', NODES] as const] : [])].map(([group, list]) => {
-      const hits = (list as [string, string, unknown][]).filter(([base, label]) => (group === 'Layout' || shows(base, group)) && (!find || `${label} ${group} ${base}`.toLowerCase().includes(find.toLowerCase())))
-      // an accordion: Text starts open; while searching, every group with a hit opens (the key resets them after)
-      return hits.length > 0 && h('details', { key: `${group}${find ? '?' : ''}`, className: 'fw-b-group', open: !!find || group === 'Text', name: find ? undefined : 'fw-palette' },
-        h('summary', null, group === 'Layout' ? L.layoutPieces : group, h('small', null, ` ${hits.length}`)),
-        h('div', null, group === 'Layout'
-          ? (hits as typeof NODES).map(([k, label, make]) => h('button', { key: k, type: 'button', draggable: true, title: 'Click to add, or drag it into place', onClick: () => addNode(make()), onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-new', JSON.stringify(make())) }, '+ ', label))
-          : hits.map(([base]) => paletteButton(base))))
+    h('input', {
+      type: 'search',
+      className: 'fw-b-find',
+      placeholder: fill(L.find, { n: ITEMS.filter((i) => shows(i.id, i.group)).length }),
+      'aria-label': fill(L.find, { n: '' }).replace(/\s*\(\)/, ''),
+      value: find,
+      onChange: (e: ChangeEvent<HTMLInputElement>) => setFind(e.target.value),
     }),
-    !design && tabs.includes('layout') && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
-    props.scan && tabs.includes('json') && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…'))
+    [...PALETTE, ...(design ? [['Layout', NODES] as const] : [])].map(([group, list]) => {
+      const hits = (list as [string, string, unknown][]).filter(
+        ([base, label]) => (group === 'Layout' || shows(base, group)) && (!find || `${label} ${group} ${base}`.toLowerCase().includes(find.toLowerCase())),
+      )
+      // an accordion: Text starts open; while searching, every group with a hit opens (the key resets them after)
+      return (
+        hits.length > 0 &&
+        h(
+          'details',
+          { key: `${group}${find ? '?' : ''}`, className: 'fw-b-group', open: !!find || group === 'Text', name: find ? undefined : 'fw-palette' },
+          h('summary', null, group === 'Layout' ? L.layoutPieces : group, h('small', null, ` ${hits.length}`)),
+          h(
+            'div',
+            null,
+            group === 'Layout'
+              ? (hits as typeof NODES).map(([k, label, make]) =>
+                  h(
+                    'button',
+                    {
+                      key: k,
+                      type: 'button',
+                      draggable: true,
+                      title: 'Click to add, or drag it into place',
+                      onClick: () => addNode(make()),
+                      onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-new', JSON.stringify(make())),
+                    },
+                    '+ ',
+                    label,
+                  ),
+                )
+              : hits.map(([base]) => paletteButton(base)),
+          ),
+        )
+      )
+    }),
+    !design &&
+      tabs.includes('layout') &&
+      h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
+    props.scan && tabs.includes('json') && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…'),
+  )
   /** Copy, Paste and Duplicate for what is picked; with nothing picked, Copy takes the whole form. */
   const tool = (label: string, title: string, onClick: () => void, disabled = false) =>
     h('button', { type: 'button', title, 'aria-label': nameFor(label, title), disabled, onClick, className: 'fw-b-clip' }, label)
-  const clipTools = h(Fragment, null,
+  const clipTools = h(
+    Fragment,
+    null,
     tool(L.copy, selected || node ? `${L.copy} (Ctrl+C)` : `${L.copy}: the whole form (Ctrl+C)`, () => copy()),
     tool(L.paste, clip ? 'Paste after what is picked (Ctrl+V)' : 'Copy something first', () => paste(), !clip),
-    (selected || node) && tool('⧉', `${L.duplicate} (Ctrl+D)`, () => duplicate()))
-  const fieldSettings = field && selected && h(Fragment, null,
-    h('div', { className: 'fw-b-head' }, h('h3', null, fill(L.settings, { kind: KINDS.find(([k]) => k === field.type)![1] })),
-      h('span', { className: 'fw-b-tools' }, clipTools, h('button', { type: 'button', 'aria-label': 'Delete', title: 'Delete', onClick: () => remove(selected) }, '✕'))),
-    field.type === 'list' && (field.widget === 'table' || field.widget === 'matrix') && h(TableDesigner, {
-      field, pick: (k) => select([...selected, k]),
-      set: (f) => { commit(edits.replace(schema, selected, f), selected, true); setPanel((n) => n + 1) },
-    }),
-    clash && h('p', { className: 'fw-b-clash', role: 'alert' }, `The key "${clash}" is already used by another field here. Keys must be unique, so this field keeps "${selected.at(-1)}" until you type a free one.`),
-    h(Form, { key: panel, schema: inTable(selected) ? asColumn(SETTINGS[field.type]) : SETTINGS[field.type], values: toSettings(selected.at(-1)!, field), labels: { submit: 'Done' }, widgets: { options: OptionsEditor }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
+    (selected || node) && tool('⧉', `${L.duplicate} (Ctrl+D)`, () => duplicate()),
+  )
+  const fieldSettings =
+    field &&
+    selected &&
+    h(
+      Fragment,
+      null,
+      h(
+        'div',
+        { className: 'fw-b-head' },
+        h('h3', null, fill(L.settings, { kind: KINDS.find(([k]) => k === field.type)![1] })),
+        h(
+          'span',
+          { className: 'fw-b-tools' },
+          clipTools,
+          h('button', { type: 'button', 'aria-label': 'Delete', title: 'Delete', onClick: () => remove(selected) }, '✕'),
+        ),
+      ),
+      field.type === 'list' &&
+        (field.widget === 'table' || field.widget === 'matrix') &&
+        h(TableDesigner, {
+          field,
+          pick: (k) => select([...selected, k]),
+          set: (f) => {
+            commit(edits.replace(schema, selected, f), selected, true)
+            setPanel((n) => n + 1)
+          },
+        }),
+      clash &&
+        h(
+          'p',
+          { className: 'fw-b-clash', role: 'alert' },
+          `The key "${clash}" is already used by another field here. Keys must be unique, so this field keeps "${selected.at(-1)}" until you type a free one.`,
+        ),
+      h(Form, {
+        key: panel,
+        schema: inTable(selected) ? asColumn(SETTINGS[field.type]) : SETTINGS[field.type],
+        values: toSettings(selected.at(-1)!, field),
+        labels: { submit: 'Done' },
+        widgets: { options: OptionsEditor },
+        onChange: (s) => onSettings(s.values),
+        onSubmit: () => select(null),
+      }),
+    )
   const piece = node && schema.layout ? nodeAt(schema.layout, node) : undefined
   /** Words typed over a label on the canvas: a field's label, a column heading, a section title, a heading or text. */
   const relabel = (on: { path?: Path; ip?: Ip }, words: string) => {
@@ -340,43 +463,168 @@ export function Builder(props: BuilderProps) {
     commit({ ...schema, layout: isContainer(piece) ? layoutEdits.unwrap(schema.layout, node) : layoutEdits.remove(schema.layout, node) }, null)
     selectNode(null)
   }
-  return h('div', { className: `fw-builder${props.className ? ` ${props.className}` : ''}`, style: props.vars as CSSProperties, onKeyDown: onKey, onCopy, onPaste },
-    h('div', { className: 'fw-b-bar' },
-      h('div', { role: 'tablist' },
-        tabs.map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, t === 'json' && props.scan ? L.jsonScan : L[t]))),
-      h('div', null,
+  return h(
+    'div',
+    { className: `fw-builder${props.className ? ` ${props.className}` : ''}`, style: props.vars as CSSProperties, onKeyDown: onKey, onCopy, onPaste },
+    h(
+      'div',
+      { className: 'fw-b-bar' },
+      h(
+        'div',
+        { role: 'tablist' },
+        tabs.map((t) =>
+          h(
+            'button',
+            { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) },
+            t === 'json' && props.scan ? L.jsonScan : L[t],
+          ),
+        ),
+      ),
+      h(
+        'div',
+        null,
         h('button', { type: 'button', onClick: undo, disabled: !past.length, title: 'Ctrl+Z' }, L.undo),
         h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, L.redo),
-        props.help !== false && h('button', { type: 'button', 'aria-haspopup': 'dialog', onClick: () => setHelp(true) }, L.help))),
+        props.help !== false && h('button', { type: 'button', 'aria-haspopup': 'dialog', onClick: () => setHelp(true) }, L.help),
+      ),
+    ),
     help && h(Help, { close: () => setHelp(false), title: L.helpTitle, closeLabel: L.closeHelp }),
     note && h('p', { className: 'fw-b-note', role: 'status' }, note),
-    issues.length > 0 && h('ul', { className: 'fw-b-issues', role: 'status' }, issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message))),
-    design && h('div', { className: `fw-b-main fw-b-design${wide ? ' fw-b-wide' : ''}` },
-      (!wide || adding) && palette,
-      h(Canvas, { schema, issues: issues.length > 0, selected, node, select, selectNode, drop: canvasDrop, remove: () => (selected ? remove(selected) : removeNode()), wide, setWide, adding, setAdding, relabel, labels: L }),
-      // full width: the settings come back only while something is picked
-      (!wide || field || typeof piece === 'object') && h('div', { className: 'fw-b-settings' },
-        fieldSettings
-          || (typeof piece === 'object' && h(Fragment, null,
-            h('div', { className: 'fw-b-head' }, h('h3', null, piece.type === 'content' ? 'Content' : piece.type, ' settings'),
-              h('span', { className: 'fw-b-tools' }, clipTools, h('button', { type: 'button', 'aria-label': isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', title: isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', onClick: removeNode }, '✕'))),
-            h(Form, { key: panel, schema: NODE_SETTINGS[piece.type], values: nodeSettings(piece), widgets: { image: ImagePicker }, labels: { submit: 'Done' }, onSubmit: () => selectNode(null),
-              onChange: (st) => { const next = fromNodeSettings(piece, st.values); if (JSON.stringify(next) !== JSON.stringify(piece)) commit({ ...schema, layout: layoutEdits.replace(schema.layout!, node!, next) }, null, true) } })))
-          || h(Fragment, null, h('div', { className: 'fw-b-head' }, h('h3', null, L.formSettings), h('span', { className: 'fw-b-tools' }, clipTools)),
-            h(Form, { key: panel, schema: FORM_SETTINGS, values: formSettings(schema), labels: { submit: 'Done' }, onSubmit: () => {},
-              onChange: (st) => { const next = fromFormSettings(schema, st.values); if (JSON.stringify(next) !== JSON.stringify(schema)) commit(next, null, true) } }),
-            h('p', { className: 'fw-help' }, 'Click a field or section on the form to change it. Drag them to move them; drag from the left to add.')))),
-    tab === 'build' && h('div', { className: 'fw-b-main' },
-      palette,
-      h('div', { className: 'fw-b-tree' },
-        h('h3', null, L.fields),
-        h(Tree, { fields: schema.fields, parent: [], selected, select, move, remove, duplicate, place, drop: (path, before) => commit(edits.move(schema, path, before)) })),
-      h('div', { className: 'fw-b-settings' },
-        fieldSettings || h('p', { className: 'fw-help' }, L.selectField))),
-    tab === 'layout' && h(LayoutTab, { schema, commit: (layout: Layout[] | undefined, typing?: boolean) => commit({ ...schema, layout }, selected, typing), panel, bump: () => setPanel((n) => n + 1) }),
-    tab === 'preview' && h('div', { className: 'fw-b-preview' },
-      issues.length ? h('p', { className: 'fw-error' }, 'Fix the issues above to preview.') : h(Form, { schema, onSubmit: () => {} })),
-    tab === 'json' && h(JsonTab, { schema, scan: props.scan, samples: props.samples === false ? [] : (props.samples ?? SAMPLES), heading: L.samples, load: (s) => commit(s, null) }))
+    issues.length > 0 &&
+      h(
+        'ul',
+        { className: 'fw-b-issues', role: 'status' },
+        issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message)),
+      ),
+    design &&
+      h(
+        'div',
+        { className: `fw-b-main fw-b-design${wide ? ' fw-b-wide' : ''}` },
+        (!wide || adding) && palette,
+        h(Canvas, {
+          schema,
+          issues: issues.length > 0,
+          selected,
+          node,
+          select,
+          selectNode,
+          drop: canvasDrop,
+          remove: () => (selected ? remove(selected) : removeNode()),
+          wide,
+          setWide,
+          adding,
+          setAdding,
+          relabel,
+          labels: L,
+        }),
+        // full width: the settings come back only while something is picked
+        (!wide || field || typeof piece === 'object') &&
+          h(
+            'div',
+            { className: 'fw-b-settings' },
+            fieldSettings ||
+              (typeof piece === 'object' &&
+                h(
+                  Fragment,
+                  null,
+                  h(
+                    'div',
+                    { className: 'fw-b-head' },
+                    h('h3', null, piece.type === 'content' ? 'Content' : piece.type, ' settings'),
+                    h(
+                      'span',
+                      { className: 'fw-b-tools' },
+                      clipTools,
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          'aria-label': isContainer(piece) ? 'Remove, keep what is inside' : 'Delete',
+                          title: isContainer(piece) ? 'Remove, keep what is inside' : 'Delete',
+                          onClick: removeNode,
+                        },
+                        '✕',
+                      ),
+                    ),
+                  ),
+                  h(Form, {
+                    key: panel,
+                    schema: NODE_SETTINGS[piece.type],
+                    values: nodeSettings(piece),
+                    widgets: { image: ImagePicker },
+                    labels: { submit: 'Done' },
+                    onSubmit: () => selectNode(null),
+                    onChange: (st) => {
+                      const next = fromNodeSettings(piece, st.values)
+                      if (JSON.stringify(next) !== JSON.stringify(piece))
+                        commit({ ...schema, layout: layoutEdits.replace(schema.layout!, node!, next) }, null, true)
+                    },
+                  }),
+                )) ||
+              h(
+                Fragment,
+                null,
+                h('div', { className: 'fw-b-head' }, h('h3', null, L.formSettings), h('span', { className: 'fw-b-tools' }, clipTools)),
+                h(Form, {
+                  key: panel,
+                  schema: FORM_SETTINGS,
+                  values: formSettings(schema),
+                  labels: { submit: 'Done' },
+                  onSubmit: () => {},
+                  onChange: (st) => {
+                    const next = fromFormSettings(schema, st.values)
+                    if (JSON.stringify(next) !== JSON.stringify(schema)) commit(next, null, true)
+                  },
+                }),
+                h('p', { className: 'fw-help' }, 'Click a field or section on the form to change it. Drag them to move them; drag from the left to add.'),
+              ),
+          ),
+      ),
+    tab === 'build' &&
+      h(
+        'div',
+        { className: 'fw-b-main' },
+        palette,
+        h(
+          'div',
+          { className: 'fw-b-tree' },
+          h('h3', null, L.fields),
+          h(Tree, {
+            fields: schema.fields,
+            parent: [],
+            selected,
+            select,
+            move,
+            remove,
+            duplicate,
+            place,
+            drop: (path, before) => commit(edits.move(schema, path, before)),
+          }),
+        ),
+        h('div', { className: 'fw-b-settings' }, fieldSettings || h('p', { className: 'fw-help' }, L.selectField)),
+      ),
+    tab === 'layout' &&
+      h(LayoutTab, {
+        schema,
+        commit: (layout: Layout[] | undefined, typing?: boolean) => commit({ ...schema, layout }, selected, typing),
+        panel,
+        bump: () => setPanel((n) => n + 1),
+      }),
+    tab === 'preview' &&
+      h(
+        'div',
+        { className: 'fw-b-preview' },
+        issues.length ? h('p', { className: 'fw-error' }, 'Fix the issues above to preview.') : h(Form, { schema, onSubmit: () => {} }),
+      ),
+    tab === 'json' &&
+      h(JsonTab, {
+        schema,
+        scan: props.scan,
+        samples: props.samples === false ? [] : (props.samples ?? SAMPLES),
+        heading: L.samples,
+        load: (s) => commit(s, null),
+      }),
+  )
 }
 
 /**

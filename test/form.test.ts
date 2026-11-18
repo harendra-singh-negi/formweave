@@ -43,10 +43,21 @@ test('a condition makes a field required', () => {
 test('formulas run in rows and over them, rounded; what the client sent for them is ignored', () => {
   const r = validate(
     loan,
-    { name: 'Asha', employment: 'Salaried', items: [{ qty: '3', price: '0.1', total: 999 }, { qty: 2, price: 10.25 }], gst: 1 },
+    {
+      name: 'Asha',
+      employment: 'Salaried',
+      items: [
+        { qty: '3', price: '0.1', total: 999 },
+        { qty: 2, price: 10.25 },
+      ],
+      gst: 1,
+    },
     { validators },
   )
-  assert.deepEqual(r.values.items, [{ qty: 3, price: 0.1, total: 0.3 }, { qty: 2, price: 10.25, total: 20.5 }])
+  assert.deepEqual(r.values.items, [
+    { qty: 3, price: 0.1, total: 0.3 },
+    { qty: 2, price: 10.25, total: 20.5 },
+  ])
   assert.equal(r.values.gst, 3.74)
   assert.equal(r.values.grandTotal, 24.54)
 })
@@ -58,8 +69,14 @@ test('values are checked by type, format and rule', () => {
     { validators },
   )
   assert.deepEqual(codes(r.errors), {
-    name: 'minLength', email: 'format', site: 'format', employment: 'option',
-    start: 'min', end: 'check', 'items.0.qty': 'decimals', pan: 'pan',
+    name: 'minLength',
+    email: 'format',
+    site: 'format',
+    employment: 'option',
+    start: 'min',
+    end: 'check',
+    'items.0.qty': 'decimals',
+    pan: 'pan',
   })
   assert.equal(r.errors.end.message, 'End is before start')
   assert.equal(r.errors.start.message, 'Not before 2020-01-01')
@@ -103,7 +120,10 @@ test('lint finds what would break', () => {
     },
     layout: ['a', 'a', 'zzz'],
   })
-  assert.deepEqual(issues.map((i) => i.path), ['bad key', 'c.visible', 'c.pattern', 'd.value', 'a', 'layout.1', 'layout.2'])
+  assert.deepEqual(
+    issues.map((i) => i.path),
+    ['bad key', 'c.visible', 'c.pattern', 'd.value', 'a', 'layout.1', 'layout.2'],
+  )
   assert.match(issues[4].message, /a → b → a/)
   assert.throws(() => createForm({ version: 1, fields: { a: { type: 'nope' } } } as any), /Unknown type "nope"/)
 })
@@ -135,7 +155,10 @@ test('the form store recomputes, keeps hidden answers, and tells subscribers', (
 })
 
 test('fixed rows: exactly one row each, never added or removed, in order', () => {
-  const s: FormSchema = { version: 1, fields: { week: { type: 'list', widget: 'table', rows: ['Mon', 'Tue', 'Wed'], rowHeading: 'Day', fields: { hours: { type: 'number', required: true } } } } }
+  const s: FormSchema = {
+    version: 1,
+    fields: { week: { type: 'list', widget: 'table', rows: ['Mon', 'Tue', 'Wed'], rowHeading: 'Day', fields: { hours: { type: 'number', required: true } } } },
+  }
   assert.deepEqual(lint(s), [])
   const f = createForm(s)
   assert.equal((f.getState().values.week as unknown[]).length, 3)
@@ -155,13 +178,24 @@ test('a drawn signature may be longer than typed text; a colour is #rrggbb', () 
 })
 
 test('cascading options, other answers, and the card / IBAN / country / JSON checks', () => {
-  const s: FormSchema = { version: 1, fields: {
-    state: { type: 'choice', options: ['MH', 'KA'] },
-    city: { type: 'choice', options: [{ value: 'Pune', visible: "state == 'MH'" }, { value: 'Mysuru', visible: "state == 'KA'" }] },
-    tags: { type: 'choice', multiple: true, allowOther: true, options: ['a'] },
-    card: { type: 'string', format: 'card' }, iban: { type: 'string', format: 'iban' },
-    country: { type: 'string', format: 'country' }, json: { type: 'string', format: 'json' },
-  } }
+  const s: FormSchema = {
+    version: 1,
+    fields: {
+      state: { type: 'choice', options: ['MH', 'KA'] },
+      city: {
+        type: 'choice',
+        options: [
+          { value: 'Pune', visible: "state == 'MH'" },
+          { value: 'Mysuru', visible: "state == 'KA'" },
+        ],
+      },
+      tags: { type: 'choice', multiple: true, allowOther: true, options: ['a'] },
+      card: { type: 'string', format: 'card' },
+      iban: { type: 'string', format: 'iban' },
+      country: { type: 'string', format: 'country' },
+      json: { type: 'string', format: 'json' },
+    },
+  }
   assert.deepEqual(lint(s), [])
   assert.equal(validate(s, { state: 'KA', city: 'Pune' }).errors.city?.code, 'option')
   assert.ok(validate(s, { state: 'MH', city: 'Pune', tags: ['a', 'mine'] }).ok)

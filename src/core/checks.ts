@@ -10,7 +10,14 @@ export const FORMAT_CHECKS: Partial<Record<keyof typeof STRING_FORMATS, (v: stri
   country: (v) => Object.hasOwn(DIAL, v),
   card: (v) => [...v].reverse().reduce((sum, ch, i) => sum + (i % 2 ? [0, 2, 4, 6, 8, 1, 3, 5, 7, 9][+ch] : +ch), 0) % 10 === 0,
   iban: (v) => [...(v.slice(4) + v.slice(0, 4))].reduce((r, ch) => Number(String(r) + parseInt(ch, 36)) % 97, 0) === 1,
-  json: (v) => { try { JSON.parse(v); return true } catch { return false } },
+  json: (v) => {
+    try {
+      JSON.parse(v)
+      return true
+    } catch {
+      return false
+    }
+  },
 }
 
 /** Default most characters for a string field: keeps huge payloads out. */
@@ -45,8 +52,15 @@ export const MESSAGES: Record<string, string> = {
 }
 
 export function inspect(
-  kids: Level, values: Values, up: Scope | undefined, prefix: string,
-  hidden: boolean, locked: boolean, out: Run, opts: Options, root: Values,
+  kids: Level,
+  values: Values,
+  up: Scope | undefined,
+  prefix: string,
+  hidden: boolean,
+  locked: boolean,
+  out: Run,
+  opts: Options,
+  root: Values,
 ) {
   const scope: Scope = { kids, values, up }
   const get = lookup(scope, opts.context ?? {})
@@ -63,8 +77,7 @@ export function inspect(
       if (e) out.errors[path] = e
     }
     if (c.f.type === 'group') inspect(c.kids!, v as Values, scope, path + '.', !visible, readOnly, out, opts, root)
-    else if (c.f.type === 'list')
-      (v as Values[]).forEach((row, i) => inspect(c.kids!, row, scope, `${path}.${i}.`, !visible, readOnly, out, opts, root))
+    else if (c.f.type === 'list') (v as Values[]).forEach((row, i) => inspect(c.kids!, row, scope, `${path}.${i}.`, !visible, readOnly, out, opts, root))
   }
 }
 

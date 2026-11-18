@@ -31,7 +31,22 @@ export type Classes = Partial<Record<'field' | 'label' | 'input' | 'help' | 'err
 /** Joins class names, skipping empty ones. */
 export const cx = (...names: unknown[]) => names.filter(Boolean).join(' ') || undefined
 
-export const LABELS = { row: 'Row', clear: 'Clear', scan: 'Scan', addTag: 'Add', country: 'Country', useLocation: 'Use my location', dropFiles: 'or drop files here', submit: 'Submit', next: 'Next', back: 'Back', addRow: '+ Add row', removeRow: 'Remove row', remove: 'Remove', total: 'Total' }
+export const LABELS = {
+  row: 'Row',
+  clear: 'Clear',
+  scan: 'Scan',
+  addTag: 'Add',
+  country: 'Country',
+  useLocation: 'Use my location',
+  dropFiles: 'or drop files here',
+  submit: 'Submit',
+  next: 'Next',
+  back: 'Back',
+  addRow: '+ Add row',
+  removeRow: 'Remove row',
+  remove: 'Remove',
+  total: 'Total',
+}
 
 export interface FormProps extends Options {
   schema: FormSchema

@@ -28,8 +28,14 @@ export function copyPart(s: FormSchema, part: Part): Clip | undefined {
 
 /** Field names in a formula renamed by `map`; words in quotes and the parts after a dot stay as they are. */
 export function renameRefs(src: string, map: Record<string, string>): string {
-  return src.split(/('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")/).map((part, i) =>
-    i % 2 ? part : part.replace(/(^|[^.\w])([A-Za-z_][A-Za-z0-9_]*)/g, (m, before: string, name: string) => (Object.hasOwn(map, name) ? before + map[name] : m))).join('')
+  return src
+    .split(/('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")/)
+    .map((part, i) =>
+      i % 2
+        ? part
+        : part.replace(/(^|[^.\w])([A-Za-z_][A-Za-z0-9_]*)/g, (m, before: string, name: string) => (Object.hasOwn(map, name) ? before + map[name] : m)),
+    )
+    .join('')
 }
 
 export function renameIn<T>(x: T, map: Record<string, string>): T {
@@ -48,7 +54,13 @@ export function renameIn<T>(x: T, map: Record<string, string>): T {
  * and the formulas and layout among them following the new keys. Pasted at the top, its layout goes at `at`
  * ([parent place, index]) or the end. Returns the schema and the keys it got.
  */
-export function pasteClip(s: FormSchema, clip: Clip, parent: Path = [], after?: string, at?: [Ip, number]): { schema: FormSchema; keys: string[]; placed?: Ip } {
+export function pasteClip(
+  s: FormSchema,
+  clip: Clip,
+  parent: Path = [],
+  after?: string,
+  at?: [Ip, number],
+): { schema: FormSchema; keys: string[]; placed?: Ip } {
   const top = parent.length === 0
   const map: Record<string, string> = {}
   const taken = new Set(Object.keys(top ? s.fields : (fieldAt(s.fields, parent) as { fields: Fields }).fields))
@@ -67,8 +79,8 @@ export function pasteClip(s: FormSchema, clip: Clip, parent: Path = [], after?: 
   let placed: Ip | undefined
   if (top && (s.layout || clip.layout?.some((n) => typeof n === 'object'))) {
     const items = layout ?? Object.keys(s.fields)
-    const pieces = (clip.layout ?? Object.keys(clip.fields)).map((n) => (typeof n === 'string' ? map[n] ?? n : renameIn(n, map)))
-    const [where, index] = at && fits(items, at[0], pieces[0]) ? at : [[], items.length] as [Ip, number]
+    const pieces = (clip.layout ?? Object.keys(clip.fields)).map((n) => (typeof n === 'string' ? (map[n] ?? n) : renameIn(n, map)))
+    const [where, index] = at && fits(items, at[0], pieces[0]) ? at : ([[], items.length] as [Ip, number])
     layout = pieces.reduce((l, n, i) => layoutEdits.insert(l, where, index + i, n), items)
     placed = [...where, index]
   }

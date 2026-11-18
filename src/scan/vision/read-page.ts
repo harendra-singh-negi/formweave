@@ -1,7 +1,21 @@
 // One page read into questions: shapes paired with the words beside them, tables, grids of boxes and choices.
 // ponytail: readPage is one long function, its steps share a lot of local state; split it further only with tests per step.
 import type { ColumnKind, Frame, Item, Kind, Phrase, Rect, Shapes, SketchColumn, SketchField, Word } from './types.ts'
-import { box, centerIn, CHOICE_WORDS, cleanLabel, columnKind, headingLike, kindOf, NUMBERING, overlapX, overlapY, phrasesOf, SCALE_WORDS, shortLabel } from './words.ts'
+import {
+  box,
+  centerIn,
+  CHOICE_WORDS,
+  cleanLabel,
+  columnKind,
+  headingLike,
+  kindOf,
+  NUMBERING,
+  overlapX,
+  overlapY,
+  phrasesOf,
+  SCALE_WORDS,
+  shortLabel,
+} from './words.ts'
 
 export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
   // a colon set apart from its word ("INSPECTION :") still ends it
@@ -36,7 +50,9 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
   const leftOf = (r: Rect, thin: boolean) =>
     phrases
       .filter((p) => free(p) && p.x1 <= r.x0 + 0.3 * em && r.x0 - p.x1 <= (/[:：]$/.test(p.text) ? 8 : 4) * em)
-      .filter((p) => (thin ? (r.y0 + r.y1) / 2 >= p.y0 - 0.2 * em && (r.y0 + r.y1) / 2 <= p.y1 + 1.0 * em : overlapY(p, r) >= 0.4 * Math.min(p.y1 - p.y0, r.y1 - r.y0)))
+      .filter((p) =>
+        thin ? (r.y0 + r.y1) / 2 >= p.y0 - 0.2 * em && (r.y0 + r.y1) / 2 <= p.y1 + 1.0 * em : overlapY(p, r) >= 0.4 * Math.min(p.y1 - p.y0, r.y1 - r.y0),
+      )
       .sort((a, b) => b.x1 - a.x1)[0]
   const above = (r: Rect, gap: number) =>
     phrases
@@ -59,14 +75,24 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
     if (ws.length) {
       const top = ws.filter((p) => overlapY(p, ws[0]) > 0)
       for (const p of ws) p.used = true
-      return { ...box(top), text: top.map((p) => p.text).join(' '), words: top.flatMap((p) => p.words), used: true, help: ws.filter((p) => !top.includes(p)).map((p) => p.text).join(' ') }
+      return {
+        ...box(top),
+        text: top.map((p) => p.text).join(' '),
+        words: top.flatMap((p) => p.words),
+        used: true,
+        help: ws
+          .filter((p) => !top.includes(p))
+          .map((p) => p.text)
+          .join(' '),
+      }
     }
     const p = above(f, 2.5 * em)
     // words in another frame belong to it (an option, a cell), not to this one
     return p && plain(p) && !shapes.frames.some((g) => g !== band && centerIn(p, g)) ? { ...take(p)!, help: '' } : undefined
   }
   /** The band of the same frame right above `f`, when it holds the column headings of the table `f` starts. */
-  const headBand = (f: Frame) => shapes.frames.find((g) => g.next && Math.abs(g.y1 - f.y0) <= 3 && Math.abs(g.x0 - f.x0) <= em && g.cols.length >= 1 && !g.rows.length)
+  const headBand = (f: Frame) =>
+    shapes.frames.find((g) => g.next && Math.abs(g.y1 - f.y0) <= 3 && Math.abs(g.x0 - f.x0) <= em && g.cols.length >= 1 && !g.rows.length)
 
   // tables, and boxes to write in
   for (const f of [...shapes.frames].sort((a, b) => a.y0 - b.y0)) {
@@ -76,17 +102,30 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
       const ys = [f.y0, ...f.rows, f.y1]
       const xs = [f.x0, ...f.cols, f.x1]
       const cell = (r: number, c: number): Rect => ({ x0: xs[c], y0: ys[r], x1: xs[c + 1], y1: ys[r + 1] })
-      const textIn = (r: number, c: number) => within.filter((p) => centerIn(p, cell(r, c))).map((p) => p.text).join(' ').trim()
+      const textIn = (r: number, c: number) =>
+        within
+          .filter((p) => centerIn(p, cell(r, c)))
+          .map((p) => p.text)
+          .join(' ')
+          .trim()
       const tickIn = (r: number, c: number) => ticksIn.some((t) => centerIn(t, cell(r, c)))
       const cols = xs.length - 1
       const rowCount = ys.length - 1
       // "Label | ______" on every row, no heading row: a field per row
-      if (cols === 2 && !ticksIn.length && Array.from({ length: rowCount }, (_, r) => textIn(r, 0) && textIn(r, 0).length <= 100 && !textIn(r, 1)).every(Boolean)) {
+      if (
+        cols === 2 &&
+        !ticksIn.length &&
+        Array.from({ length: rowCount }, (_, r) => textIn(r, 0) && textIn(r, 0).length <= 100 && !textIn(r, 1)).every(Boolean)
+      ) {
         const names = Array.from({ length: rowCount }, (_, r) => cleanLabel(textIn(r, 0)))
         const title = titleOf(f)
         if (rowCount >= 2 && names.every((n, i) => n === String(i + 1))) {
           // "1. ___  2. ___  3. ___": as many entries as people need
-          add(f, title?.text ?? '', 'table', { columns: [{ key: '', label: 'Details', kind: 'text', options: [] }], minRows: rowCount, help: title?.help ?? '' })
+          add(f, title?.text ?? '', 'table', {
+            columns: [{ key: '', label: 'Details', kind: 'text', options: [] }],
+            minRows: rowCount,
+            help: title?.help ?? '',
+          })
           for (const p of within) p.used = true
           continue
         }
@@ -103,7 +142,10 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
       const hb = numberedTop ? headBand(f) : undefined
       // headings come before the first numbered row, if there is one
       const firstNumbered = Array.from({ length: rowCount }, (_, r) => r).find((r) => /^\d{1,3}\.?$/.test(textIn(r, 0))) ?? rowCount
-      let head = Array.from({ length: firstNumbered }, (_, r) => r).find((r) => Array.from({ length: cols }, (_, c) => textIn(r, c)).filter(Boolean).length >= Math.ceil(cols / 2)) ?? (firstNumbered === 0 ? -1 : 0)
+      let head =
+        Array.from({ length: firstNumbered }, (_, r) => r).find(
+          (r) => Array.from({ length: cols }, (_, c) => textIn(r, c)).filter(Boolean).length >= Math.ceil(cols / 2),
+        ) ?? (firstNumbered === 0 ? -1 : 0)
       if (head < 0) head = -1
       let headers = Array.from({ length: cols }, (_, c) => (head >= 0 ? shortLabel(cleanLabel(textIn(head, c))) : '') || `Column ${c + 1}`)
       if (hb) {
@@ -127,21 +169,39 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
       const boxed = cellsAll.filter(([r, c]) => tickIn(r, c) && textIn(r, c))
       if (boxed.length >= 3 && boxed.length >= 0.6 * cellsAll.filter(([r, c]) => textIn(r, c)).length) {
         // a grid of boxes with their words ("☐ Loading  ☐ Discharging…"): one question, its title in a row of its own or above
-        const titleRow = Array.from({ length: rowCount }, (_, r) => r).find((r) => !Array.from({ length: cols }, (_, c) => tickIn(r, c)).some(Boolean) && textIn(r, 0))
-        const title = titleRow !== undefined ? within.filter((p) => p.y0 >= ys[titleRow] - 2 && p.y1 <= ys[titleRow + 1] + 2).map((p) => p.text).join(' ') : (take(above(f, 2.5 * em))?.text ?? '')
+        const titleRow = Array.from({ length: rowCount }, (_, r) => r).find(
+          (r) => !Array.from({ length: cols }, (_, c) => tickIn(r, c)).some(Boolean) && textIn(r, 0),
+        )
+        const title =
+          titleRow !== undefined
+            ? within
+                .filter((p) => p.y0 >= ys[titleRow] - 2 && p.y1 <= ys[titleRow + 1] + 2)
+                .map((p) => p.text)
+                .join(' ')
+            : (take(above(f, 2.5 * em))?.text ?? '')
         const perRow = Math.max(...boxed.map(([r]) => boxed.filter(([x]) => x === r).length))
         add(f, title, 'many_of', { options: boxed.map(([r, c]) => cleanLabel(textIn(r, c))), ...(boxed.length > perRow ? { perRow } : {}) })
         for (const p of within) p.used = true
         for (const t of ticksIn) busy.add(t)
         continue
       }
-      const hasLine = (p: Phrase) => shapes.rules.some((r) => !centerIn(r, f) && r.x0 >= p.x1 - 0.3 * em && r.x0 - p.x1 <= 6 * em && (r.y0 + r.y1) / 2 >= p.y0 - 0.2 * em && (r.y0 + r.y1) / 2 <= p.y1 + em)
+      const hasLine = (p: Phrase) =>
+        shapes.rules.some(
+          (r) => !centerIn(r, f) && r.x0 >= p.x1 - 0.3 * em && r.x0 - p.x1 <= 6 * em && (r.y0 + r.y1) / 2 >= p.y0 - 0.2 * em && (r.y0 + r.y1) / 2 <= p.y1 + em,
+        )
       const title = titleOf(hb ?? f, (p) => !hasLine(p))
       if (empty || !body.length) {
         // a heading above the table also starts its section
         if (title && headingLike(title, em)) items.push({ at: title, heading: cleanLabel(title.text) })
         const rulesIn = (c: number) => shapes.rules.filter((l) => centerIn(l, { x0: xs[c], y0: ys[head + 1] ?? f.y0, x1: xs[c + 1], y1: f.y1 })).length
-        const columns = headers.map((label, c) => ({ key: '', label, full: textIn(head, c), kind: (columnKind(label) === 'text' && rulesIn(c) >= 2 * Math.max(1, body.length) ? 'long_text' : columnKind(label)) as ColumnKind, options: [] }))
+        const columns = headers
+          .map((label, c) => ({
+            key: '',
+            label,
+            full: textIn(head, c),
+            kind: (columnKind(label) === 'text' && rulesIn(c) >= 2 * Math.max(1, body.length) ? 'long_text' : columnKind(label)) as ColumnKind,
+            options: [],
+          }))
           .filter((c) => !NUMBERING.test(c.label)) // rows are numbered anyway
         add(f, title?.text ?? '', 'table', { columns, minRows: Math.max(1, body.length), help: title?.help ?? '' })
       } else if (body.filter((r) => textIn(r, 0)).length >= 2) {
@@ -182,11 +242,22 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
             // some rows printed no choices: they ask for a value, so typing is allowed too
             const free = asked.filter((r) => !textIn(r, c)).length >= 0.25 * asked.length
             const yesNo = !free && choices.length === 2 && choices.every((o) => /^(yes|no)$/i.test(o))
-            columns.push({ key: '', label: headers[c].startsWith('Column ') || /\//.test(headers[c]) ? 'Answer' : headers[c], kind: yesNo ? 'yes_no' : 'one_of', options: yesNo ? [] : choices, ...(free ? { free } : {}) })
+            columns.push({
+              key: '',
+              label: headers[c].startsWith('Column ') || /\//.test(headers[c]) ? 'Answer' : headers[c],
+              kind: yesNo ? 'yes_no' : 'one_of',
+              options: yesNo ? [] : choices,
+              ...(free ? { free } : {}),
+            })
             continue
           }
           const kind = columnKind(headers[c])
-          columns.push({ key: '', label: headers[c].startsWith('Column ') ? (from === 2 ? 'Answer' : headers[c]) : headers[c], kind: kind === 'text' && asked.some((r) => rulesIn(r, c) >= 2) ? 'long_text' : kind, options: [] })
+          columns.push({
+            key: '',
+            label: headers[c].startsWith('Column ') ? (from === 2 ? 'Answer' : headers[c]) : headers[c],
+            kind: kind === 'text' && asked.some((r) => rulesIn(r, c) >= 2) ? 'long_text' : kind,
+            options: [],
+          })
         }
         if (!columns.length) {
           // nothing to fill in: a printed table
@@ -197,9 +268,19 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
         // a long first heading is the table's question ("Evaluation of … (scoring below)"), not a column name
         const first = head >= 0 ? cleanLabel(textIn(head, 0)) : ''
         const asks = first.length > 60
-        add(f, title?.text || (asks ? shortLabel(first) : ''), 'table', numbered
-          ? { columns, minRows: asked.length, help: title?.help ?? '' }
-          : { columns, rows: rowNames, rowHeading: asks || headers[0].startsWith('Column ') ? '' : headers[0], help: title?.help || (asks && first !== shortLabel(first) ? first : '') })
+        add(
+          f,
+          title?.text || (asks ? shortLabel(first) : ''),
+          'table',
+          numbered
+            ? { columns, minRows: asked.length, help: title?.help ?? '' }
+            : {
+                columns,
+                rows: rowNames,
+                rowHeading: asks || headers[0].startsWith('Column ') ? '' : headers[0],
+                help: title?.help || (asks && first !== shortLabel(first) ? first : ''),
+              },
+        )
       } else {
         // a list of questions: the first column says what, the other columns are answers
         if (title) items.push({ at: title, heading: cleanLabel(title.text) })
@@ -223,7 +304,18 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
       continue
     }
     const below = shapes.frames.find((g) => Math.abs(g.y0 - f.y1) <= 3 && Math.abs(g.x0 - f.x0) <= em && g.rows.length && g.cols.length)
-    if (f.next && f.cols.length && below && /^\d{1,2}\.?$/.test(inside({ ...below, y1: below.rows[0] }).map((p) => p.text).join(' ').split(' ')[0] ?? '')) continue
+    if (
+      f.next &&
+      f.cols.length &&
+      below &&
+      /^\d{1,2}\.?$/.test(
+        inside({ ...below, y1: below.rows[0] })
+          .map((p) => p.text)
+          .join(' ')
+          .split(' ')[0] ?? '',
+      )
+    )
+      continue
     if (shapes.ticks.some((t) => centerIn(t, f))) continue // a question with its box: read with the boxes
     const band = titleOf(f, () => false)
     if (band) items.push({ at: band, heading: cleanLabel(band.text) })
@@ -238,9 +330,10 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
     }
     // boxes side by side (or stacked) in one frame: each is a box of its own
     const ys = [f.y0, ...f.rows, f.y1]
-    const parts = f.rows.length && !f.cols.length
-      ? ys.slice(1).map((y, i): Rect => ({ x0: f.x0, y0: ys[i], x1: f.x1, y1: y }))
-      : xs.slice(1).map((x, i): Rect => ({ x0: xs[i], y0: f.y0, x1: x, y1: f.y1 }))
+    const parts =
+      f.rows.length && !f.cols.length
+        ? ys.slice(1).map((y, i): Rect => ({ x0: f.x0, y0: ys[i], x1: f.x1, y1: y }))
+        : xs.slice(1).map((x, i): Rect => ({ x0: xs[i], y0: f.y0, x1: x, y1: f.y1 }))
     // empty rows stacked under each other: lines for one longer answer, named by the title above
     if (f.rows.length && !f.cols.length && parts.slice(1).every((p) => !inside(p).length)) {
       // the first row may hold the title itself ("Other Comments" over empty rows)
@@ -320,7 +413,9 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
     }
     const optionOf = (t: Rect, next?: Rect) => {
       // the words right after the box, up to the next box or a wide gap; else just before it
-      const after = near(t).filter((w) => w.x0 >= t.x1 - 2 && (!next || w.x1 <= next.x0 + 2)).sort((a, b) => a.x0 - b.x0)
+      const after = near(t)
+        .filter((w) => w.x0 >= t.x1 - 2 && (!next || w.x1 <= next.x0 + 2))
+        .sort((a, b) => a.x0 - b.x0)
       const run: Word[] = []
       for (const w of after) {
         if ((run.length ? w.x0 - run[run.length - 1].x1 : w.x0 - t.x1) > 1.2 * em) break
@@ -328,14 +423,24 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
         run.push(w)
       }
       if (run.length) return run
-      const before = near(t).filter((w) => w.x1 <= t.x0 + 2 && t.x0 - w.x1 <= 1.2 * em).sort((a, b) => b.x0 - a.x0)
+      const before = near(t)
+        .filter((w) => w.x1 <= t.x0 + 2 && t.x0 - w.x1 <= 1.2 * em)
+        .sort((a, b) => b.x0 - a.x0)
       return before.length ? [before[0]] : []
     }
     // which side the words sit: after each box ("☐ Loading"), or before it ("Master Mariner ☐")
-    const nextWord = (t: Rect, dir: 1 | -1) => Math.min(Infinity, ...near(t).map((w) => (dir > 0 ? w.x0 - t.x1 : t.x0 - w.x1)).filter((d) => d >= -2))
+    const nextWord = (t: Rect, dir: 1 | -1) =>
+      Math.min(
+        Infinity,
+        ...near(t)
+          .map((w) => (dir > 0 ? w.x0 - t.x1 : t.x0 - w.x1))
+          .filter((d) => d >= -2),
+      )
     const before = row.length >= 2 && row.filter((t) => nextWord(t, -1) <= 0.8 * em).length > row.filter((t) => nextWord(t, 1) <= 0.8 * em).length
     const optionBefore = (t: Rect, prev?: Rect) => {
-      const run = near(t).filter((w) => w.x1 <= t.x0 + 2 && (!prev || w.x0 >= prev.x1 - 2)).sort((a, b) => a.x0 - b.x0)
+      const run = near(t)
+        .filter((w) => w.x1 <= t.x0 + 2 && (!prev || w.x0 >= prev.x1 - 2))
+        .sort((a, b) => a.x0 - b.x0)
       // only the words close to the box: a wide gap ends the option (a question may come first)
       const out: Word[] = []
       for (let i = run.length - 1; i >= 0; i--) {
@@ -348,7 +453,9 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
     row.forEach((t, i) => {
       const opt = before ? optionBefore(t, row[i - 1]) : optionOf(t, row[i + 1])
       // words between the previous option and this box that end with ':' or '?' start a new question
-      const lead = near(t).filter((w) => w.x1 <= t.x0 + 2 && (i === 0 || w.x0 >= row[i - 1].x1) && !opt.includes(w)).sort((a, b) => a.x0 - b.x0)
+      const lead = near(t)
+        .filter((w) => w.x1 <= t.x0 + 2 && (i === 0 || w.x0 >= row[i - 1].x1) && !opt.includes(w))
+        .sort((a, b) => a.x0 - b.x0)
       const startsNew = i === 0 || lead.some((w) => /[:?]$/.test(w.text))
       if (startsNew) {
         const label = lead.length ? phrases.find((p) => p.words.includes(lead[lead.length - 1])) : undefined
@@ -366,12 +473,19 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
   for (const q of questions) {
     const prev = merged[merged.length - 1]
     const near = prev && q.ticks[0].y0 - prev.ticks[prev.ticks.length - 1].y1 <= 1.5 * em
-    const aligned = (a: Rect[], b: Rect[]) => b.filter((t) => a.some((s) => Math.abs(s.x0 - t.x0) <= em)).length >= Math.ceil(0.6 * Math.min(a.length, b.length))
+    const aligned = (a: Rect[], b: Rect[]) =>
+      b.filter((t) => a.some((s) => Math.abs(s.x0 - t.x0) <= em)).length >= Math.ceil(0.6 * Math.min(a.length, b.length))
     if (near && !q.label && q.ticks.length >= 2 && prev.ticks.length >= 2 && aligned(prev.ticks, q.ticks)) {
       prev.ticks.push(...q.ticks)
       prev.options.push(...q.options)
       prev.grid = true
-    } else if (prev && q.ticks.length === 1 && !q.label && prev.ticks.every((t) => Math.abs(t.x0 - q.ticks[0].x0) <= em) && q.ticks[0].y0 - prev.ticks[prev.ticks.length - 1].y1 <= 1.5 * em) {
+    } else if (
+      prev &&
+      q.ticks.length === 1 &&
+      !q.label &&
+      prev.ticks.every((t) => Math.abs(t.x0 - q.ticks[0].x0) <= em) &&
+      q.ticks[0].y0 - prev.ticks[prev.ticks.length - 1].y1 <= 1.5 * em
+    ) {
       prev.ticks.push(...q.ticks)
       prev.options.push(...q.options)
     } else merged.push({ ...q, ticks: [...q.ticks], options: [...q.options] })
@@ -383,8 +497,10 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
     // no question on the line: the frame cell to the left may hold it ("Condition of the vessel… | ☐ Below ☐ Average ☐ Above")
     const home = cellAt(q.ticks[0])
     const frameX0 = shapes.frames.find((g) => centerIn(q.ticks[0], g))?.x0 ?? 0
-    const leftCell = home && home.x0 > frameX0 + em && !q.label && (q.ticks.length > 1 || !opts.length)
-      ? phrases.filter((p) => free(p) && p.x1 <= home.x0 + 2 && p.x0 >= frameX0 - 2 && p.y0 >= box(q.ticks).y0 - 2 * em && p.y1 <= box(q.ticks).y1 + 2 * em) : []
+    const leftCell =
+      home && home.x0 > frameX0 + em && !q.label && (q.ticks.length > 1 || !opts.length)
+        ? phrases.filter((p) => free(p) && p.x1 <= home.x0 + 2 && p.x0 >= frameX0 - 2 && p.y0 >= box(q.ticks).y0 - 2 * em && p.y1 <= box(q.ticks).y1 + 2 * em)
+        : []
     if (leftCell.length) {
       for (const p of leftCell) p.used = true
       q.label = { ...box(leftCell), text: leftCell.map((p) => p.text).join(' '), words: leftCell.flatMap((p) => p.words), used: true }
@@ -421,7 +537,12 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
     const p = phrases.find((q) => q.y0 >= r.y1 - 0.2 * em && q.y0 - r.y1 <= 0.8 * em && overlapX(q, r) >= 0.8 * (q.x1 - q.x0))
     const under = p && rules.find((n) => n !== r && n.y0 >= p.y1 - 0.2 * em && n.y0 - p.y1 <= 0.8 * em && overlapX(n, r) >= 0.8 * (r.x1 - r.x0))
     if (!under) continue
-    for (const n of rules) if (overlapX(n, r) >= 0.8 * (r.x1 - r.x0) && ((n.y0 >= r.y0 - 0.5 * em && n.y1 <= r.y1 + 0.5 * em) || (n.y0 >= under.y0 - 0.5 * em && n.y1 <= under.y1 + 0.5 * em))) done.add(n)
+    for (const n of rules)
+      if (
+        overlapX(n, r) >= 0.8 * (r.x1 - r.x0) &&
+        ((n.y0 >= r.y0 - 0.5 * em && n.y1 <= r.y1 + 0.5 * em) || (n.y0 >= under.y0 - 0.5 * em && n.y1 <= under.y1 + 0.5 * em))
+      )
+        done.add(n)
   }
 
   // lines in columns under printed headings (RANK  NAME  SIGNATURE  DATE): a table to fill in, a row per line
@@ -444,15 +565,26 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
     }
     // headings over the columns, in the band above the first row
     const heads = first.map((r) =>
-      phrases.find((p) => free(p) && p.y1 <= r.y0 && r.y0 - p.y1 <= 3 * em && overlapX(p, r) >= 0.5 * Math.min(p.x1 - p.x0, r.x1 - r.x0)
-        && !phrases.some((o) => o !== p && o.y0 >= p.y1 - 2 && o.y1 <= r.y0 && overlapX(o, r) > 0)))
+      phrases.find(
+        (p) =>
+          free(p) &&
+          p.y1 <= r.y0 &&
+          r.y0 - p.y1 <= 3 * em &&
+          overlapX(p, r) >= 0.5 * Math.min(p.x1 - p.x0, r.x1 - r.x0) &&
+          !phrases.some((o) => o !== p && o.y0 >= p.y1 - 2 && o.y1 <= r.y0 && overlapX(o, r) > 0),
+      ),
+    )
     if (grid.length < 2 && heads.filter(Boolean).length < first.length) continue
     // rows that each have their own label ("Place: ___ Date: ___" twice) are fields, not a table
     if (grid.filter((row) => leftOf(row[0], true)).length >= 2) continue
     if (heads.some((h) => h && (/[:：]$/.test(h.text) || h.words.length > 5))) continue
     if (heads.filter(Boolean).length < Math.ceil(first.length / 2)) continue
     const at = box(grid.flat())
-    const label = take(leftOf(box([at, ...heads.filter((h): h is Phrase => !!h)]), false) ?? leftOf(first[0], true) ?? above(box(heads.filter((h): h is Phrase => !!h)), 1.6 * em))
+    const label = take(
+      leftOf(box([at, ...heads.filter((h): h is Phrase => !!h)]), false) ??
+        leftOf(first[0], true) ??
+        above(box(heads.filter((h): h is Phrase => !!h)), 1.6 * em),
+    )
     for (const h of heads) take(h)
     add(label ? box([label, at]) : at, label?.text ?? '', 'table', {
       columns: heads.map((h, c) => {
@@ -466,7 +598,12 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
   for (const r of rules) {
     if (done.has(r)) continue
     // a line right under printed words is an underline, not a place to write
-    const over = phrases.find((p) => p.y1 <= r.y0 + 0.2 * em && r.y0 - p.y1 <= 0.6 * em && (overlapX(p, r) >= 0.5 * (r.x1 - r.x0) || (Math.abs(p.x0 - r.x0) <= 1.5 * em && r.x1 - r.x0 > 15 * em)))
+    const over = phrases.find(
+      (p) =>
+        p.y1 <= r.y0 + 0.2 * em &&
+        r.y0 - p.y1 <= 0.6 * em &&
+        (overlapX(p, r) >= 0.5 * (r.x1 - r.x0) || (Math.abs(p.x0 - r.x0) <= 1.5 * em && r.x1 - r.x0 > 15 * em)),
+    )
     if (over && !/[:：]$/.test(over.text)) continue
     // words printed on top of it: a shaded band behind a heading, not a line
     if (phrases.some((p) => centerIn(p, { x0: r.x0, y0: r.y0 - 0.3 * em, x1: r.x1, y1: r.y1 + 0.3 * em }))) continue
@@ -474,7 +611,9 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
     let kind: Kind | undefined
     // "__/__/____": lines on one row joined by slashes are one date
     for (;;) {
-      const next = rules.find((n) => !done.has(n) && n !== r && Math.abs((n.y0 + n.y1) / 2 - (at.y0 + at.y1) / 2) <= 0.4 * em && n.x0 >= at.x1 && n.x0 - at.x1 <= 1.5 * em)
+      const next = rules.find(
+        (n) => !done.has(n) && n !== r && Math.abs((n.y0 + n.y1) / 2 - (at.y0 + at.y1) / 2) <= 0.4 * em && n.x0 >= at.x1 && n.x0 - at.x1 <= 1.5 * em,
+      )
       const joint = next && words.find((w) => w.x0 >= at.x1 - 2 && w.x1 <= next.x0 + 2 && /^[/\-.]+$/.test(w.text))
       if (!next || !joint) break
       done.add(next)
@@ -528,7 +667,10 @@ export function readPage(shapes: Shapes, ocrWords: Word[]): Item[] {
   let line = 0
   let prev: Item | undefined
   for (const it of items) {
-    if (!('field' in it)) { prev = undefined; continue }
+    if (!('field' in it)) {
+      prev = undefined
+      continue
+    }
     const same = prev && Math.abs((prev.at.y0 + prev.at.y1) / 2 - (it.at.y0 + it.at.y1) / 2) <= 0.6 * em
     if (!same) line++
     it.field.line = line

@@ -44,7 +44,11 @@ export function components(ink: Uint8Array, w: number, h: number): { lab: Int32A
     let top = 0
     stack[top++] = i
     lab[i] = id
-    let x0 = w, y0 = h, x1 = 0, y1 = 0, n = 0
+    let x0 = w,
+      y0 = h,
+      x1 = 0,
+      y1 = 0,
+      n = 0
     while (top) {
       const p = stack[--top]
       const x = p % w
@@ -75,9 +79,7 @@ export function components(ink: Uint8Array, w: number, h: number): { lab: Int32A
 
 /** Text height, from the letters: about 1.7 × the median letter height. */
 export function typicalHeight(comps: Comp[], pageHeight: number): number {
-  const hs = comps
-    .filter((c) => c.y1 - c.y0 >= 4 && c.y1 - c.y0 <= pageHeight / 15 && c.x1 - c.x0 <= 3 * (c.y1 - c.y0) && c.n >= 8)
-    .map((c) => c.y1 - c.y0)
+  const hs = comps.filter((c) => c.y1 - c.y0 >= 4 && c.y1 - c.y0 <= pageHeight / 15 && c.x1 - c.x0 <= 3 * (c.y1 - c.y0) && c.n >= 8).map((c) => c.y1 - c.y0)
   return hs.length ? Math.min(300, Math.max(8, Math.round(1.7 * median(hs)))) : 20
 }
 

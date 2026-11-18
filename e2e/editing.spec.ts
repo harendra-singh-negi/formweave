@@ -5,7 +5,11 @@ import { onCanvas, openBuilder, pieceOnCanvas, saved } from './helpers.ts'
 test('a section duplicated: its fields come along with unique keys and formulas that follow', async ({ page }) => {
   await openBuilder(page, {
     version: 1,
-    fields: { qty: { type: 'number', label: 'Qty' }, price: { type: 'number', label: 'Price' }, total: { type: 'number', label: 'Total', value: 'qty * price' } },
+    fields: {
+      qty: { type: 'number', label: 'Qty' },
+      price: { type: 'number', label: 'Price' },
+      total: { type: 'number', label: 'Total', value: 'qty * price' },
+    },
     layout: [{ type: 'section', title: 'Order', children: ['qty', 'price', 'total'] }],
   })
   await pieceOnCanvas(page, '0').locator('> h3').click()
@@ -37,7 +41,10 @@ test('options: a pasted list, then three per row on the form', async ({ page }) 
 })
 
 test('the table designer adds a column and a Sum row', async ({ page }) => {
-  await openBuilder(page, { version: 1, fields: { items: { type: 'list', widget: 'table', label: 'Items', min: 1, fields: { item: { type: 'string', label: 'Item' } } } } })
+  await openBuilder(page, {
+    version: 1,
+    fields: { items: { type: 'list', widget: 'table', label: 'Items', min: 1, fields: { item: { type: 'string', label: 'Item' } } } },
+  })
   await onCanvas(page, 'items').click({ position: { x: 5, y: 5 } })
   await page.getByRole('combobox', { name: 'New column type' }).selectOption('number')
   await page.getByRole('button', { name: '+ Column' }).click()

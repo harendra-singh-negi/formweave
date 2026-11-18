@@ -41,7 +41,11 @@ test('an input dragged from the palette lands where it is dropped', async ({ pag
   await page.locator('.fw-b-palette .fw-b-group button', { hasText: 'Long text' }).dragTo(onCanvas(page, 'phone'))
   const s = await saved(page)
   expect(s.fields.longText1).toMatchObject({ type: 'string', widget: 'textarea' })
-  expect((s.layout![0] as { children: unknown[] }).children).toEqual([{ type: 'grid', cols: { base: 1, md: 2 }, children: ['name', 'email'] }, 'longText1', 'phone'])
+  expect((s.layout![0] as { children: unknown[] }).children).toEqual([
+    { type: 'grid', cols: { base: 1, md: 2 }, children: ['name', 'email'] },
+    'longText1',
+    'phone',
+  ])
 })
 
 test('a field dragged onto another moves before it, into its grid', async ({ page }) => {

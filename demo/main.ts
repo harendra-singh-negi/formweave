@@ -20,11 +20,18 @@ const SAMPLE: FormSchema = {
     employment: { type: 'choice', widget: 'radio', label: { en: 'Employment', hi: 'रोज़गार' }, options: ['Salaried', 'Self Employed'], required: true },
     business: { type: 'string', label: { en: 'Business name', hi: 'व्यवसाय का नाम' }, visible: "employment == 'Self Employed'", required: true },
     gstin: {
-      type: 'string', label: 'GSTIN', visible: "employment == 'Self Employed'",
-      pattern: '[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]', messages: { pattern: { en: 'Like 22AAAAA0000A1Z5', hi: 'जैसे 22AAAAA0000A1Z5' } },
+      type: 'string',
+      label: 'GSTIN',
+      visible: "employment == 'Self Employed'",
+      pattern: '[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]',
+      messages: { pattern: { en: 'Like 22AAAAA0000A1Z5', hi: 'जैसे 22AAAAA0000A1Z5' } },
     },
     items: {
-      type: 'list', widget: 'table', min: 1, max: 5, label: { en: 'Items', hi: 'सामान' },
+      type: 'list',
+      widget: 'table',
+      min: 1,
+      max: 5,
+      label: { en: 'Items', hi: 'सामान' },
       fields: {
         item: { type: 'string', label: { en: 'Item', hi: 'सामान' }, required: true },
         qty: { type: 'number', label: { en: 'Qty', hi: 'मात्रा' }, min: 1, decimals: 0, required: true },
@@ -36,14 +43,17 @@ const SAMPLE: FormSchema = {
     grandTotal: { type: 'number', label: { en: 'Grand total ₹', hi: 'कुल योग ₹' }, value: 'sum(items.total) + gst', decimals: 2 },
     agree: { type: 'boolean', widget: 'toggle', label: { en: 'I agree to the terms', hi: 'मैं शर्तें मानता/मानती हूँ' }, required: true },
   },
-  layout: [{
-    type: 'pages', display: 'steps',
-    children: [
-      { type: 'section', title: { en: 'About you', hi: 'आपके बारे में' }, children: [{ type: 'grid', cols: 2, children: ['name', 'email', 'phone', 'dob'] }] },
-      { type: 'section', title: { en: 'Work', hi: 'काम' }, children: ['employment', { type: 'grid', cols: 2, children: ['business', 'gstin'] }] },
-      { type: 'section', title: { en: 'Order', hi: 'ऑर्डर' }, children: ['items', { type: 'grid', cols: 2, children: ['gst', 'grandTotal'] }, 'agree'] },
-    ],
-  }],
+  layout: [
+    {
+      type: 'pages',
+      display: 'steps',
+      children: [
+        { type: 'section', title: { en: 'About you', hi: 'आपके बारे में' }, children: [{ type: 'grid', cols: 2, children: ['name', 'email', 'phone', 'dob'] }] },
+        { type: 'section', title: { en: 'Work', hi: 'काम' }, children: ['employment', { type: 'grid', cols: 2, children: ['business', 'gstin'] }] },
+        { type: 'section', title: { en: 'Order', hi: 'ऑर्डर' }, children: ['items', { type: 'grid', cols: 2, children: ['gst', 'grandTotal'] }, 'agree'] },
+      ],
+    },
+  ],
 }
 const HINDI = { submit: 'जमा करें', next: 'आगे', back: 'पीछे', addRow: '+ पंक्ति जोड़ें', removeRow: 'पंक्ति हटाएँ', remove: 'हटाएँ' }
 const STORE = 'formweave-demo-schema'
@@ -71,7 +81,9 @@ builder.scan = (files, progress) => scanForm(files, { languages: ['eng', 'hin'],
 builder.addEventListener('fw-change', (e) => {
   const { schema, issues } = (e as CustomEvent).detail
   if (issues.length) return
-  try { localStorage.setItem(STORE, JSON.stringify(schema)) } catch {}
+  try {
+    localStorage.setItem(STORE, JSON.stringify(schema))
+  } catch {}
   form.schema = schema
   $('sent').textContent = 'Nothing submitted yet.'
 })
@@ -88,20 +100,52 @@ $<HTMLSelectElement>('lang').addEventListener('change', (e) => {
   form.labels = locale === 'hi' ? HINDI : {}
 })
 $('reset').addEventListener('click', () => {
-  try { localStorage.removeItem(STORE) } catch {}
+  try {
+    localStorage.removeItem(STORE)
+  } catch {}
   location.reload()
 })
 
 // The builder's look and words are the app's to choose: colours, font and corners as CSS variables, words as labels
 const BUILDER_HI = {
-  design: 'डिज़ाइन', build: 'फ़ील्ड', layout: 'लेआउट', preview: 'पूर्वावलोकन', json: 'इम्पोर्ट / JSON', jsonScan: 'स्कैन / इम्पोर्ट',
-  undo: 'पूर्ववत', redo: 'फिर करें', help: '? मदद', closeHelp: 'मदद बंद करें', helpTitle: 'बिल्डर कैसे इस्तेमाल करें', add: 'जोड़ें', addTo: '{name} में जोड़ें', find: 'इनपुट खोजें ({n})',
-  fields: 'फ़ील्ड', formSettings: 'फ़ॉर्म सेटिंग', settings: '{kind} सेटिंग', selectField: 'बदलने के लिए कोई फ़ील्ड चुनें।', copy: 'कॉपी', paste: 'पेस्ट',
-  duplicate: 'डुप्लिकेट', remove: 'हटाएँ', desktop: 'डेस्कटॉप', tablet: 'टैबलेट', phone: 'फ़ोन', fullWidth: '⤢ पूरी चौड़ाई', exitFullWidth: '⤡ सामान्य चौड़ाई',
-  openPalette: '+ जोड़ें', closePalette: '✕ पैलेट बंद', samples: 'नमूने', layoutPieces: 'लेआउट',
+  design: 'डिज़ाइन',
+  build: 'फ़ील्ड',
+  layout: 'लेआउट',
+  preview: 'पूर्वावलोकन',
+  json: 'इम्पोर्ट / JSON',
+  jsonScan: 'स्कैन / इम्पोर्ट',
+  undo: 'पूर्ववत',
+  redo: 'फिर करें',
+  help: '? मदद',
+  closeHelp: 'मदद बंद करें',
+  helpTitle: 'बिल्डर कैसे इस्तेमाल करें',
+  add: 'जोड़ें',
+  addTo: '{name} में जोड़ें',
+  find: 'इनपुट खोजें ({n})',
+  fields: 'फ़ील्ड',
+  formSettings: 'फ़ॉर्म सेटिंग',
+  settings: '{kind} सेटिंग',
+  selectField: 'बदलने के लिए कोई फ़ील्ड चुनें।',
+  copy: 'कॉपी',
+  paste: 'पेस्ट',
+  duplicate: 'डुप्लिकेट',
+  remove: 'हटाएँ',
+  desktop: 'डेस्कटॉप',
+  tablet: 'टैबलेट',
+  phone: 'फ़ोन',
+  fullWidth: '⤢ पूरी चौड़ाई',
+  exitFullWidth: '⤡ सामान्य चौड़ाई',
+  openPalette: '+ जोड़ें',
+  closePalette: '✕ पैलेट बंद',
+  samples: 'नमूने',
+  layoutPieces: 'लेआउट',
 }
 const look = () => {
-  builder.vars = { '--fw-accent': $<HTMLInputElement>('accent').value, '--fw-b-font': $<HTMLSelectElement>('font').value || 'inherit', '--fw-radius': $<HTMLSelectElement>('radius').value }
+  builder.vars = {
+    '--fw-accent': $<HTMLInputElement>('accent').value,
+    '--fw-b-font': $<HTMLSelectElement>('font').value || 'inherit',
+    '--fw-radius': $<HTMLSelectElement>('radius').value,
+  }
   builder.labels = $<HTMLSelectElement>('words').value === 'hi' ? BUILDER_HI : {}
 }
 for (const id of ['accent', 'font', 'radius', 'words']) $(id).addEventListener('input', look)

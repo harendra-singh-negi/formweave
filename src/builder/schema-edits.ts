@@ -33,7 +33,8 @@ export function relayout(items: Layout[] | undefined, fn: (key: string) => strin
 
 export const edits = {
   replace: (s: FormSchema, path: Path, field: Field): FormSchema => ({
-    ...s, fields: inMap(s.fields, path.slice(0, -1), (m) => m.map(([k, f]) => [k, k === path.at(-1) ? field : f])),
+    ...s,
+    fields: inMap(s.fields, path.slice(0, -1), (m) => m.map(([k, f]) => [k, k === path.at(-1) ? field : f])),
   }),
   rename(s: FormSchema, path: Path, key: string): FormSchema {
     const old = path.at(-1)!

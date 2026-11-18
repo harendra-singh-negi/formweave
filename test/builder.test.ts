@@ -31,7 +31,15 @@ test('edits keep order, nesting and the layout in step', () => {
 })
 
 test('opens on the design canvas: the form itself, every part marked so a click can pick it', () => {
-  const html = renderToString(h(Builder, { schema: { ...base, fields: { ...base.fields, items: { ...base.fields.items, widget: 'table', min: 1 } as any, secret: { type: 'string', visible: 'name == \'x\'' } }, layout: [{ type: 'section', title: 'You', children: ['name', 'items', 'secret'] }] } }))
+  const html = renderToString(
+    h(Builder, {
+      schema: {
+        ...base,
+        fields: { ...base.fields, items: { ...base.fields.items, widget: 'table', min: 1 } as any, secret: { type: 'string', visible: "name == 'x'" } },
+        layout: [{ type: 'section', title: 'You', children: ['name', 'items', 'secret'] }],
+      },
+    }),
+  )
   assert.match(html, /<section class="fw-section" data-fw-ip="0" draggable="true"><h3>You<\/h3>/)
   assert.match(html, /class="fw-field" data-fw-path="name" draggable="true"/)
   assert.match(html, /<th data-fw-path="items.qty">/) // a column, picked from its heading
@@ -43,9 +51,13 @@ test('opens on the design canvas: the form itself, every part marked so a click 
   assert.match(html, /<summary>Layout<small> 10<\/small>/) // sections and steps come from the same palette
 })
 
-test('relocate moves a field\'s place in the layout, ipOf finds it', async () => {
+test("relocate moves a field's place in the layout, ipOf finds it", async () => {
   const { relocate, ipOf } = await import('../src/builder.ts')
-  const s: FormSchema = { version: 1, fields: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } }, layout: ['a', { type: 'section', children: ['b'] }, 'c'] }
+  const s: FormSchema = {
+    version: 1,
+    fields: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } },
+    layout: ['a', { type: 'section', children: ['b'] }, 'c'],
+  }
   assert.deepEqual(ipOf(s.layout!, 'b'), [1, 0])
   const t = relocate(s, 'c', [1], 0) // into the section, before b
   assert.deepEqual(t.layout, ['a', { type: 'section', children: ['c', 'b'] }])
@@ -67,7 +79,10 @@ test('layout edits move nodes between containers and keep pages to sections', as
   assert.deepEqual(l[0].children, ['b', 'a'])
   // 'c' to the top, before everything (it shifts nothing else)
   l = layoutEdits.move(l, [2], [], 0)!
-  assert.deepEqual(l.map((n: any) => (typeof n === 'string' ? n : n.type)), ['c', 'section', 'pages'])
+  assert.deepEqual(
+    l.map((n: any) => (typeof n === 'string' ? n : n.type)),
+    ['c', 'section', 'pages'],
+  )
   // a field can't sit directly in pages; a section can't go into itself
   assert.equal(layoutEdits.move(l, [0], [2], 0), undefined)
   assert.equal(layoutEdits.move(l, [1], [1], 0), undefined)
@@ -81,21 +96,49 @@ test('layout edits move nodes between containers and keep pages to sections', as
 test('lint: totals name number columns', () => {
   const s = (totals: unknown) => ({ version: 1, fields: { t: { type: 'list', totals, fields: { qty: { type: 'number' }, name: { type: 'string' } } } } })
   assert.deepEqual(lint(s(['qty'])), [])
-  assert.deepEqual(lint(s(['name'])).map((i) => i.path), ['t.totals'])
-  assert.deepEqual(lint(s(['nope'])).map((i) => i.path), ['t.totals'])
+  assert.deepEqual(
+    lint(s(['name'])).map((i) => i.path),
+    ['t.totals'],
+  )
+  assert.deepEqual(
+    lint(s(['nope'])).map((i) => i.path),
+    ['t.totals'],
+  )
 })
 
 test('lint: section looks, content kinds and the theme', () => {
   const s = (extra: object, layout: unknown[] = []) => ({ version: 1, fields: {}, layout, ...extra })
-  assert.deepEqual(lint(s({ theme: 'paper' }, [{ type: 'section', look: 'band', children: [] }, { type: 'content', as: 'rich', text: '<b>x</b>' }])), [])
-  assert.deepEqual(lint(s({ theme: 'neon' }, [{ type: 'section', look: 'bold', children: [] }, { type: 'content', as: 'html' }])).map((i) => i.path), ['theme', 'layout.0.look', 'layout.1.as'])
+  assert.deepEqual(
+    lint(
+      s({ theme: 'paper' }, [
+        { type: 'section', look: 'band', children: [] },
+        { type: 'content', as: 'rich', text: '<b>x</b>' },
+      ]),
+    ),
+    [],
+  )
+  assert.deepEqual(
+    lint(
+      s({ theme: 'neon' }, [
+        { type: 'section', look: 'bold', children: [] },
+        { type: 'content', as: 'html' },
+      ]),
+    ).map((i) => i.path),
+    ['theme', 'layout.0.look', 'layout.1.as'],
+  )
 })
 
 test('lint: options per row is a whole number from 1 to 12', () => {
   const s = (columns: unknown) => ({ version: 1, fields: { c: { type: 'choice', options: ['a', 'b'], columns } } })
   assert.deepEqual(lint(s(3)), [])
-  assert.deepEqual(lint(s(0)).map((i) => i.path), ['c.columns'])
-  assert.deepEqual(lint(s(2.5)).map((i) => i.path), ['c.columns'])
+  assert.deepEqual(
+    lint(s(0)).map((i) => i.path),
+    ['c.columns'],
+  )
+  assert.deepEqual(
+    lint(s(2.5)).map((i) => i.path),
+    ['c.columns'],
+  )
 })
 
 test('lint: images are https or inline png/jpeg/gif/webp; grid widths are positive numbers', () => {
@@ -103,22 +146,40 @@ test('lint: images are https or inline png/jpeg/gif/webp; grid widths are positi
   assert.deepEqual(lint(s({ type: 'content', as: 'image', src: 'https://example.com/a.png' })), [])
   assert.deepEqual(lint(s({ type: 'content', as: 'image', src: 'data:image/webp;base64,AAAA' })), [])
   for (const bad of ['javascript:alert(1)', 'http://x/a.png', 'data:image/svg+xml;base64,AAAA', 'https://x/a.png" onerror="x'])
-    assert.deepEqual(lint(s({ type: 'content', as: 'image', src: bad })).map((i) => i.path), ['layout.0.src'], bad)
+    assert.deepEqual(
+      lint(s({ type: 'content', as: 'image', src: bad })).map((i) => i.path),
+      ['layout.0.src'],
+      bad,
+    )
   assert.deepEqual(lint(s({ type: 'grid', widths: [1, 3], look: 'lines', children: [] })), [])
-  assert.deepEqual(lint(s({ type: 'grid', widths: [0], look: 'box', children: [] })).map((i) => i.path), ['layout.0.widths', 'layout.0.look'])
+  assert.deepEqual(
+    lint(s({ type: 'grid', widths: [0], look: 'box', children: [] })).map((i) => i.path),
+    ['layout.0.widths', 'layout.0.look'],
+  )
 })
 
 test('copy and paste: keys made unique, formulas and the layout follow them', async () => {
   const { copyPart, pasteClip, renameRefs } = await import('../src/builder.ts')
-  assert.equal(renameRefs("qty * price + sum(items.total) and name == 'qty'", { qty: 'qty1', price: 'price1', items: 'items1', total: 'x' }), "qty1 * price1 + sum(items1.total) and name == 'qty'")
-  const s: FormSchema = { version: 1, fields: { qty: { type: 'number' }, price: { type: 'number' }, total: { type: 'number', value: 'qty * price' }, note: { type: 'string' } },
-    layout: [{ type: 'section', title: 'Order', visible: 'qty > 0', children: [{ type: 'grid', cols: 2, children: ['qty', 'price'] }, 'total'] }, 'note'] }
+  assert.equal(
+    renameRefs("qty * price + sum(items.total) and name == 'qty'", { qty: 'qty1', price: 'price1', items: 'items1', total: 'x' }),
+    "qty1 * price1 + sum(items1.total) and name == 'qty'",
+  )
+  const s: FormSchema = {
+    version: 1,
+    fields: { qty: { type: 'number' }, price: { type: 'number' }, total: { type: 'number', value: 'qty * price' }, note: { type: 'string' } },
+    layout: [{ type: 'section', title: 'Order', visible: 'qty > 0', children: [{ type: 'grid', cols: 2, children: ['qty', 'price'] }, 'total'] }, 'note'],
+  }
   // a section, with the fields in it, pasted after itself
   const r = pasteClip(s, copyPart(s, { ip: [0] })!, [], undefined, [[], 1])
   assert.deepEqual(r.keys, ['qty1', 'price1', 'total1'])
   assert.deepEqual(r.placed, [1])
   assert.equal((r.schema.fields.total1 as any).value, 'qty1 * price1')
-  assert.deepEqual(r.schema.layout![1], { type: 'section', title: 'Order', visible: 'qty1 > 0', children: [{ type: 'grid', cols: 2, children: ['qty1', 'price1'] }, 'total1'] })
+  assert.deepEqual(r.schema.layout![1], {
+    type: 'section',
+    title: 'Order',
+    visible: 'qty1 > 0',
+    children: [{ type: 'grid', cols: 2, children: ['qty1', 'price1'] }, 'total1'],
+  })
   assert.deepEqual(lint(r.schema), [])
   // one field: after the original, its key free
   const f = pasteClip(r.schema, copyPart(r.schema, { path: ['note'] })!, [], 'note', [[], 3])
@@ -137,8 +198,18 @@ test('copy and paste: keys made unique, formulas and the layout follow them', as
 })
 
 test('the builder takes your tabs, palette, words and look', () => {
-  const html = renderToString(h(Builder, { schema: base, tabs: ['preview', 'design'], palette: ['email', 'Date & time'], samples: false, help: false,
-    labels: { preview: 'पूर्वावलोकन', design: 'डिज़ाइन', undo: 'पूर्ववत' }, className: 'mine', vars: { '--fw-accent': '#7c3aed' } }))
+  const html = renderToString(
+    h(Builder, {
+      schema: base,
+      tabs: ['preview', 'design'],
+      palette: ['email', 'Date & time'],
+      samples: false,
+      help: false,
+      labels: { preview: 'पूर्वावलोकन', design: 'डिज़ाइन', undo: 'पूर्ववत' },
+      className: 'mine',
+      vars: { '--fw-accent': '#7c3aed' },
+    }),
+  )
   assert.match(html, /^<div class="fw-builder mine" style="--fw-accent:#7c3aed">/)
   assert.match(html, /role="tablist"><button type="button" role="tab" aria-selected="true">पूर्वावलोकन<\/button><button[^>]*>डिज़ाइन<\/button><\/div>/) // only these, in this order
   assert.match(html, />पूर्ववत</)

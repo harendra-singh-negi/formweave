@@ -15,14 +15,46 @@ export function FileInput(p: WidgetProps) {
     p.touch()
   }
   const camera = f.widget === 'camera'
-  return h('div', {
-    className: 'fw-files',
-    onDragOver: (e: DragEvent) => { if (!p.readOnly) { e.preventDefault(); e.currentTarget.classList.add('fw-over') } },
-    onDragLeave: (e: DragEvent) => e.currentTarget.classList.remove('fw-over'),
-    onDrop: (e: DragEvent) => { e.currentTarget.classList.remove('fw-over'); if (p.readOnly) return; e.preventDefault(); pick(e.dataTransfer.files) },
-  },
-    h('input', { ...aria(p), type: 'file', accept: f.accept ?? (camera ? 'image/*' : undefined), capture: camera ? 'environment' : undefined, multiple: f.multiple, disabled: p.readOnly, onChange: (e: ChangeEvent<HTMLInputElement>) => pick(e.target.files) }),
+  return h(
+    'div',
+    {
+      className: 'fw-files',
+      onDragOver: (e: DragEvent) => {
+        if (!p.readOnly) {
+          e.preventDefault()
+          e.currentTarget.classList.add('fw-over')
+        }
+      },
+      onDragLeave: (e: DragEvent) => e.currentTarget.classList.remove('fw-over'),
+      onDrop: (e: DragEvent) => {
+        e.currentTarget.classList.remove('fw-over')
+        if (p.readOnly) return
+        e.preventDefault()
+        pick(e.dataTransfer.files)
+      },
+    },
+    h('input', {
+      ...aria(p),
+      type: 'file',
+      accept: f.accept ?? (camera ? 'image/*' : undefined),
+      capture: camera ? 'environment' : undefined,
+      multiple: f.multiple,
+      disabled: p.readOnly,
+      onChange: (e: ChangeEvent<HTMLInputElement>) => pick(e.target.files),
+    }),
     !p.readOnly && !camera && h('span', { className: 'fw-help' }, c.labels.dropFiles),
-    files.map((x, i) => h('div', { key: `${x.id}-${i}`, className: 'fw-file' }, x.name,
-      !p.readOnly && h('button', { type: 'button', 'aria-label': `${c.labels.remove} ${x.name}`, onClick: () => p.set(f.multiple ? files.filter((_, j) => j !== i) : null) }, '×'))))
+    files.map((x, i) =>
+      h(
+        'div',
+        { key: `${x.id}-${i}`, className: 'fw-file' },
+        x.name,
+        !p.readOnly &&
+          h(
+            'button',
+            { type: 'button', 'aria-label': `${c.labels.remove} ${x.name}`, onClick: () => p.set(f.multiple ? files.filter((_, j) => j !== i) : null) },
+            '×',
+          ),
+      ),
+    ),
+  )
 }
