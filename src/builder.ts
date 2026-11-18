@@ -463,7 +463,9 @@ export function Builder(props: BuilderProps) {
         h('input', { type: 'search', className: 'fw-b-find', placeholder: `Find an input (${ITEMS.length})`, 'aria-label': 'Find an input', value: find, onChange: (e: ChangeEvent<HTMLInputElement>) => setFind(e.target.value) }),
         PALETTE.map(([group, list]) => {
           const hits = list.filter(([base, label]) => !find || `${label} ${group} ${base}`.toLowerCase().includes(find.toLowerCase()))
-          return hits.length > 0 && h(Fragment, { key: group }, h('h4', null, group), hits.map(([base]) => paletteButton(base)))
+          // an accordion: Text starts open; while searching, every group with a hit opens (the key resets them after)
+          return hits.length > 0 && h('details', { key: `${group}${find ? '?' : ''}`, className: 'fw-b-group', open: !!find || group === 'Text' },
+            h('summary', null, group, h('small', null, ` ${hits.length}`)), h('div', null, hits.map(([base]) => paletteButton(base))))
         }),
         h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
         props.scan && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…')),
