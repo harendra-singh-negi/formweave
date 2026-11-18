@@ -1,6 +1,6 @@
 {
   "name": "formweave",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Forms as JSON: a visual builder, a React renderer and web components, scanning paper forms on the device, and one engine for validation, conditions and formulas that runs in the browser and on your server.",
   "keywords": [
     "form",
