@@ -1,6 +1,6 @@
 // The layout pieces the palette adds, and the settings panel of each.
 import { text } from '../../core/form.ts'
-import type { Field, FormSchema, Grid, Layout, Text, Values } from '../../core/schema.ts'
+import type { Field, FormSchema, Grid, Layout, Values } from '../../core/schema.ts'
 import type { Container } from '../layout-edits.ts'
 import { cssClasses, formula } from './field-settings.ts'
 

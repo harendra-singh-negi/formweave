@@ -1,4 +1,5 @@
 // An outline of a form (from scanning, or any source) turned into a schema that passes lint().
+/* oxlint-disable typescript/no-explicit-any -- this file reads JSON from outside, of any shape */
 import type { Imported } from '../core/jsonschema.ts'
 import { lint } from '../core/lint.ts'
 import type { Field, Fields, FormSchema, Layout } from '../core/schema.ts'

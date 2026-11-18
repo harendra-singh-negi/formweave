@@ -1,6 +1,5 @@
 // The questions of every page put together into one outline of the form.
 import type { Item, Sketch, SketchField } from './types.ts'
-import { box } from './words.ts'
 
 /** Pages of items into a form outline: headings start sections, the first big heading on page one is the title. */
 export function toSketch(pages: Item[][]): Sketch {

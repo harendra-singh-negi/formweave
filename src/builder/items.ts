@@ -1,7 +1,6 @@
 // The palette as a list to add from: every input with its group, and a fresh copy of it.
 import { PALETTE } from './palette.ts'
 import type { Field, FormSchema } from '../core/schema.ts'
-import { edits } from './schema-edits.ts'
 import type { Kind } from './types.ts'
 
 export const KINDS: [Kind, string][] = [

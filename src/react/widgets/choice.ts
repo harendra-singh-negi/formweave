@@ -3,7 +3,6 @@ import { createElement as h, Fragment, useState, type ChangeEvent, type CSSPrope
 import { text } from '../../core/form.ts'
 import type { ChoiceField } from '../../core/schema.ts'
 import { useCtx, type WidgetProps } from '../context.ts'
-import { shown } from '../layout.ts'
 import { aria, textValue } from '../shell.ts'
 
 export function ChoiceInput(p: WidgetProps) {
@@ -79,7 +78,7 @@ export function Tags(p: WidgetProps & { opts: { value: string; label: string }[]
       !p.readOnly && h('button', { type: 'button', 'aria-label': `${c.labels.remove} ${label(t)}`, onClick: () => p.set(tags.filter((x) => x !== t)) }, '×'))),
     !p.readOnly && h('input', {
       ...aria(p), type: 'text', list: `${p.id}-list`, value: draft, autoComplete: 'off', onBlur: () => { if (draft.trim()) add(draft); p.touch() },
-      onChange: (e: ChangeEvent<HTMLInputElement>) => (/,$/.test(e.target.value) ? add(e.target.value.slice(0, -1)) : setDraft(e.target.value)),
+      onChange: (e: ChangeEvent<HTMLInputElement>) => (e.target.value.endsWith(',') ? add(e.target.value.slice(0, -1)) : setDraft(e.target.value)),
       onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && draft.trim()) { e.preventDefault(); add(draft) }
         else if (e.key === 'Backspace' && !draft && tags.length) p.set(tags.slice(0, -1))

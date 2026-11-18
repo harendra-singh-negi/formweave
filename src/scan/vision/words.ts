@@ -44,7 +44,7 @@ export function cleanLabel(s: string): string {
 }
 
 export function headingLike(p: Phrase, em: number): boolean {
-  if (/^[•·▪◦‣∙●○■➢►✓-]/.test(p.text) || /\.$/.test(p.text)) return false // a point of a list, or a sentence
+  if (/^[•·▪◦‣∙●○■➢►✓-]/.test(p.text) || p.text.endsWith('.')) return false // a point of a list, or a sentence
   const letters = p.text.replace(/[^\p{L}]/gu, '')
   const upper = letters.length >= 4 && letters === letters.toUpperCase() && letters !== letters.toLowerCase()
   const numbered = /^(?:\d{1,2}|[IVX]{1,4}|[A-H])[.)]\s+\S/.test(p.text)

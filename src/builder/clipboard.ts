@@ -2,7 +2,6 @@
 import type { Field, Fields, FormSchema, Layout } from '../core/schema.ts'
 import { fits, type Ip, layoutEdits, nodeAt, placedKeys } from './layout-edits.ts'
 import { fieldAt, inMap } from './schema-edits.ts'
-import { formula } from './settings/field-settings.ts'
 import type { Path } from './types.ts'
 
 /** What Copy keeps: fields by key, and for a layout piece or a whole form, where they were placed. */

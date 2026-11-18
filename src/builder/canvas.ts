@@ -1,6 +1,5 @@
 // The design canvas: the form as people will see it, at a desktop, tablet or phone width, to click, drag and retype.
 import { createElement as h, useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react'
-import { lint } from '../core/lint.ts'
 import { text } from '../core/form.ts'
 import { Form } from '../react.ts'
 import type { FormSchema } from '../core/schema.ts'

@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/no-explicit-any -- this file reads JSON from outside, of any shape */
 import { parse, refs } from './expr.ts'
 import { DATE_FORMATS, SAFE_IMAGE, STRING_FORMATS } from './schema.ts'
 
@@ -70,6 +71,7 @@ export function lint(schema: unknown): Issue[] {
           if (typeof f.pattern !== 'string' || f.pattern.length > 200) add(`${path}.pattern`, 'A regular expression of up to 200 characters')
           else
             try {
+              // oxlint-disable-next-line no-new -- built only to see whether the pattern is valid
               new RegExp(f.pattern, 'u')
             } catch {
               add(`${path}.pattern`, 'Not a valid regular expression')

@@ -1,8 +1,7 @@
 // What every part of a rendered form shares: the store, the state, the words and classes, and the widget contract.
 import { createContext, useContext, type ComponentType } from 'react'
-import { createForm, text, type Form as Store, type FormState, type Options } from '../core/form.ts'
+import type { Form as Store, FormState, Options } from '../core/form.ts'
 import type { Field, FileRef, FormSchema, Values } from '../core/schema.ts'
-import { Form } from './form.ts'
 
 /** What a widget gets. It draws only the control; label, help and error are drawn around it. */
 export interface WidgetProps {

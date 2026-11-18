@@ -6,7 +6,7 @@ import { text, type FormState } from '../core/form.ts'
 import type { Grid, Layout, Pages, Section, Values, When } from '../core/schema.ts'
 import { SAFE_IMAGE } from '../core/schema.ts'
 import { cx, useCtx } from './context.ts'
-import { aria, Shell } from './shell.ts'
+import { Shell } from './shell.ts'
 
 export function Nodes({ items, ip }: { items: Layout[]; ip: number[] }) {
   return h(Fragment, null, items.map((item, i) => h(LayoutView, { key: i, item, ip: [...ip, i] })))
@@ -62,6 +62,7 @@ export function PagesView({ item, ip }: { item: Pages; ip: number[] }) {
   useEffect(() => {
     if (moved.current && item.display !== 'tabs') body.current?.focus() // say where we are after Next / Back; a tab keeps its focus
     moved.current = true
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- only a change of page moves the focus
   }, [i])
   const title = (s: Section, j: number) => text(s.title, c.locale) || `${j + 1}`
 

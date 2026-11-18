@@ -13,7 +13,7 @@ export type Get = (path: string[]) => unknown
 export class ExprError extends Error {}
 
 const TOKEN =
-  /\s*(?:(\d+(?:\.\d+)?)|'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)|(==|!=|<=|>=|&&|\|\||[-+*\/%<>(),!]))/y
+  /\s*(?:(\d+(?:\.\d+)?)|'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)|(==|!=|<=|>=|&&|\|\||[-+*/%<>(),!]))/y
 const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'null'])
 const BINARY: Record<string, [number, string]> = {
   or: [1, 'or'], '||': [1, 'or'], and: [2, 'and'], '&&': [2, 'and'],

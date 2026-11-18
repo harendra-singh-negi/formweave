@@ -1,10 +1,10 @@
 // JSON Schema in and out. Covers OpenAPI request bodies and Zod (z.toJSONSchema()), which are JSON Schema too.
+/* oxlint-disable typescript/no-explicit-any -- this file reads JSON from outside, of any shape */
 import { text } from './form.ts'
 import type { ChoiceField, DateField, Field, Fields, FormSchema, Option } from './schema.ts'
 
 type JS = Record<string, any>
 const isObj = (x: unknown): x is JS => typeof x === 'object' && x !== null && !Array.isArray(x)
-const KEY = /^[A-Za-z][A-Za-z0-9_]*$/
 const RESERVED = new Set(['context', 'and', 'or', 'not', 'true', 'false', 'null'])
 
 export interface Imported {

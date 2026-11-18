@@ -1,11 +1,8 @@
 // The builder's props, its tabs and its own words.
-import { lint, type Issue } from '../core/lint.ts'
+import type { Issue } from '../core/lint.ts'
 import type { Imported } from '../core/jsonschema.ts'
-import { SAMPLES, type Sample } from '../samples.ts'
+import type { Sample } from '../samples.ts'
 import type { Field, FormSchema } from '../core/schema.ts'
-import { Builder } from './builder.ts'
-import { Help } from './panels/help.ts'
-import { formSettings } from './settings/form-settings.ts'
 
 export type Path = string[]
 export type Kind = Field['type']

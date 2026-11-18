@@ -3,7 +3,6 @@ import { createElement as h, Fragment, type ChangeEvent } from 'react'
 import { text } from '../../core/form.ts'
 import type { ChoiceField, Field, ListField, NumberField, Values } from '../../core/schema.ts'
 import { Context, cx, useCtx, type WidgetProps } from '../context.ts'
-import { shown } from '../layout.ts'
 import { humanize, Shell } from '../shell.ts'
 
 export function GroupInput(p: WidgetProps) {

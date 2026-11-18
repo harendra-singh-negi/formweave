@@ -2,9 +2,8 @@
 import { empty, evaluate, parse, round, str, truthy, numeric, type Get, type Node } from './expr.ts'
 import { lint } from './lint.ts'
 import type { Errors, Field, Fields, FormSchema, Layout, Values, When } from './schema.ts'
-import { check, inspect } from './checks.ts'
-import { type FieldState, type Options, SchemaError, text } from './form.ts'
-import { result } from './values.ts'
+import { inspect } from './checks.ts'
+import { type FieldState, type Options, SchemaError } from './form.ts'
 
 /** A field, compiled. */
 export interface C {

@@ -1,9 +1,9 @@
 // The Import tab: samples, scanning a PDF or photos, and JSON in and out.
 import { createElement as h, useState } from 'react'
 import { lint } from '../../core/lint.ts'
-import { fromJsonSchema, type Imported } from '../../core/jsonschema.ts'
+import { fromJsonSchema } from '../../core/jsonschema.ts'
 import type { Sample } from '../../samples.ts'
-import type { Fields, FormSchema } from '../../core/schema.ts'
+import type { FormSchema } from '../../core/schema.ts'
 import type { BuilderProps } from '../types.ts'
 
 export function JsonTab({ schema, load, scan, samples, heading }: { schema: FormSchema; load(s: FormSchema): void; scan?: BuilderProps['scan']; samples: Sample[]; heading: string }) {

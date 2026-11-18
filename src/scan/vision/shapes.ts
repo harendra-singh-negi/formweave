@@ -1,7 +1,7 @@
 // Finds what is drawn on a page: lines to write on, boxes to tick, and frames with their rows and columns.
 import { binarize, components, dilate, rect, typicalHeight } from './pixels.ts'
 import type { Chain, Comp, Frame, Gray, Own, Rect, Shapes } from './types.ts'
-import { box, centerIn } from './words.ts'
+import { centerIn } from './words.ts'
 
 /** Finds lines, tick boxes and drawn rectangles on a page. */
 export function findShapes(g: Gray): Shapes {

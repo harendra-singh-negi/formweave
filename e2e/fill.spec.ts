@@ -1,14 +1,14 @@
 // Filling in forms: a switch, a matrix, a table total, conditions and steps.
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import type { FormSchema } from '../src/index.ts'
 
-async function fill(page: import('@playwright/test').Page, schema: FormSchema) {
+async function fill(page: Page, schema: FormSchema) {
   await page.goto('/#fill')
   await page.evaluate((s) => { localStorage.setItem('formweave-demo-schema', s) }, JSON.stringify(schema))
   await page.reload()
   return page.locator('#fill form')
 }
-const state = (page: import('@playwright/test').Page) => page.locator('#out').textContent().then((t) => JSON.parse(t ?? '{}'))
+const state = (page: Page) => page.locator('#out').textContent().then((t) => JSON.parse(t ?? '{}'))
 
 test('a switch slides on, a matrix takes one answer per row, a table adds itself up', async ({ page }) => {
   const form = await fill(page, { version: 1, fields: {

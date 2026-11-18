@@ -1,7 +1,6 @@
 // Formatted text typed by people: bold, italic, lists, links, colour, cleaned before it is kept.
 import { createElement as h, useEffect, useRef, type ChangeEvent, type ClipboardEvent, type MouseEvent } from 'react'
 import { cleanHtml } from '../clean-html.ts'
-import { text } from '../../core/form.ts'
 import { cx, type WidgetProps } from '../context.ts'
 import { textValue } from '../shell.ts'
 

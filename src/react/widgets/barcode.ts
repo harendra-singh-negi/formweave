@@ -21,6 +21,7 @@ export function Barcode(p: WidgetProps) {
       video.current.srcObject = s
       await video.current.play()
       const detector = new Detector()
+      // oxlint-disable-next-line no-unmodified-loop-condition -- the effect's cleanup sets it
       while (!stop) {
         const [hit] = await detector.detect(video.current).catch(() => [])
         if (hit) { p.set(hit.rawValue); p.touch(); setOn(false); return }
@@ -28,6 +29,7 @@ export function Barcode(p: WidgetProps) {
       }
     }, (err: Error) => { setNote(err.message); setOn(false) })
     return () => { stop = true; stream?.getTracks().forEach((t) => t.stop()) }
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- the camera starts and stops with `on` only
   }, [on])
   return h('div', { className: 'fw-location' },
     h('input', { ...aria(p), type: 'text', readOnly: p.readOnly, value: textValue(p.value), onBlur: p.touch, onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value) }),

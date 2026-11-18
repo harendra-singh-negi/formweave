@@ -1,5 +1,4 @@
 // Values in and out: defaults for a new form, a changed copy, and what gets submitted.
-import { empty } from './expr.ts'
 import type { Values } from './schema.ts'
 import type { FieldState, Result } from './form.ts'
 import { type C, isObj, type Level, type Run } from './run.ts'

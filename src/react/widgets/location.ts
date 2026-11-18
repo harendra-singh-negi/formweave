@@ -1,7 +1,7 @@
 // A place as "lat,lng": typed, taken from the device, or picked on a small map.
 import { createElement as h, useEffect, useRef, useState, type ChangeEvent, type PointerEvent, type ReactNode } from 'react'
 import { useCtx, type WidgetProps } from '../context.ts'
-import { aria, at, textValue } from '../shell.ts'
+import { aria, textValue } from '../shell.ts'
 
 /** "lat,lng", typed or filled in from the device. */
 export function Location(p: WidgetProps) {
@@ -52,6 +52,7 @@ export function MapPicker(p: WidgetProps) {
     ro.observe(box.current)
     return () => ro.disconnect()
   }, [])
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- recentres when the value changes, not when zoomed or panned
   useEffect(() => { if (pin) setCenter(project(pin[0], pin[1], z)) }, [p.value]) // follows "Use my location" and typing
   const zoom = (d: number) => {
     const nz = Math.max(2, Math.min(19, z + d))

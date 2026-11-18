@@ -50,6 +50,7 @@ export function Builder(props: BuilderProps) {
   useEffect(() => {
     if (!first.current) props.onChange?.(schema, issues)
     first.current = false
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- the app hears of each new schema once; issues follow from it
   }, [schema])
 
   /** Typing in the settings panel makes one undo step per pause, not per key. */

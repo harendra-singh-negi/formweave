@@ -1,7 +1,5 @@
 // One page read into questions: shapes paired with the words beside them, tables, grids of boxes and choices.
 // ponytail: readPage is one long function, its steps share a lot of local state; split it further only with tests per step.
-import { rect } from './pixels.ts'
-import { sides } from './shapes.ts'
 import type { ColumnKind, Frame, Item, Kind, Phrase, Rect, Shapes, SketchColumn, SketchField, Word } from './types.ts'
 import { box, centerIn, CHOICE_WORDS, cleanLabel, columnKind, headingLike, kindOf, NUMBERING, overlapX, overlapY, phrasesOf, SCALE_WORDS, shortLabel } from './words.ts'
 

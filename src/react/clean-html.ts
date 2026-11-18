@@ -14,6 +14,8 @@ export function cleanHtml(html: string): string {
   if (typeof DOMParser === 'undefined') return ''
   const doc = new DOMParser().parseFromString(`<!doctype html><body>${html}`, 'text/html')
   const clean = (node: Node) => {
+    // a copy: children are removed while looping, and the live list would skip the next one
+    // oxlint-disable-next-line unicorn/no-useless-spread
     for (const child of [...node.childNodes]) {
       if (child.nodeType === 3) continue // text
       if (child.nodeType !== 1) { child.remove(); continue } // comments and the like
@@ -31,6 +33,8 @@ export function cleanHtml(html: string): string {
       // a span is kept only for its colour
       if (el.tagName === 'SPAN' && !COLOUR.test(el.getAttribute('style') ?? '')) { el.replaceWith(...el.childNodes); continue }
       if (!KEEP.has(el.tagName)) { el.replaceWith(...el.childNodes); continue }
+      // a copy, for the same reason: attributes are removed while looping
+      // oxlint-disable-next-line unicorn/no-useless-spread
       for (const a of [...el.attributes]) {
         const link = el.tagName === 'A' && a.name === 'href' && /^(https?:|mailto:)/i.test(a.value.trim())
         const colour = el.tagName === 'SPAN' && a.name === 'style'

@@ -2,7 +2,6 @@
 import { createElement as h, Fragment, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import type { WidgetProps } from '../../react.ts'
 import type { Values } from '../../core/schema.ts'
-import { formula } from '../settings/field-settings.ts'
 import { nameFor } from '../a11y.ts'
 
 export function OptionsEditor(p: WidgetProps) {

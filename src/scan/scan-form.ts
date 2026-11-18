@@ -1,8 +1,9 @@
 // Forms from photos, scans and PDFs, read on the device: no AI service, no account, nothing uploaded.
 // OCR (tesseract.js) reads the printed words; ./vision finds the lines, boxes and tables and pairs them up.
+import type * as TesseractLib from 'tesseract.js' // types only: the library itself is loaded when a scan starts
 import type { Imported } from '../core/jsonschema.ts'
 import { erase, findShapes, readPage, toSketch, type Gray, type Item, type Word } from './vision/index.ts'
-import { sketchToForm, words } from './sketch-to-form.ts'
+import { sketchToForm } from './sketch-to-form.ts'
 
 /**
  * The parts of pdf.js (pdfjs-dist) the scan uses. Pass the module itself (`import * as pdfjs from 'pdfjs-dist'`);
@@ -59,12 +60,12 @@ export async function scanForm(files: File[], opts: ScanOptions = {}): Promise<I
   if (pages.length > MAX_PAGES) throw new Error(`At most ${MAX_PAGES} pages at a time`)
 
   // a PDF made on a computer carries its words: read those, exactly and at once; OCR only the pages without them
-  let worker: Awaited<ReturnType<typeof import('tesseract.js')['createWorker']>> | undefined
-  let tesseract: typeof import('tesseract.js') | undefined
+  let worker: Awaited<ReturnType<typeof TesseractLib['createWorker']>> | undefined
+  let tesseract: typeof TesseractLib | undefined
   if (pages.some((p) => !p.words)) {
     say('Getting the text reader ready… (the first time it downloads its language files)')
     const T = await import('tesseract.js')
-    tesseract = (T.default ?? T) as typeof import('tesseract.js') // a CommonJS package: its exports arrive as `default`
+    tesseract = (T.default ?? T) as typeof TesseractLib // a CommonJS package: its exports arrive as `default`
     worker = await tesseract.createWorker(opts.languages?.length ? opts.languages : ['eng'], tesseract.OEM.LSTM_ONLY, { ...opts.tesseract })
     // forms are mostly scattered words, not paragraphs
     await worker.setParameters({ tessedit_pageseg_mode: tesseract.PSM.SPARSE_TEXT, preserve_interword_spaces: '1' })

@@ -4,16 +4,17 @@ import { createForm, text, type Form as Store, type Options } from '../core/form
 import type { FormSchema, Pages, Values } from '../core/schema.ts'
 import { Context, type Ctx, cx, type FormProps, LABELS } from './context.ts'
 import { keysOf, Nodes, SubmitButton, visiblePages } from './layout.ts'
-import { aria } from './shell.ts'
 import { WIDGETS } from './widgets/index.ts'
 
 /** The form's store and state, for a UI of your own. */
 export function useForm(schema: FormSchema, opts: Options & { values?: Values; form?: Store } = {}) {
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- a new store only for a new schema or store, not for each options object
   const form = useMemo(() => opts.form ?? createForm(schema, opts), [schema, opts.form])
   const state = useSyncExternalStore(form.subscribe, form.getState, form.getState)
   const contextKey = JSON.stringify(opts.context ?? null)
   useEffect(() => {
     if (opts.context) form.setContext(opts.context)
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- contextKey stands for opts.context, compared by value
   }, [form, contextKey])
   return { form, state }
 }
@@ -25,6 +26,7 @@ export function Form(props: FormProps) {
   const ref = useRef<HTMLFormElement>(null)
   const [page, setPage] = useState(0)
   const [busy, setBusy] = useState(false)
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- tells the app of each new state, whatever its onChange is
   useEffect(() => props.onChange?.(state), [state])
   const layout = schema.layout ?? Object.keys(schema.fields)
   const pages = layout.find((l): l is Pages => typeof l === 'object' && l.type === 'pages')

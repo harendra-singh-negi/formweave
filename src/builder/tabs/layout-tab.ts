@@ -2,7 +2,7 @@
 import { createElement as h, Fragment, useState, type DragEvent, type ReactNode } from 'react'
 import { text } from '../../core/form.ts'
 import { Form } from '../../react.ts'
-import type { Fields, FormSchema, Layout, Values } from '../../core/schema.ts'
+import type { FormSchema, Layout, Values } from '../../core/schema.ts'
 import { dragEnd, dragLeave, dragOver } from '../drag.ts'
 import { fits, type Ip, isContainer, layoutEdits, nodeAt, placedKeys } from '../layout-edits.ts'
 import { ImagePicker } from '../panels/image-picker.ts'

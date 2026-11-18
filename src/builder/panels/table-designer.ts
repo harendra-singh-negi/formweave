@@ -2,7 +2,6 @@
 import { createElement as h, Fragment, useState, type ChangeEvent } from 'react'
 import { text } from '../../core/form.ts'
 import type { ChoiceField, Field, ListField } from '../../core/schema.ts'
-import { cols } from '../settings/layout-settings.ts'
 import { nameFor } from '../a11y.ts'
 
 export const NEW_COLUMNS: [string, string, Field][] = [

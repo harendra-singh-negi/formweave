@@ -1,8 +1,8 @@
 // The form engine: createForm() for a live form, validate() for answers sent to a server. Same rules, both sides.
 import type { Issue } from './lint.ts'
 import type { Errors, FormSchema, Text, Values } from './schema.ts'
-import { check, message, offered, rowLimits } from './checks.ts'
-import { type C, compile, is, type Run, run } from './run.ts'
+import { rowLimits } from './checks.ts'
+import { type C, compile, type Run, run } from './run.ts'
 import { edit, initial, result } from './values.ts'
 
 export interface Options {

@@ -1,10 +1,5 @@
 // How to do each thing in the builder, in a dialog.
 import { createElement as h, useEffect, useRef, type MouseEvent } from 'react'
-import { text } from '../../core/form.ts'
-import type { Fields, Layout } from '../../core/schema.ts'
-import { Builder } from '../builder.ts'
-import { edits } from '../schema-edits.ts'
-import { formula } from '../settings/field-settings.ts'
 
 /** How to do each thing in the builder: what the Help button opens. */
 export const HELP: [string, string[]][] = [

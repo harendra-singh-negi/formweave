@@ -1,7 +1,7 @@
 // A signature drawn with a finger, pen or mouse, kept as an SVG drawing.
 import { createElement as h, useRef, useState, type PointerEvent } from 'react'
 import { useCtx, type WidgetProps } from '../context.ts'
-import { at, textValue } from '../shell.ts'
+import { textValue } from '../shell.ts'
 
 export const SIGN_W = 400
 export const SIGN_H = 150

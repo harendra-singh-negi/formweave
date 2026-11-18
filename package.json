@@ -77,16 +77,21 @@
     "dev": "vite",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "prepack": "npm run build",
-    "prepublishOnly": "npm run typecheck && npm test",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm test",
     "test:e2e": "playwright test",
-    "test:dist": "node scripts/smoke.mjs"
+    "test:dist": "node scripts/smoke.mjs",
+    "lint": "oxlint --deny-warnings",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "oxlint": "^1.94.0",
     "pdfjs-dist": "^6.5.438",
+    "prettier": "^3.10.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "tesseract.js": "^7.0.0",
