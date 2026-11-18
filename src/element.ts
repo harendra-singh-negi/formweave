@@ -47,9 +47,15 @@ export class FormweaveForm extends HTMLElement {
 export class FormweaveBuilder extends HTMLElement {
   #root?: Root
   #schema?: BuilderProps['schema']
+  #scan?: BuilderProps['scan']
   set schema(v: BuilderProps['schema']) {
     this.#schema = v
     this.#render(true)
+  }
+  /** (files, progress) => Promise<{ schema, warnings }>: see BuilderProps.scan. */
+  set scan(v: BuilderProps['scan']) {
+    this.#scan = v
+    this.#render(false)
   }
   connectedCallback() {
     this.#root ??= createRoot(this)
@@ -66,6 +72,7 @@ export class FormweaveBuilder extends HTMLElement {
     this.#root.render(h(Builder, {
       key: this.#version,
       schema: this.#schema,
+      scan: this.#scan,
       onChange: (schema, issues) => { this.dispatchEvent(new CustomEvent('fw-change', { detail: { schema, issues } })) },
     }))
   }

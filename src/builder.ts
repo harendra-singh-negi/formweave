@@ -2,7 +2,7 @@
 import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { lint, type Issue } from './lint.ts'
 import { text } from './form.ts'
-import { fromJsonSchema } from './jsonschema.ts'
+import { fromJsonSchema, type Imported } from './jsonschema.ts'
 import { Form } from './react.ts'
 import { DATE_FORMATS, type Field, type Fields, type FormSchema, type Layout, type Values, type Grid } from './schema.ts'
 
@@ -14,6 +14,11 @@ export interface BuilderProps {
   schema?: FormSchema
   /** Every change, with what lint() finds. Save it only when `issues` is empty. */
   onChange?(schema: FormSchema, issues: Issue[]): void
+  /**
+   * Reads photos, scans or PDFs into a form: usually `(files, progress) => scanForm(files, { progress })`
+   * from formweave/scan. Without it, the Import tab has no "from a photo" part.
+   */
+  scan?(files: File[], progress: (message: string) => void): Promise<Imported>
 }
 
 const KINDS: [Kind, string][] = [
@@ -280,7 +285,7 @@ export function Builder(props: BuilderProps) {
   return h('div', { className: 'fw-builder', onKeyDown: onKey },
     h('div', { className: 'fw-b-bar' },
       h('div', { role: 'tablist' },
-        (['build', 'layout', 'preview', 'json'] as const).map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, { build: 'Fields', layout: 'Layout', preview: 'Preview', json: 'JSON' }[t]))),
+        (['build', 'layout', 'preview', 'json'] as const).map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, { build: 'Fields', layout: 'Layout', preview: 'Preview', json: 'Import / JSON' }[t]))),
       h('div', null,
         h('button', { type: 'button', onClick: undo, disabled: !past.length, title: 'Ctrl+Z' }, 'Undo'),
         h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, 'Redo'))),
@@ -302,7 +307,7 @@ export function Builder(props: BuilderProps) {
     tab === 'layout' && h(LayoutTab, { schema, commit: (layout: Layout[] | undefined, typing?: boolean) => commit({ ...schema, layout }, selected, typing), panel, bump: () => setPanel((n) => n + 1) }),
     tab === 'preview' && h('div', { className: 'fw-b-preview' },
       issues.length ? h('p', { className: 'fw-error' }, 'Fix the issues above to preview.') : h(Form, { schema, onSubmit: () => {} })),
-    tab === 'json' && h(JsonTab, { schema, load: (s) => commit(s, null) }))
+    tab === 'json' && h(JsonTab, { schema, scan: props.scan, load: (s) => commit(s, null) }))
 }
 
 interface TreeProps {
@@ -345,9 +350,28 @@ function Tree(p: TreeProps): ReactNode {
     }))
 }
 
-function JsonTab({ schema, load }: { schema: FormSchema; load(s: FormSchema): void }) {
+function JsonTab({ schema, load, scan }: { schema: FormSchema; load(s: FormSchema): void; scan?: BuilderProps['scan'] }) {
   const [draft, setDraft] = useState(() => JSON.stringify(schema, null, 2))
   const [problems, setProblems] = useState<string[]>([])
+  const [notes, setNotes] = useState<string[]>([])
+  const [reading, setReading] = useState<string | null>(null)
+  const read = async (picked: FileList | null) => {
+    const files = Array.from(picked ?? [])
+    if (!scan || !files.length) return
+    setReading('Reading…')
+    setProblems([])
+    setNotes([])
+    try {
+      const r = await scan(files, setReading)
+      load(r.schema)
+      setDraft(JSON.stringify(r.schema, null, 2))
+      setNotes([`Read ${Object.keys(r.schema.fields).length} fields. Check them on the Fields tab; Undo brings back the form you had.`, ...r.warnings])
+    } catch (e) {
+      setProblems([(e as Error).message])
+    } finally {
+      setReading(null)
+    }
+  }
   const apply = () => {
     try {
       let s = JSON.parse(draft)
@@ -359,7 +383,8 @@ function JsonTab({ schema, load }: { schema: FormSchema; load(s: FormSchema): vo
         notes = r.warnings.map((w) => `Imported with a change: ${w}`)
       }
       const found = lint(s)
-      setProblems([...found.map((i) => `${i.path || 'schema'}: ${i.message}`), ...notes])
+      setProblems(found.map((i) => `${i.path || 'schema'}: ${i.message}`))
+      setNotes(notes)
       if (!found.length) {
         load(s)
         setDraft(JSON.stringify(s, null, 2))
@@ -369,9 +394,16 @@ function JsonTab({ schema, load }: { schema: FormSchema; load(s: FormSchema): vo
     }
   }
   return h('div', { className: 'fw-b-json' },
+    scan && h('div', { className: 'fw-b-scan' },
+      h('h3', null, 'From a photo, scan or PDF'),
+      h('p', { className: 'fw-help' }, 'Pick pictures of the pages (on a phone, take them with the camera) or a PDF. They are read on this device, nothing is uploaded, and the form found replaces this one.'),
+      h('input', { type: 'file', accept: 'image/*,application/pdf', multiple: true, disabled: reading !== null, 'aria-label': 'Pages to read', onChange: (e: { target: HTMLInputElement }) => { read(e.target.files); e.target.value = '' } }),
+      reading && h('p', { role: 'status' }, reading)),
+    h('h3', null, 'JSON'),
     h('p', { className: 'fw-help' }, 'Paste a formweave schema, or a JSON Schema (OpenAPI, Zod…) to turn it into a form.'),
     h('textarea', { 'aria-label': 'Schema JSON', value: draft, spellCheck: false, onChange: (e: { target: { value: string } }) => setDraft(e.target.value) }),
-    problems.length > 0 && h('ul', { className: 'fw-error' }, problems.map((m, i) => h('li', { key: i }, m))),
+    problems.length > 0 && h('ul', { className: 'fw-error', role: 'alert' }, problems.map((m, i) => h('li', { key: i }, m))),
+    notes.length > 0 && h('ul', { className: 'fw-help', role: 'status' }, notes.map((m, i) => h('li', { key: i }, m))),
     h('div', null,
       h('button', { type: 'button', onClick: apply }, 'Apply'), ' ',
       h('button', { type: 'button', onClick: () => navigator.clipboard?.writeText(JSON.stringify(schema, null, 2)) }, 'Copy')))

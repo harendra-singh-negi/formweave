@@ -83,6 +83,44 @@ const forBackend = toJsonSchema(schema) // validate submissions in Java, Python,
 - In the builder, paste a JSON Schema into the JSON tab to turn it into a form.
 - In `toJsonSchema`, a field with a "show only when" condition is never listed as required, because it may be hidden. `validate()` still checks it.
 
+## Forms from photos, scans and PDFs
+
+The pages are read on the device, so it needs no AI service, no account and no subscription, and nothing is
+uploaded. [tesseract.js](https://github.com/naptha/tesseract.js) (free, open source) reads the printed words.
+formweave finds the shapes on the page and pairs them with the words: lines to write on, boxes to tick, boxes to fill,
+boxes for one character each, and tables.
+
+```tsx
+import { scanForm } from 'formweave/scan'
+import * as pdfjs from 'pdfjs-dist' // only to read PDFs
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
+
+const scan = (files: File[], progress: (m: string) => void) =>
+  scanForm(files, { languages: ['eng', 'hin'], pdfjs, progress }) // → { schema, warnings }
+
+<Builder scan={scan} /> // adds "From a photo, scan or PDF" to the Import / JSON tab
+```
+
+What it turns into fields:
+- **Answer lines** after a label ("Name: ______"), or with the label below or above them. Dotted lines, dashes and typed underscores count as answer lines too.
+- **Dates and long answers:** `__/__/____` becomes a date. Several lines under one label become one long answer.
+- **Tick boxes:** a row of them becomes a choice, "☐ Yes ☐ No" becomes yes/no, and a stacked list or "(tick all that apply)" allows several. A single box beside a statement becomes a checkbox.
+- **Boxes to fill**, with the label inside them, beside them or above them. A box with a lot of room becomes a long answer.
+- **One box per character** (PAN, PIN code): one text field whose length is the number of boxes.
+- **Tables:**
+  - an empty table becomes a table people add rows to;
+  - a table whose first column lists questions becomes one question per row (Yes / No columns become yes/no).
+- **Kinds from the label:** email, phone, date, time, amount, number, signature, photo or file, and address or remarks.
+- **Required** when the label has a `*`.
+- **Headings** (numbered, in capitals or larger) become sections, and the first one becomes the title.
+
+Good to know:
+- **Languages:** pass Tesseract's language codes, for example `['eng', 'hin']`. The first scan downloads the engine and the language files (a few MB) from a public CDN and caches them. Pass `tesseract: { workerPath, corePath, langPath }` to serve them yourself and work offline.
+- **What reads well:** clear printed forms, such as scans, screenshots, PDFs, and photos taken straight on.
+- **What reads less well:** skewed or curled photos, handwriting, and forms without lines or boxes.
+- **Afterwards:** the result is a starting point to check in the builder. `warnings` lists what was changed, and the schema always passes `lint()`.
+- **Without pdf.js**, only pictures can be read.
+
 ## Field types
 
 `string` · `number` · `boolean` · `choice` · `date` · `file` · `group` · `list`.
@@ -107,7 +145,11 @@ Every field can have `visible`, `readOnly`, `check`, `validators` and `messages`
 ## Development
 
 ```sh
+npm run demo      # opens the demo app at http://127.0.0.1:5180 (Build and Fill tabs, live reload)
 npm test          # node:test, Node 22.6+
 npm run typecheck
 npm run build     # dist/, no DOM or Node APIs in the engine
 ```
+
+The demo runs from `src/` through Vite, works offline, and listens on this computer only. What you build is kept in
+the browser. **Reset demo** brings back the sample form.
