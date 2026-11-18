@@ -64,3 +64,13 @@ test('tabs are a real tab list: one in the tab order, each tied to the panel', (
   assert.match(html, /role="tab" aria-selected="false" aria-controls="[^"]+panel" tabindex="-1">Order/)
   assert.match(html, /id="[^"]+panel" role="tabpanel" aria-labelledby="[^"]+tab0"/)
 })
+
+test('a list shows each row as a card; a table numbers its rows', () => {
+  const rows = (widget?: string): FormSchema => ({ version: 1, fields: { items: { type: 'list', widget, min: 2, fields: { qty: { type: 'number' } } } } })
+  const list = renderToString(h(Form, { schema: rows() }))
+  assert.match(list, /class="fw-row"><div class="fw-row-head"><span>Row 1<\/span>/)
+  assert.doesNotMatch(list, /<table/)
+  const table = renderToString(h(Form, { schema: rows('table') }))
+  assert.match(table, /<th class="fw-n">#<\/th>/)
+  assert.match(table, /<td class="fw-n">2<\/td>/)
+})

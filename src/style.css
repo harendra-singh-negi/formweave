@@ -50,12 +50,16 @@
 .fw-check > label { display: flex; gap: 0.5rem; align-items: center; font-weight: normal; }
 .fw-options { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
 
-.fw-group, .fw-list { border: 1px solid var(--fw-border); border-radius: var(--fw-radius); padding: var(--fw-gap); gap: var(--fw-gap); grid-column: 1 / -1; }
-.fw-row { display: grid; gap: var(--fw-gap); padding-bottom: var(--fw-gap); border-bottom: 1px dashed var(--fw-border); }
-.fw-table-wrap { overflow-x: auto; }
+.fw-group, .fw-list { min-width: 0; border: 1px solid var(--fw-border); border-radius: var(--fw-radius); padding: var(--fw-gap); gap: var(--fw-gap); grid-column: 1 / -1; }
+/* list: each row a card, fields stacked */
+.fw-row { display: grid; gap: var(--fw-gap); padding: var(--fw-gap); border: 1px solid var(--fw-border); border-radius: var(--fw-radius); }
+.fw-row-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; min-height: 2rem; font-weight: 600; color: var(--fw-muted); }
+/* table: one row per line; scrolls sideways on a narrow screen instead of squashing the inputs */
+.fw-table-wrap { overflow-x: auto; position: relative; } /* keeps the hidden cell labels inside the scroll box */
 .fw-table { border-collapse: collapse; width: 100%; }
-.fw-table th { text-align: start; font-weight: 600; padding: 0.25rem; }
-.fw-table td { padding: 0.25rem; vertical-align: top; }
+.fw-table th { text-align: start; font-weight: 600; padding: 0.375rem 0.25rem; border-bottom: 2px solid var(--fw-border); white-space: nowrap; }
+.fw-table td { padding: 0.375rem 0.25rem; vertical-align: top; border-bottom: 1px solid var(--fw-border); min-width: 8rem; }
+.fw-table .fw-n { width: 1%; min-width: 0; text-align: center; color: var(--fw-muted); line-height: var(--fw-input-height); }
 
 .fw-form button {
   font: inherit;

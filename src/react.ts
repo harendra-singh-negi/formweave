@@ -37,7 +37,7 @@ export type Classes = Partial<Record<'field' | 'label' | 'input' | 'help' | 'err
 /** Joins class names, skipping empty ones. */
 const cx = (...names: unknown[]) => names.filter(Boolean).join(' ') || undefined
 
-const LABELS = { submit: 'Submit', next: 'Next', back: 'Back', addRow: '+ Add row', removeRow: 'Remove row', remove: 'Remove' }
+const LABELS = { row: 'Row', submit: 'Submit', next: 'Next', back: 'Back', addRow: '+ Add row', removeRow: 'Remove row', remove: 'Remove' }
 
 export interface FormProps extends Options {
   schema: FormSchema
@@ -399,13 +399,16 @@ function ListInput(p: WidgetProps) {
     return h(Fragment, null,
       h('div', { className: 'fw-table-wrap' },
         h('table', { className: 'fw-table' },
-          h('thead', null, h('tr', null, cols.map(([k, sf]) => h('th', { key: k }, text(sf.label, c.locale) || humanize(k))), h('th'))),
+          h('thead', null, h('tr', null, h('th', { className: 'fw-n' }, '#'), cols.map(([k, sf]) => h('th', { key: k }, text(sf.label, c.locale) || humanize(k))), h('th', { className: 'fw-n' }))),
           h('tbody', null, rows.map((_, i) => h('tr', { key: i },
+            h('td', { className: 'fw-n' }, i + 1),
             cols.map(([k, sf]) => h('td', { key: k }, h(Context.Provider, { value: { ...c, compact: true } }, cell(i, k, sf)))),
-            h('td', null, remove(i))))))),
+            h('td', { className: 'fw-n' }, remove(i))))))),
       add)
   return h(Fragment, null,
-    rows.map((_, i) => h('div', { key: i, className: 'fw-row' }, cols.map(([k, sf]) => cell(i, k, sf)), remove(i))),
+    rows.map((_, i) => h('div', { key: i, className: 'fw-row' },
+      h('div', { className: 'fw-row-head' }, h('span', null, `${c.labels.row} ${i + 1}`), remove(i)),
+      cols.map(([k, sf]) => cell(i, k, sf)))),
     add)
 }
 

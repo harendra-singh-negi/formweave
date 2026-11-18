@@ -146,7 +146,14 @@ function settingsSchema(kind: Kind): FormSchema {
       Object.assign(f, { accept: { type: 'string', label: 'Allowed types', placeholder: 'image/*,.pdf' }, multiple: { type: 'boolean', widget: 'toggle', label: 'Allow several' }, maxSize: num('Largest file (bytes)') })
       break
     case 'list':
-      Object.assign(f, { min: num('Fewest rows'), max: num('Most rows'), widget: pick('Shown as', ['table']) })
+      Object.assign(f, {
+        widget: { type: 'choice', widget: 'radio', label: 'Shown as', required: true, options: [
+          { value: 'table', label: 'Table: a row per line, fields as columns' },
+          { value: 'list', label: 'List: each row a card, fields stacked' },
+        ] },
+        min: { ...num('Rows at the start'), help: 'Also the fewest allowed. People add more with "+ Add row" while filling it in.' },
+        max: { ...num('Most rows'), help: 'Leave empty for no limit.' },
+      })
       break
   }
   f.className = cssClasses
@@ -163,6 +170,7 @@ function toSettings(key: string, f: Field): Values {
   if ('required' in f) s.required = !!f.required
   if ('value' in f) s.value = f.value ?? null
   for (const k of PLAIN) if (any[k] !== undefined) s[k] = any[k]
+  if (f.type === 'list') s.widget = f.widget ?? 'list'
   if (f.type === 'choice') s.options = f.options.map((o) => (typeof o === 'string' ? { value: o, label: null } : { value: o.value, label: text(o.label, 'en') || null }))
   return s
 }
@@ -181,6 +189,7 @@ function fromSettings(f: Field, s: Values): Field {
   if ('required' in s) put('required', s.required ? (typeof (f as { required?: unknown }).required === 'string' ? (f as { required?: unknown }).required : true) : null)
   if ('value' in s) put('value', s.value)
   for (const k of PLAIN) if (k in s) put(k, s[k])
+  if (f.type === 'list' && s.widget === 'list') put('widget', null)
   if (f.type === 'choice' && Array.isArray(s.options))
     out.options = (s.options as Values[]).filter((o) => o.value).map((o) => (o.label ? { value: o.value, label: o.label } : o.value))
   return out as unknown as Field
@@ -313,7 +322,7 @@ export function Builder(props: BuilderProps) {
     issues.length > 0 && h('ul', { className: 'fw-b-issues', role: 'status' }, issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message))),
     tab === 'build' && h('div', { className: 'fw-b-main' },
       h('div', { className: 'fw-b-palette', 'aria-label': 'Add a field' },
-        h('h3', null, 'Add'),
+        h('h3', null, field && (field.type === 'group' || field.type === 'list') ? `Add to ${text(field.label, 'en') || selected!.at(-1)}` : 'Add'),
         KINDS.map(([k, label]) => h('button', { key: k, type: 'button', draggable: true, title: 'Click to add, or drag it into place', onClick: () => add(k), onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-kind', k) }, '+ ', label)),
         h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
         props.scan && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…')),
@@ -341,6 +350,8 @@ interface TreeProps {
   duplicate(p: Path): void
   drop(p: Path, before: string | null): void
   place(kind: Kind, parent: Path, before: string | null): void
+  /** What an empty group or list says. */
+  empty?: string
 }
 
 function Tree(p: TreeProps): ReactNode {
@@ -362,7 +373,7 @@ function Tree(p: TreeProps): ReactNode {
   }
   return h('ul', { className: 'fw-b-list', onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => onDrop(e, null) },
     Object.keys(p.fields).length === 0 && h('li', { className: 'fw-b-drop', onDragOver: dragOver, onDragLeave: dragLeave, onDrop: (e: DragEvent) => onDrop(e, null) },
-      p.parent.length ? 'Empty: drag a field here' : 'Drag a field here, or click one on the left'),
+      p.parent.length ? p.empty : 'Drag a field here, or click one on the left'),
     Object.entries(p.fields).map(([key, f]): ReactNode => {
       const path = [...p.parent, key]
       const on = same(p.selected, path)
@@ -377,7 +388,9 @@ function Tree(p: TreeProps): ReactNode {
             h('button', { type: 'button', 'aria-label': 'Move down', onClick: () => p.move(path, 1) }, '↓'),
             h('button', { type: 'button', 'aria-label': 'Duplicate', onClick: () => p.duplicate(path) }, '⧉'),
             h('button', { type: 'button', 'aria-label': 'Delete', onClick: () => p.remove(path) }, '✕'))),
-        (f.type === 'group' || f.type === 'list') && h(Tree, { ...p, fields: f.fields, parent: path }))
+        (f.type === 'group' || f.type === 'list') && h(Tree, { ...p, fields: f.fields, parent: path, empty: f.type === 'list' && f.widget === 'table'
+          ? 'No columns yet. Each field you add here is a column: select the table and click a field type, or drag one here.'
+          : 'Empty. Select it and click a field type, or drag one here.' }))
     }))
 }
 
