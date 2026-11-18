@@ -2,8 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createElement as h } from 'react'
 import { renderToString } from 'react-dom/server'
-import { Form, type WidgetProps } from './react.ts'
-import type { FormSchema } from './schema.ts'
+import { Form, type WidgetProps } from '../src/react.ts'
+import type { FormSchema } from '../src/core/schema.ts'
 
 const schema: FormSchema = {
   version: 1,
@@ -184,8 +184,8 @@ test('an image beside text: a grid with widths and lines; an unsafe picture is r
 })
 
 test('every sample passes lint() and renders', async () => {
-  const { SAMPLES } = await import('./samples.ts')
-  const { lint } = await import('./lint.ts')
+  const { SAMPLES } = await import('../src/samples.ts')
+  const { lint } = await import('../src/core/lint.ts')
   assert.ok(SAMPLES.length >= 6)
   for (const s of SAMPLES) {
     assert.deepEqual(lint(s.schema), [], s.id)

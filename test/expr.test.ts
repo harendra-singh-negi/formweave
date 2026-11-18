@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { evaluate, parse } from './expr.ts'
+import { evaluate, parse } from '../src/core/expr.ts'
 
 const run = (src: string, vars: Record<string, unknown> = {}) =>
   evaluate(parse(src), (path) => path.reduce<any>((v, k) => (v != null && Object.hasOwn(v, k) ? v[k] : undefined), vars))

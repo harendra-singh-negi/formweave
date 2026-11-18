@@ -1,5 +1,5 @@
 // Every ready-made input of the builder's palette, in groups: [key to use, name, the field]. No React here, so samples can use it.
-import type { Field } from './schema.ts'
+import type { Field } from '../core/schema.ts'
 
 type Kind = Field['type']
 

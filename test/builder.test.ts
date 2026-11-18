@@ -2,9 +2,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createElement as h } from 'react'
 import { renderToString } from 'react-dom/server'
-import { Builder, edits, fieldAt, freeKey } from './builder.ts'
-import { lint } from './lint.ts'
-import type { FormSchema } from './schema.ts'
+import { Builder, edits, fieldAt, freeKey } from '../src/builder.ts'
+import { lint } from '../src/core/lint.ts'
+import type { FormSchema } from '../src/core/schema.ts'
 
 const base: FormSchema = {
   version: 1,
@@ -44,7 +44,7 @@ test('opens on the design canvas: the form itself, every part marked so a click 
 })
 
 test('relocate moves a field\'s place in the layout, ipOf finds it', async () => {
-  const { relocate, ipOf } = await import('./builder.ts')
+  const { relocate, ipOf } = await import('../src/builder.ts')
   const s: FormSchema = { version: 1, fields: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } }, layout: ['a', { type: 'section', children: ['b'] }, 'c'] }
   assert.deepEqual(ipOf(s.layout!, 'b'), [1, 0])
   const t = relocate(s, 'c', [1], 0) // into the section, before b
@@ -60,7 +60,7 @@ test('the palette is an accordion, one group open at a time, Text first', () => 
 })
 
 test('layout edits move nodes between containers and keep pages to sections', async () => {
-  const { layoutEdits, nodeAt } = await import('./builder.ts')
+  const { layoutEdits, nodeAt } = await import('../src/builder.ts')
   const items: any[] = ['a', { type: 'section', children: ['b'] }, { type: 'pages', children: [{ type: 'section', children: [] }] }, 'c']
   // 'a' into the section, at its end
   let l: any[] = layoutEdits.move(items, [0], [1], 1)!
@@ -109,7 +109,7 @@ test('lint: images are https or inline png/jpeg/gif/webp; grid widths are positi
 })
 
 test('copy and paste: keys made unique, formulas and the layout follow them', async () => {
-  const { copyPart, pasteClip, renameRefs } = await import('./builder.ts')
+  const { copyPart, pasteClip, renameRefs } = await import('../src/builder.ts')
   assert.equal(renameRefs("qty * price + sum(items.total) and name == 'qty'", { qty: 'qty1', price: 'price1', items: 'items1', total: 'x' }), "qty1 * price1 + sum(items1.total) and name == 'qty'")
   const s: FormSchema = { version: 1, fields: { qty: { type: 'number' }, price: { type: 'number' }, total: { type: 'number', value: 'qty * price' }, note: { type: 'string' } },
     layout: [{ type: 'section', title: 'Order', visible: 'qty > 0', children: [{ type: 'grid', cols: 2, children: ['qty', 'price'] }, 'total'] }, 'note'] }

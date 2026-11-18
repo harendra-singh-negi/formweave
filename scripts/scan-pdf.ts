@@ -6,8 +6,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { sketchToForm } from '../src/scan.ts'
-import { findShapes, readPage, toSketch, type Gray, type Item, type Word } from '../src/vision.ts'
-import type { Field, FormSchema, Layout } from '../src/schema.ts'
+import { findShapes, readPage, toSketch, type Gray, type Item, type Word } from '../src/scan/vision/index.ts'
+import type { Field, FormSchema, Layout } from '../src/core/schema.ts'
 
 const LONG_SIDE = 2500
 

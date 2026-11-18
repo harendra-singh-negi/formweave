@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createForm, lint, text, toJsonSchema, validate, type FormSchema } from './index.ts'
+import { createForm, lint, text, toJsonSchema, validate, type FormSchema } from '../src/index.ts'
 
 const loan: FormSchema = {
   version: 1,

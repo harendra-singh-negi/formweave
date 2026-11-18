@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { sketchToForm } from './scan.ts'
-import { lint } from './lint.ts'
+import { sketchToForm } from '../src/scan.ts'
+import { lint } from '../src/core/lint.ts'
 
 const outline = {
   title: 'Job application',

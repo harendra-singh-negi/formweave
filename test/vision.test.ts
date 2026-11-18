@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanLabel, findShapes, readPage, toSketch, type Gray, type Rect, type Shapes, type SketchField, type Word } from './vision.ts'
+import { cleanLabel, findShapes, readPage, toSketch, type Gray, type Rect, type Shapes, type SketchField, type Word } from '../src/scan/vision/index.ts'
 
 /** A white page to draw on. */
 function page(width: number, height: number) {

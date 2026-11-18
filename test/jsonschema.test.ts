@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fromJsonSchema, lint, toJsonSchema, validate } from './index.ts'
+import { fromJsonSchema, lint, toJsonSchema, validate } from '../src/index.ts'
 
 // what an OpenAPI request body or z.toJSONSchema() typically gives
 const order = {

@@ -2,11 +2,11 @@
 import '../src/element.ts'
 import '../src/style.css'
 import type { FormweaveBuilder, FormweaveForm } from '../src/element.ts'
-import { lint } from '../src/lint.ts'
+import { lint } from '../src/core/lint.ts'
 import { scanForm } from '../src/scan.ts'
 import * as pdfjs from 'pdfjs-dist'
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import type { FormSchema } from '../src/schema.ts'
+import type { FormSchema } from '../src/core/schema.ts'
 
 const SAMPLE: FormSchema = {
   version: 1,
