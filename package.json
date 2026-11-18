@@ -76,6 +76,7 @@
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts",
     "demo": "vite --open",
     "demo:build": "vite build",
+    "demo:gif": "node scripts/record-demo.mjs",
     "dev": "vite",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "prepack": "npm run build",

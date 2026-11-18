@@ -1,5 +1,11 @@
 # formweave
 
+[![npm](https://img.shields.io/npm/v/formweave)](https://www.npmjs.com/package/formweave) [![ci](https://github.com/harendra-singh-negi/formweave/actions/workflows/ci.yml/badge.svg)](https://github.com/harendra-singh-negi/formweave/actions/workflows/ci.yml) [![license](https://img.shields.io/npm/l/formweave)](LICENSE)
+
+**[Try the live demo →](https://harendra-singh-negi.github.io/formweave/)**
+
+[![formweave demo: drag a field into the builder, rename it, restyle it, then fill in the form and see the JSON your app gets](https://raw.githubusercontent.com/harendra-singh-negi/formweave/main/docs/demo.gif)](https://harendra-singh-negi.github.io/formweave/)
+
 Forms as JSON: one engine for validation, conditions and formulas that runs in the browser and on your server, a
 React renderer and web components to show forms, a visual builder, and paper forms read into forms on the device.
 
@@ -325,9 +331,11 @@ npm run lint      # oxlint
 npm run format    # Prettier
 npm run typecheck
 npm run build     # dist/ from scratch
+npm run demo:gif  # re-record docs/demo.gif for this README (needs ffmpeg)
 ```
 
-The demo runs from `src/` through Vite, works offline, and listens on this computer only. What you build is kept in
+The demo runs from `src/` through Vite, works offline, and listens on this computer only. `npm run demo:build` makes
+the static site in `demo/dist`; every push to `main` publishes it to GitHub Pages. What you build is kept in
 the browser. **Reset demo** brings back the sample form.
 
 Security: see [SECURITY.md](SECURITY.md). Licence: [MIT](LICENSE).
