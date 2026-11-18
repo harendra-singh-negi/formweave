@@ -101,6 +101,8 @@ const PALETTE: [string, [string, string, Field][]][] = [
     ['audio', 'Audio', { type: 'file', label: 'Audio', accept: 'audio/*' }],
   ]],
   ['Advanced', [
+    ['richText', 'Rich text', { type: 'string', label: 'Description', widget: 'richtext' }],
+    ['map', 'Map location', { type: 'string', label: 'Location', widget: 'map', pattern: '-?\\d{1,2}(\\.\\d+)?, ?-?\\d{1,3}(\\.\\d+)?', messages: { pattern: 'Like 28.6139,77.2090' } }],
     ['signature', 'Signature', { type: 'string', label: 'Signature', widget: 'signature' }],
     ['otp', 'OTP / code', { type: 'string', label: 'OTP', widget: 'otp', minLength: 6, maxLength: 6, pattern: '[0-9]*', messages: { pattern: 'Digits only' } }],
     ['location', 'Location', { type: 'string', label: 'Location', widget: 'location', pattern: '-?\\d{1,2}(\\.\\d+)?, ?-?\\d{1,3}(\\.\\d+)?', messages: { pattern: 'Like 28.6139,77.2090' } }],
@@ -231,7 +233,7 @@ function settingsSchema(kind: Kind): FormSchema {
   const pick = (label: string, options: string[]): Field => ({ type: 'choice', label, options })
   switch (kind) {
     case 'string':
-      Object.assign(f, { format: pick('Format', ['email', 'url', 'phone', 'color', 'country', 'card', 'iban', 'json']), widget: pick('Shown as', ['textarea', 'password', 'search', 'phone', 'otp', 'signature', 'location', 'barcode', 'markdown', 'code', 'json', 'hidden']), minLength: num('Fewest characters'), maxLength: num('Most characters'), pattern: { type: 'string', label: 'Pattern (regular expression)' } })
+      Object.assign(f, { format: pick('Format', ['email', 'url', 'phone', 'color', 'country', 'card', 'iban', 'json']), widget: pick('Shown as', ['textarea', 'password', 'search', 'phone', 'otp', 'signature', 'location', 'map', 'barcode', 'richtext', 'markdown', 'code', 'json', 'hidden']), minLength: num('Fewest characters'), maxLength: num('Most characters'), pattern: { type: 'string', label: 'Pattern (regular expression)' } })
       break
     case 'number':
       Object.assign(f, {
@@ -342,6 +344,8 @@ export function Builder(props: BuilderProps) {
   const [panel, setPanel] = useState(0) // remounts the settings form
   const [tab, setTab] = useState<'build' | 'layout' | 'preview' | 'json'>('build')
   const [find, setFind] = useState('')
+  /** A key typed in the settings that another field here already has. */
+  const [clash, setClash] = useState<string | null>(null)
   const lastPush = useRef(0)
   const issues = useMemo(() => lint(schema), [schema])
   const first = useRef(true)
@@ -374,6 +378,7 @@ export function Builder(props: BuilderProps) {
 
   const select = (path: Path | null) => {
     setSelected(path)
+    setClash(null)
     setPanel((n) => n + 1)
   }
   const add = (id: string) => {
@@ -414,6 +419,9 @@ export function Builder(props: BuilderProps) {
 
   const onSettings = (values: Values) => {
     if (!selected) return
+    const wanted = String(values.key ?? '')
+    const sibs = selected.length > 1 ? (fieldAt(schema.fields, selected.slice(0, -1)) as { fields: Fields }).fields : schema.fields
+    setClash(wanted !== selected.at(-1) && Object.hasOwn(sibs, wanted) ? wanted : null)
     const f = fieldAt(schema.fields, selected)
     if (!f) return
     let next = edits.replace(schema, selected, fromSettings(f, values))
@@ -464,7 +472,7 @@ export function Builder(props: BuilderProps) {
         PALETTE.map(([group, list]) => {
           const hits = list.filter(([base, label]) => !find || `${label} ${group} ${base}`.toLowerCase().includes(find.toLowerCase()))
           // an accordion: Text starts open; while searching, every group with a hit opens (the key resets them after)
-          return hits.length > 0 && h('details', { key: `${group}${find ? '?' : ''}`, className: 'fw-b-group', open: !!find || group === 'Text' },
+          return hits.length > 0 && h('details', { key: `${group}${find ? '?' : ''}`, className: 'fw-b-group', open: !!find || group === 'Text', name: find ? undefined : 'fw-palette' },
             h('summary', null, group, h('small', null, ` ${hits.length}`)), h('div', null, hits.map(([base]) => paletteButton(base))))
         }),
         h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
@@ -475,6 +483,7 @@ export function Builder(props: BuilderProps) {
       h('div', { className: 'fw-b-settings' },
         field && selected
           ? h(Fragment, null, h('h3', null, KINDS.find(([k]) => k === field.type)![1], ' settings'),
+              clash && h('p', { className: 'fw-b-clash', role: 'alert' }, `The key "${clash}" is already used by another field here. Keys must be unique, so this field keeps "${selected.at(-1)}" until you type a free one.`),
               h(Form, { key: panel, schema: inTable(selected) ? asColumn(SETTINGS[field.type]) : SETTINGS[field.type], values: toSettings(selected.at(-1)!, field), labels: { submit: 'Done' }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
           : h('p', { className: 'fw-help' }, 'Select a field to change it.'))),
     tab === 'layout' && h(LayoutTab, { schema, commit: (layout: Layout[] | undefined, typing?: boolean) => commit({ ...schema, layout }, selected, typing), panel, bump: () => setPanel((n) => n + 1) }),

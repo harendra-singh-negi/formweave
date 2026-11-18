@@ -118,3 +118,18 @@ test('button groups, tags, phone with country code, country, stepper and cascadi
   assert.match(html, /Mysuru/)
   assert.doesNotMatch(html, /Pune/) // only the cities of the picked state
 })
+
+test('a table without a label has no title; rich text and a map render', () => {
+  const s: FormSchema = { version: 1, fields: {
+    list1: { type: 'list', widget: 'table', min: 1, fields: { n: { type: 'number', label: 'S No.' } } },
+    about: { type: 'string', widget: 'richtext' },
+    where: { type: 'string', widget: 'map', default: '28.6139,77.209' },
+  } }
+  const html = renderToString(h(Form, { schema: s }))
+  assert.doesNotMatch(html, /<legend/)
+  assert.match(html, /<fieldset class="fw-field fw-list" aria-label="List1">/)
+  assert.match(html, /role="toolbar" aria-label="About: formatting"/)
+  assert.match(html, /contentEditable="true"[^>]*role="textbox"/)
+  assert.match(html, /tile\.openstreetmap\.org\/14\/\d+\/\d+\.png/)
+  assert.match(html, /class="fw-map-pin"/)
+})

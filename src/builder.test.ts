@@ -32,7 +32,7 @@ test('edits keep order, nesting and the layout in step', () => {
 
 test('renders palette, field tree and an empty settings panel', () => {
   const html = renderToString(h(Builder, { schema: base }))
-  assert.match(html, /<details class="fw-b-group" open=""><summary>Text<small> 8<\/small><\/summary>/) // an accordion, Text open
+  assert.match(html, /<details class="fw-b-group" open="" name="fw-palette"><summary>Text<small> 8<\/small><\/summary>/) // an accordion, one open at a time, Text first
   assert.match(html, /<summary>Choices.*?\+ <!-- -->Radio group/)
   assert.match(html, /\+ <!-- -->Checkbox group/)
   assert.match(html, /name · string/)

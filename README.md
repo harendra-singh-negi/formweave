@@ -175,6 +175,17 @@ The built-in widgets and formats. The builder's palette lists 64 ready-made inpu
 
 Show a signature with `<img src={'data:image/svg+xml,' + encodeURIComponent(value)}>`. An `<img>` never runs script from an SVG, so a tampered value can't either. It can be drawn only with a mouse, finger or pen, so add a typed-name field next to it for people who can't draw.
 
+**Rich text** (`widget: 'richtext'`): bold, italic, underline, strike, a heading, lists, quotes and links.
+- The value is HTML, cleaned in the browser by `cleanHtml` from `formweave/react`. Only those tags are kept, and links only to http, https and mailto.
+- Clean it again on your server (with DOMPurify, for example) before you show it anywhere, because a client can send anything.
+- For a full editor, pass Tiptap, Lexical or similar as your own widget.
+
+**Map** (`widget: 'map'`): a "lat,lng" box, "Use my location", and a map to drag, zoom with + / −, and click to place the pin.
+- Tiles come from OpenStreetMap by default. Their usage policy asks busy sites to use their own tiles or a provider's, so pass `<Form mapTiles={{ url: 'https://…/{z}/{x}/{y}.png', attribution: '…' }}>`.
+- Each person's browser fetches the tiles from that server.
+
+A group or table without a label shows no title, only its fields.
+
 ## Formulas
 
 - Operators: `+ - * / %`, `== != < <= > >=`, `and or not` (also `&& || !`), `'text'`, `true false null`.

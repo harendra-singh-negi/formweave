@@ -1,10 +1,12 @@
 // No JSX, so tests run in plain Node without a build step.
 import {
   createContext, createElement as h, Fragment, useContext, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore,
-  type ChangeEvent, type ComponentType, type CSSProperties, type DragEvent, type FocusEvent, type FormEvent, type KeyboardEvent, type PointerEvent, type ReactNode,
+  type ChangeEvent, type ComponentType, type ClipboardEvent, type CSSProperties, type DragEvent, type FocusEvent, type FormEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode,
 } from 'react'
 import { evaluate, parse, truthy, type Node } from './expr.ts'
 import { COUNTRIES, DIAL, countryName } from './countries.ts'
+import { cleanHtml } from './html.ts'
+export { cleanHtml }
 import { createForm, text, type Form as Store, type FormState, type Options } from './form.ts'
 import type {
   ChoiceField, DateField, Field, FileField, FileRef, FormSchema, Grid, Layout, ListField, NumberField, Pages, Section, StringField, Values, When,
@@ -51,6 +53,11 @@ export interface FormProps extends Options {
   className?: string
   /** Your own classes on every field, label, input, help text, error and button. */
   classes?: Classes
+  /**
+   * Map tiles for widget 'map'. Default: OpenStreetMap's, fine for trying it out; their usage policy asks busy sites
+   * to use their own or a provider's. `{z}/{x}/{y}` are filled in.
+   */
+  mapTiles?: { url: string; attribution: string }
   onSubmit?(values: Values): void | Promise<void>
   onChange?(state: FormState): void
   /** Stores a picked file and says how to find it. Without it, the file's name is its id. */
@@ -64,6 +71,7 @@ interface Ctx {
   widgets: Widgets
   labels: typeof LABELS
   classes: Classes
+  mapTiles: NonNullable<FormProps['mapTiles']>
   locale?: string
   context?: Record<string, unknown>
   onUpload?: FormProps['onUpload']
@@ -129,6 +137,7 @@ export function Form(props: FormProps) {
     widgets: { ...WIDGETS, ...props.widgets },
     labels: { ...LABELS, ...props.labels },
     classes: props.classes ?? {},
+    mapTiles: props.mapTiles ?? { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '© OpenStreetMap contributors' },
     locale: props.locale,
     context: props.context,
     onUpload: props.onUpload,
@@ -282,8 +291,12 @@ function Shell({ path, field }: { path: string; field: Field }) {
     help && h('div', { id: `${id}-help`, className: cx('fw-help', c.classes.help) }, help),
     error && h('div', { id: `${id}-error`, className: cx('fw-error', c.classes.error) }, error))
   const wrap = (kind?: string) => cx('fw-field', kind, c.classes.field, field.className)
-  if (field.type === 'group' || field.type === 'list')
-    return h('fieldset', { className: wrap(`fw-${field.type}`) }, h('legend', { className: c.classes.label }, label, mark), control, notes)
+  if (field.type === 'group' || field.type === 'list') {
+    // no label: no title on screen, the key still names it for screen readers
+    const own = text(field.label, c.locale)
+    return h('fieldset', { className: wrap(`fw-${field.type}`), 'aria-label': own ? undefined : label },
+      own && h('legend', { className: c.classes.label }, own, mark), control, notes)
+  }
   if (field.type === 'boolean')
     return h('div', { className: wrap('fw-check') }, h('label', { htmlFor: id, className: c.classes.label }, control, ' ', label, mark), notes)
   return h('div', { className: wrap() }, h('label', { htmlFor: id, className: cx(c.compact && 'fw-sr', c.classes.label) }, label, mark), control, notes)
@@ -318,6 +331,8 @@ function StringInput(p: WidgetProps) {
       },
     })
   if (f.widget === 'phone') return h(Phone, p)
+  if (f.widget === 'richtext') return h(RichText, p)
+  if (f.widget === 'map') return h(Location, p)
   if (f.widget === 'barcode') return h(Barcode, p)
   if (f.format === 'country')
     return h('select', { ...attrs, onChange: (e: ChangeEvent<HTMLSelectElement>) => p.set(e.target.value || null) },
@@ -468,7 +483,123 @@ function Location(p: WidgetProps) {
   return h('div', { className: 'fw-location' },
     h('input', { ...aria(p), type: 'text', inputMode: 'decimal', placeholder: '28.613900,77.209000', readOnly: p.readOnly, value: textValue(p.value), onBlur: p.touch, onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value) }),
     !p.readOnly && h('button', { type: 'button', onClick: locate }, c.labels.useLocation),
-    note && h('span', { className: 'fw-help', role: 'status' }, note))
+    note && h('span', { className: 'fw-help', role: 'status' }, note),
+    p.field.widget === 'map' && h(MapPicker, p))
+}
+
+const TILE = 256
+/** Web Mercator: lat/lng ↔ pixels of the whole world at zoom z. */
+const project = (lat: number, lng: number, z: number): [number, number] => {
+  const s = TILE * 2 ** z
+  const r = (Math.max(-85, Math.min(85, lat)) * Math.PI) / 180
+  return [((lng + 180) / 360) * s, ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * s]
+}
+const unproject = (x: number, y: number, z: number): [number, number] => {
+  const s = TILE * 2 ** z
+  return [(180 / Math.PI) * Math.atan(Math.sinh(Math.PI - (2 * Math.PI * y) / s)), ((((x / s) * 360) % 360) + 360) % 360 - 180]
+}
+
+/** A small map: drag to move, + / − to zoom, click to put the pin. The box above it stays the way to type or read it. */
+function MapPicker(p: WidgetProps) {
+  const c = useCtx()
+  const box = useRef<HTMLDivElement>(null)
+  const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(textValue(p.value))
+  const pin: [number, number] | null = m ? [+m[1], +m[2]] : null
+  const [z, setZ] = useState(pin ? 14 : 4)
+  const [center, setCenter] = useState<[number, number]>(() => project(...(pin ?? [22.6, 79]), pin ? 14 : 4))
+  const [w, setW] = useState(480)
+  const hgt = 280
+  const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null)
+  useEffect(() => {
+    if (!box.current || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(([e]) => setW(e.contentRect.width))
+    ro.observe(box.current)
+    return () => ro.disconnect()
+  }, [])
+  useEffect(() => { if (pin) setCenter(project(pin[0], pin[1], z)) }, [p.value]) // follows "Use my location" and typing
+  const zoom = (d: number) => {
+    const nz = Math.max(2, Math.min(19, z + d))
+    setCenter(([x, y]) => [x * 2 ** (nz - z), y * 2 ** (nz - z)])
+    setZ(nz)
+  }
+  const left = center[0] - w / 2
+  const top = center[1] - hgt / 2
+  const n = 2 ** z
+  const tiles: ReactNode[] = []
+  for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + w) / TILE); tx++)
+    for (let ty = Math.max(0, Math.floor(top / TILE)); ty <= Math.min(n - 1, Math.floor((top + hgt) / TILE)); ty++)
+      tiles.push(h('img', {
+        key: `${tx}/${ty}`, alt: '', draggable: false, width: TILE, height: TILE, style: { left: tx * TILE - left, top: ty * TILE - top },
+        src: c.mapTiles.url.replace('{z}', String(z)).replace('{x}', String(((tx % n) + n) % n)).replace('{y}', String(ty)),
+      }))
+  const at = pin && project(pin[0], pin[1], z)
+  return h('div', { className: 'fw-map' },
+    h('div', {
+      ref: box, className: 'fw-map-view', style: { height: hgt }, 'aria-hidden': true,
+      onPointerDown: (e: PointerEvent<HTMLDivElement>) => { e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, y: e.clientY, moved: false } },
+      onPointerMove: (e: PointerEvent<HTMLDivElement>) => {
+        const d = drag.current
+        if (!d) return
+        const dx = e.clientX - d.x
+        const dy = e.clientY - d.y
+        if (!d.moved && Math.abs(dx) + Math.abs(dy) < 4) return
+        d.moved = true
+        d.x = e.clientX
+        d.y = e.clientY
+        setCenter(([x, y]) => [x - dx, y - dy])
+      },
+      onPointerUp: (e: PointerEvent<HTMLDivElement>) => {
+        const d = drag.current
+        drag.current = null
+        if (!d || d.moved || p.readOnly) return
+        const r = e.currentTarget.getBoundingClientRect()
+        const [lat, lng] = unproject(left + e.clientX - r.left, top + e.clientY - r.top, z)
+        p.set(`${lat.toFixed(6)},${lng.toFixed(6)}`)
+        p.touch()
+      },
+    },
+      tiles,
+      at && h('span', { className: 'fw-map-pin', style: { left: at[0] - left, top: at[1] - top } })),
+    h('div', { className: 'fw-map-zoom' },
+      h('button', { type: 'button', 'aria-label': `Zoom in ${p.label}`, onClick: () => zoom(1) }, '+'),
+      h('button', { type: 'button', 'aria-label': `Zoom out ${p.label}`, onClick: () => zoom(-1) }, '−')),
+    h('small', { className: 'fw-map-credit' }, c.mapTiles.attribution))
+}
+
+/** Bold, italic, lists, links: kept as clean HTML (see cleanHtml). */
+function RichText(p: WidgetProps) {
+  const ed = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ed.current
+    if (el && document.activeElement !== el) el.innerHTML = cleanHtml(textValue(p.value)) // typing isn't overwritten
+  }, [p.value])
+  const sync = () => {
+    const el = ed.current!
+    p.set(el.textContent?.trim() || el.querySelector('li') ? cleanHtml(el.innerHTML) : null)
+  }
+  // ponytail: execCommand is old but every browser still runs it; a full editor (Tiptap, Lexical) can be passed as your own widget
+  const run = (cmd: string, arg?: string) => { ed.current?.focus(); document.execCommand(cmd, false, arg); sync() }
+  const tool = (label: string, title: string, fn: () => void) =>
+    h('button', { type: 'button', title, 'aria-label': title, disabled: p.readOnly, onMouseDown: (e: MouseEvent) => e.preventDefault(), onClick: fn }, label)
+  return h('div', { className: 'fw-rich' },
+    h('div', { className: 'fw-rich-tools', role: 'toolbar', 'aria-label': `${p.label}: formatting` },
+      tool('B', 'Bold', () => run('bold')), tool('I', 'Italic', () => run('italic')), tool('U', 'Underline', () => run('underline')),
+      tool('S', 'Strikethrough', () => run('strikeThrough')), tool('H', 'Heading', () => run('formatBlock', 'h3')),
+      tool('•', 'Bulleted list', () => run('insertUnorderedList')), tool('1.', 'Numbered list', () => run('insertOrderedList')),
+      tool('❝', 'Quote', () => run('formatBlock', 'blockquote')),
+      tool('🔗', 'Link', () => { const url = prompt('Link address (https://…)'); if (url && /^(https?:|mailto:)/i.test(url.trim())) run('createLink', url.trim()) }),
+      tool('⌫', 'Clear formatting', () => { run('removeFormat'); run('formatBlock', 'p') })),
+    h('div', {
+      ref: ed, id: p.id, className: cx('fw-rich-text', p.className), contentEditable: !p.readOnly, suppressContentEditableWarning: true,
+      role: 'textbox', 'aria-multiline': true, 'aria-label': p.label, 'aria-invalid': p.error ? true : undefined, 'aria-describedby': p.describedBy,
+      onInput: sync, onBlur: p.touch,
+      onPaste: (e: ClipboardEvent<HTMLDivElement>) => { // pasted pages bring styles and scripts: keep only clean formatting
+        e.preventDefault()
+        const html = e.clipboardData.getData('text/html')
+        document.execCommand('insertHTML', false, html ? cleanHtml(html) : e.clipboardData.getData('text/plain').replace(/[&<>]/g, (ch) => `&#${ch.charCodeAt(0)};`).replace(/\n/g, '<br>'))
+        sync()
+      },
+    }))
 }
 
 function NumberInput(p: WidgetProps) {

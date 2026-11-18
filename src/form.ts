@@ -76,7 +76,7 @@ const FORMAT_CHECKS: Partial<Record<keyof typeof STRING_FORMATS, (v: string) => 
 /** Default most characters for a string field: keeps huge payloads out. */
 const MAX_LENGTH = 10_000
 /** A drawn signature is an SVG drawing, longer than typed text. */
-const maxLength = (f: StringField) => f.maxLength ?? (f.widget === 'signature' ? 200_000 : MAX_LENGTH)
+const maxLength = (f: StringField) => f.maxLength ?? (f.widget === 'signature' || f.widget === 'richtext' ? 200_000 : MAX_LENGTH)
 /** Fixed rows make the row count exact. */
 const rowLimits = (f: ListField) => (f.rows ? { min: f.rows.length, max: f.rows.length } : f)
 
