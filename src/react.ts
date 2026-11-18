@@ -4,6 +4,7 @@ import {
   type ChangeEvent, type ComponentType, type CSSProperties, type DragEvent, type FocusEvent, type FormEvent, type KeyboardEvent, type PointerEvent, type ReactNode,
 } from 'react'
 import { evaluate, parse, truthy, type Node } from './expr.ts'
+import { COUNTRIES, DIAL, countryName } from './countries.ts'
 import { createForm, text, type Form as Store, type FormState, type Options } from './form.ts'
 import type {
   ChoiceField, DateField, Field, FileField, FileRef, FormSchema, Grid, Layout, ListField, NumberField, Pages, Section, StringField, Values, When,
@@ -37,7 +38,7 @@ export type Classes = Partial<Record<'field' | 'label' | 'input' | 'help' | 'err
 /** Joins class names, skipping empty ones. */
 const cx = (...names: unknown[]) => names.filter(Boolean).join(' ') || undefined
 
-const LABELS = { row: 'Row', clear: 'Clear', useLocation: 'Use my location', dropFiles: 'or drop files here', submit: 'Submit', next: 'Next', back: 'Back', addRow: '+ Add row', removeRow: 'Remove row', remove: 'Remove' }
+const LABELS = { row: 'Row', clear: 'Clear', scan: 'Scan', addTag: 'Add', country: 'Country', useLocation: 'Use my location', dropFiles: 'or drop files here', submit: 'Submit', next: 'Next', back: 'Back', addRow: '+ Add row', removeRow: 'Remove row', remove: 'Remove' }
 
 export interface FormProps extends Options {
   schema: FormSchema
@@ -305,12 +306,86 @@ function StringInput(p: WidgetProps) {
     onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => p.set(e.target.value),
   }
   if (f.widget === 'textarea') return h('textarea', { ...attrs, rows: 4 })
+  if (f.widget === 'code' || f.widget === 'json' || f.widget === 'markdown' || f.format === 'json')
+    return h('textarea', {
+      ...attrs, rows: 8, spellCheck: f.widget === 'markdown', className: cx('fw-code', p.className),
+      onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key !== 'Tab' || e.shiftKey || f.widget === 'markdown') return // Esc then Tab still leaves: see the help text
+        e.preventDefault()
+        const t = e.currentTarget
+        t.setRangeText('  ', t.selectionStart, t.selectionEnd, 'end')
+        p.set(t.value)
+      },
+    })
+  if (f.widget === 'phone') return h(Phone, p)
+  if (f.widget === 'barcode') return h(Barcode, p)
+  if (f.format === 'country')
+    return h('select', { ...attrs, onChange: (e: ChangeEvent<HTMLSelectElement>) => p.set(e.target.value || null) },
+      h('option', { value: '' }, text(f.placeholder, p.locale) || '—'),
+      COUNTRIES.map((k) => [k, countryName(k, p.locale)]).sort((a, b) => a[1].localeCompare(b[1])).map(([k, name]) => h('option', { key: k, value: k }, name)))
+  if (f.format === 'card')
+    return h('input', { ...attrs, type: 'text', inputMode: 'numeric', autoComplete: 'cc-number', value: textValue(p.value).replace(/(\d{4})(?=\d)/g, '$1 '),
+      onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value.replace(/\D/g, '') || null) })
+  if (f.format === 'iban')
+    return h('input', { ...attrs, type: 'text', autoComplete: 'off', value: textValue(p.value).replace(/(.{4})(?=.)/g, '$1 '),
+      onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value.replace(/\s/g, '').toUpperCase() || null) })
   if (f.widget === 'otp') return h(Otp, p)
   if (f.widget === 'signature') return h(Signature, p)
   if (f.widget === 'location') return h(Location, p)
   if (f.format === 'color') return h('input', { ...attrs, type: 'color', value: textValue(p.value) || '#000000', className: cx('fw-color', p.className) })
   const type = f.widget === 'password' ? 'password' : f.widget === 'search' ? 'search' : f.format === 'email' ? 'email' : f.format === 'url' ? 'url' : f.format === 'phone' ? 'tel' : 'text'
   return h('input', { ...attrs, type, autoComplete: f.widget === 'password' ? 'off' : undefined })
+}
+
+/** A country's calling code and the number: '+91 98765 43210'. */
+function Phone(p: WidgetProps) {
+  const f = p.field as StringField
+  const v = textValue(p.value)
+  const m = /^\+(\d{1,4})\s*(.*)$/.exec(v)
+  const fits = (k?: string) => (k && Object.hasOwn(DIAL, k) && (!m || DIAL[k] === m[1]) ? k : undefined)
+  const [iso, setIso] = useState(() => fits(f.country) ?? (m ? COUNTRIES.find((k) => DIAL[k] === m[1]) : undefined) ?? 'IN')
+  const rest = m ? m[2] : v
+  const put = (k: string, num: string) => p.set(num.trim() ? `+${DIAL[k]} ${num.trim()}` : null)
+  const c = useCtx()
+  return h('div', { className: 'fw-phone' },
+    h('select', { 'aria-label': `${p.label}: ${c.labels.country}`, disabled: p.readOnly, value: iso, className: p.className,
+      onChange: (e: ChangeEvent<HTMLSelectElement>) => { setIso(e.target.value); put(e.target.value, rest) } },
+      COUNTRIES.map((k) => [k, countryName(k, p.locale)]).sort((a, b) => a[1].localeCompare(b[1])).map(([k, name]) => h('option', { key: k, value: k }, `${name} (+${DIAL[k]})`))),
+    h('input', { ...aria(p), type: 'tel', autoComplete: 'tel-national', readOnly: p.readOnly, value: rest, onBlur: p.touch,
+      onChange: (e: ChangeEvent<HTMLInputElement>) => put(iso, e.target.value) }))
+}
+
+/** Typed, or read from a QR code or barcode with the camera where the browser can (BarcodeDetector). */
+function Barcode(p: WidgetProps) {
+  const c = useCtx()
+  const video = useRef<HTMLVideoElement>(null)
+  const [on, setOn] = useState(false)
+  const [note, setNote] = useState('')
+  const can = typeof window !== 'undefined' && 'BarcodeDetector' in window && !!navigator.mediaDevices
+  useEffect(() => {
+    if (!on) return
+    let stop = false
+    let stream: MediaStream | undefined
+    const Detector = (window as unknown as { BarcodeDetector: new () => { detect(v: HTMLVideoElement): Promise<{ rawValue: string }[]> } }).BarcodeDetector
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(async (s) => {
+      stream = s
+      if (stop || !video.current) return
+      video.current.srcObject = s
+      await video.current.play()
+      const detector = new Detector()
+      while (!stop) {
+        const [hit] = await detector.detect(video.current).catch(() => [])
+        if (hit) { p.set(hit.rawValue); p.touch(); setOn(false); return }
+        await new Promise((r) => setTimeout(r, 250))
+      }
+    }, (err: Error) => { setNote(err.message); setOn(false) })
+    return () => { stop = true; stream?.getTracks().forEach((t) => t.stop()) }
+  }, [on])
+  return h('div', { className: 'fw-location' },
+    h('input', { ...aria(p), type: 'text', readOnly: p.readOnly, value: textValue(p.value), onBlur: p.touch, onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value) }),
+    can && !p.readOnly && h('button', { type: 'button', 'aria-pressed': on, onClick: () => setOn(!on) }, c.labels.scan),
+    on && h('video', { ref: video, className: 'fw-scan-video', muted: true, playsInline: true }),
+    note && h('span', { className: 'fw-help', role: 'status' }, note))
 }
 
 /** One box per character; typing or pasting moves along, Backspace on an empty box goes back. */
@@ -406,6 +481,20 @@ function NumberInput(p: WidgetProps) {
         onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value), onBlur: p.touch }),
       h('output', { htmlFor: p.id }, p.value == null ? '—' : String(p.value)))
   }
+  if (f.widget === 'stepper') {
+    const step = f.decimals != null ? 10 ** -f.decimals : 1
+    const n = typeof p.value === 'number' ? p.value : null
+    const bump = (d: number) => {
+      const next = Math.round(((n ?? f.min ?? 0) + d * step) / step) * step
+      p.set(Math.min(f.max ?? Infinity, Math.max(f.min ?? -Infinity, next)))
+      p.touch()
+    }
+    return h('div', { className: 'fw-stepper' },
+      h('button', { type: 'button', 'aria-label': `− ${p.label}`, disabled: p.readOnly || (n != null && f.min != null && n <= f.min), onClick: () => bump(-1) }, '−'),
+      h('input', { ...aria(p), type: 'number', inputMode: 'decimal', readOnly: p.readOnly, value: textValue(p.value), min: f.min, max: f.max, step,
+        onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value), onBlur: p.touch }),
+      h('button', { type: 'button', 'aria-label': `+ ${p.label}`, disabled: p.readOnly || (n != null && f.max != null && n >= f.max), onClick: () => bump(1) }, '+'))
+  }
   if (f.widget === 'rating') {
     const n = f.max ?? 5
     const v = Number(p.value) || 0
@@ -443,7 +532,19 @@ function BooleanInput(p: WidgetProps) {
 
 function ChoiceInput(p: WidgetProps) {
   const f = p.field as ChoiceField
+  const offered = useCtx().state.fields[p.path]?.options // cascading: only the options whose condition holds
   const opts = f.options.map((o) => (typeof o === 'string' ? { value: o, label: o } : { value: o.value, label: text(o.label, p.locale) || o.value }))
+    .filter((o) => !offered || offered.includes(o.value))
+  if (f.widget === 'tags') return h(Tags, { ...p, opts })
+  if (f.widget === 'buttons') {
+    const picked = f.multiple ? (Array.isArray(p.value) ? (p.value as string[]) : []) : [p.value]
+    return h('div', { ...aria(p), role: f.multiple ? 'group' : 'radiogroup', 'aria-label': p.label, className: 'fw-buttons' },
+      opts.map((o) => h('label', { key: o.value },
+        h('input', {
+          type: f.multiple ? 'checkbox' : 'radio', name: p.id, className: 'fw-sr', disabled: p.readOnly, checked: picked.includes(o.value), onBlur: p.touch,
+          onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(!f.multiple ? o.value : e.target.checked ? [...picked, o.value] : picked.filter((x) => x !== o.value)),
+        }), h('span', null, o.label))))
+  }
   if (f.multiple && f.widget !== 'select') {
     const picked = Array.isArray(p.value) ? (p.value as string[]) : []
     return h('div', { ...aria(p), role: 'group', 'aria-label': p.label, className: 'fw-options' },
@@ -481,6 +582,32 @@ function ChoiceInput(p: WidgetProps) {
     ...aria(p), disabled: p.readOnly, value: textValue(p.value), onBlur: p.touch,
     onChange: (e: ChangeEvent<HTMLSelectElement>) => p.set(e.target.value),
   }, h('option', { value: '' }, text(f.placeholder, p.locale) || '—'), opts.map((o) => h('option', { key: o.value, value: o.value }, o.label)))
+}
+
+/** Picked or typed words shown as chips; Enter or a comma adds one, Backspace in an empty box takes the last off. */
+function Tags(p: WidgetProps & { opts: { value: string; label: string }[] }) {
+  const c = useCtx()
+  const [draft, setDraft] = useState('')
+  const tags = Array.isArray(p.value) ? (p.value as string[]) : []
+  const label = (v: string) => p.opts.find((o) => o.value === v)?.label ?? v
+  const add = (t: string) => {
+    const hit = p.opts.find((o) => o.label.toLowerCase() === t.trim().toLowerCase())
+    const v = hit?.value ?? t.trim()
+    if (v && !tags.includes(v)) p.set([...tags, v])
+    setDraft('')
+  }
+  return h('div', { className: 'fw-tags' },
+    tags.map((t) => h('span', { key: t, className: 'fw-tag' }, label(t),
+      !p.readOnly && h('button', { type: 'button', 'aria-label': `${c.labels.remove} ${label(t)}`, onClick: () => p.set(tags.filter((x) => x !== t)) }, '×'))),
+    !p.readOnly && h('input', {
+      ...aria(p), type: 'text', list: `${p.id}-list`, value: draft, autoComplete: 'off', onBlur: () => { if (draft.trim()) add(draft); p.touch() },
+      onChange: (e: ChangeEvent<HTMLInputElement>) => (/,$/.test(e.target.value) ? add(e.target.value.slice(0, -1)) : setDraft(e.target.value)),
+      onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && draft.trim()) { e.preventDefault(); add(draft) }
+        else if (e.key === 'Backspace' && !draft && tags.length) p.set(tags.slice(0, -1))
+      },
+    }),
+    h('datalist', { id: `${p.id}-list` }, p.opts.filter((o) => !tags.includes(o.value)).map((o) => h('option', { key: o.value, value: o.label }))))
 }
 
 const DATE_INPUTS = { date: 'date', time: 'time', datetime: 'datetime-local', month: 'month', week: 'week', year: 'number' }

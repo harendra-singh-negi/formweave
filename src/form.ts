@@ -4,6 +4,7 @@ import {
   DATE_FORMATS, STRING_FORMATS,
   type Errors, type Field, type FieldError, type Fields, type FileRef, type FormSchema, type Layout, type ListField, type StringField, type Text, type Values, type When,
 } from './schema.ts'
+import { DIAL } from './countries.ts'
 
 export interface Options {
   /** What formulas read as `context.x`: role, today's date, user id… */
@@ -27,6 +28,8 @@ export interface FieldState {
   visible: boolean
   required: boolean
   readOnly: boolean
+  /** For a choice with options shown only sometimes: the values offered now. */
+  options?: string[]
 }
 
 export interface FormState {
@@ -60,6 +63,14 @@ export class SchemaError extends Error {
     this.name = 'SchemaError'
     this.issues = issues
   }
+}
+
+/** Checks a pattern can't do. */
+const FORMAT_CHECKS: Partial<Record<keyof typeof STRING_FORMATS, (v: string) => boolean>> = {
+  country: (v) => Object.hasOwn(DIAL, v),
+  card: (v) => [...v].reverse().reduce((sum, ch, i) => sum + (i % 2 ? [0, 2, 4, 6, 8, 1, 3, 5, 7, 9][+ch] : +ch), 0) % 10 === 0,
+  iban: (v) => [...(v.slice(4) + v.slice(0, 4))].reduce((r, ch) => Number(String(r) + parseInt(ch, 36)) % 97, 0) === 1,
+  json: (v) => { try { JSON.parse(v); return true } catch { return false } },
 }
 
 /** Default most characters for a string field: keeps huge payloads out. */
@@ -190,6 +201,8 @@ interface C {
   check?: Node
   pattern?: RegExp
   options?: Set<string>
+  /** Options shown only when their formula holds (cascading choices). */
+  optionWhen?: Map<string, boolean | Node>
   kids?: Level
   /** Visibility of the layout sections around a top-level field. */
   layout?: Node[]
@@ -236,6 +249,8 @@ function compile(schema: FormSchema) {
           options: f.type === 'choice' ? new Set(f.options.map((o) => (typeof o === 'string' ? o : o.value))) : undefined,
           kids: f.type === 'group' || f.type === 'list' ? level(f.fields) : undefined,
         }
+        if (f.type === 'choice' && f.options.some((o) => typeof o === 'object' && o.visible !== undefined))
+          c.optionWhen = new Map(f.options.map((o) => (typeof o === 'string' ? [o, true] : [o.value, when(o.visible) ?? true])))
         return [key, c]
       }),
     )
@@ -353,6 +368,7 @@ function inspect(
     const readOnly = locked || c.value !== undefined || is(c.readOnly, get, false)
     const required = visible && is(c.required, get, false)
     out.fields[path] = { visible, required, readOnly }
+    if (c.optionWhen) out.fields[path].options = offered(c, get)
     if (visible) {
       const e = check(c, v, required, get, path, opts, root)
       if (e) out.errors[path] = e
@@ -362,6 +378,8 @@ function inspect(
       (v as Values[]).forEach((row, i) => inspect(c.kids!, row, scope, `${path}.${i}.`, !visible, readOnly, out, opts, root))
   }
 }
+
+const offered = (c: C, get: Get) => [...c.optionWhen!].filter(([, w]) => is(w, get, true)).map(([v]) => v)
 
 function check(c: C, v: unknown, required: boolean, get: Get, path: string, opts: Options, root: Values): FieldError | undefined {
   const { f } = c
@@ -375,6 +393,10 @@ function check(c: C, v: unknown, required: boolean, get: Get, path: string, opts
     if (blank) return required ? fail('required') : undefined
     const bad = invalid(c, v)
     if (bad) return fail(...bad)
+  }
+  if (c.optionWhen && v != null && !(c.f.type === 'choice' && c.f.allowOther)) {
+    const now = offered(c, get)
+    if (!(Array.isArray(v) ? v : [v]).every((p) => now.includes(p as string))) return fail('option')
   }
   if (c.check && !truthy(evaluate(c.check, get))) return fail('check')
   for (const name of f.validators ?? []) {
@@ -393,7 +415,7 @@ function invalid({ f, pattern, options }: C, v: unknown): [string, unknown?] | u
       const max = maxLength(f)
       if (v.length > max) return ['maxLength', max]
       if (f.minLength != null && v.length < f.minLength) return ['minLength', f.minLength]
-      if (f.format && !STRING_FORMATS[f.format].test(v)) return ['format']
+      if (f.format && !(STRING_FORMATS[f.format].test(v) && (FORMAT_CHECKS[f.format]?.(v) ?? true))) return ['format']
       // ponytail: a pattern written by a form's author can still backtrack badly; run validate() with RE2 if authors are untrusted
       if (pattern && !pattern.test(v)) return ['pattern']
       return
@@ -409,7 +431,7 @@ function invalid({ f, pattern, options }: C, v: unknown): [string, unknown?] | u
     case 'choice': {
       const picks = f.multiple ? v : [v]
       if (!Array.isArray(picks) || !picks.every((p) => typeof p === 'string') || new Set(picks).size !== picks.length) return ['type']
-      if (!picks.every((p) => options!.has(p))) return ['option']
+      if (!f.allowOther && !picks.every((p) => options!.has(p))) return ['option']
       return f.multiple ? count(picks.length, f) : undefined
     }
     case 'date': {

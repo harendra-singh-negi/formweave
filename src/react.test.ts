@@ -99,3 +99,22 @@ test('more inputs: fixed rows, OTP boxes, ₹ in front, stars, slider, autocompl
   assert.doesNotMatch(html, /secret/i)
   assert.match(html, /<svg id="[^"]+sign" role="img"/)
 })
+
+test('button groups, tags, phone with country code, country, stepper and cascading options render', () => {
+  const s: FormSchema = { version: 1, fields: {
+    yes: { type: 'choice', widget: 'buttons', options: ['Yes', 'No'] },
+    tags: { type: 'choice', widget: 'tags', multiple: true, allowOther: true, options: ['a'], default: ['a', 'mine'] },
+    phone: { type: 'string', widget: 'phone', format: 'phone', country: 'IN' },
+    country: { type: 'string', format: 'country' },
+    qty: { type: 'number', widget: 'stepper', min: 0 },
+    state: { type: 'choice', options: ['MH', 'KA'], default: 'KA' },
+    city: { type: 'choice', widget: 'radio', options: [{ value: 'Pune', visible: "state == 'MH'" }, { value: 'Mysuru', visible: "state == 'KA'" }] },
+  } }
+  const html = renderToString(h(Form, { schema: s, locale: 'hi' }))
+  assert.match(html, /class="fw-buttons" role="radiogroup" aria-label="Yes"/)
+  assert.match(html, /class="fw-tag">mine/)
+  assert.match(html, /<option value="IN" selected="">भारत \(\+91\)<\/option>/)
+  assert.match(html, /aria-label="− Qty"/)
+  assert.match(html, /Mysuru/)
+  assert.doesNotMatch(html, /Pune/) // only the cities of the picked state
+})

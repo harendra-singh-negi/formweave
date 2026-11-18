@@ -46,6 +46,8 @@ export interface StringField extends Input {
   maxLength?: number
   /** Must match the whole value, as in <input pattern>. */
   pattern?: string
+  /** For widget 'phone': the country picked at first, e.g. 'IN'. */
+  country?: string
 }
 
 export interface NumberField extends Input {
@@ -66,12 +68,15 @@ export interface BooleanField extends Input {
   default?: boolean
 }
 
-export type Option = string | { value: string; label?: Text }
+/** `visible` makes cascading choices: `{ value: 'Pune', visible: "state == 'Maharashtra'" }` is offered only then. */
+export type Option = string | { value: string; label?: Text; visible?: When }
 
 export interface ChoiceField extends Input {
   type: 'choice'
   options: Option[]
   multiple?: boolean
+  /** Answers typed in that aren't options are accepted too: tags, or "Other". */
+  allowOther?: boolean
   default?: string | string[]
   /** Fewest / most picks, when multiple. */
   min?: number
@@ -210,6 +215,14 @@ export const STRING_FORMATS = {
   url: /^https?:\/\/[^\s/?#]+(?:[/?#]\S*)?$/i,
   phone: /^\+?(?:[\s().-]*\d){6,15}[\s().-]*$/,
   color: /^#[0-9a-fA-F]{6}$/,
+  /** ISO 3166-1 alpha-2, e.g. 'IN'. */
+  country: /^[A-Z]{2}$/,
+  /** Card number, digits only; the Luhn check digit is checked too. */
+  card: /^\d{12,19}$/,
+  /** IBAN without spaces; its check digits are checked too. */
+  iban: /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/,
+  /** Any JSON text. */
+  json: /^[\s\S]*$/,
 }
 
 /** How a date field stores its value: text, never a timestamp, so it can't shift with time zones. */

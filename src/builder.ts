@@ -1,5 +1,5 @@
 // The visual builder. Its settings panel is itself a formweave form.
-import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { lint, type Issue } from './lint.ts'
 import { text } from './form.ts'
 import { fromJsonSchema, type Imported } from './jsonschema.ts'
@@ -35,59 +35,108 @@ const NEW: Record<Kind, () => Field> = {
   group: () => ({ type: 'group', label: 'Group', fields: {} }),
   list: () => ({ type: 'list', label: 'List', widget: 'table', min: 1, fields: {} }),
 }
-/** Ready-made fields, so people find an email box or a signature pad without knowing the settings behind it. */
-const MORE: [string, [string, string, Field][]][] = [
+/** Every input, ready-made and grouped, so people find a radio group or a signature pad without knowing the settings behind it. */
+const opts2 = ['Option 1', 'Option 2']
+const range = (f: Field, label: string): Field => ({ type: 'group', label, fields: {
+  from: { ...f, label: 'From' } as Field,
+  to: { ...f, label: 'To', check: 'empty(from) or empty(to) or to >= from', messages: { check: 'Must not be before From' } } as Field,
+} })
+const id = (label: string, pattern: string, example: string): Field => ({ type: 'string', label, pattern, placeholder: example, messages: { pattern: `Like ${example}` } })
+const PALETTE: [string, [string, string, Field][]][] = [
   ['Text', [
+    ['text', 'Short text', { type: 'string', label: 'Text' }],
+    ['longText', 'Long text', { type: 'string', label: 'Long text', widget: 'textarea' }],
     ['email', 'Email', { type: 'string', label: 'Email', format: 'email' }],
     ['phone', 'Phone', { type: 'string', label: 'Phone', format: 'phone' }],
+    ['intlPhone', 'Phone + country code', { type: 'string', label: 'Phone', widget: 'phone', format: 'phone', country: 'IN' }],
     ['website', 'Website', { type: 'string', label: 'Website', format: 'url' }],
-    ['longText', 'Long text', { type: 'string', label: 'Long text', widget: 'textarea' }],
     ['password', 'Password', { type: 'string', label: 'Password', widget: 'password' }],
     ['search', 'Search', { type: 'string', label: 'Search', widget: 'search' }],
-    ['otp', 'OTP / code', { type: 'string', label: 'OTP', widget: 'otp', minLength: 6, maxLength: 6, pattern: '[0-9]*', messages: { pattern: 'Digits only' } }],
-    ['signature', 'Signature', { type: 'string', label: 'Signature', widget: 'signature' }],
-    ['location', 'Location', { type: 'string', label: 'Location', widget: 'location', pattern: '-?\\d{1,2}(\\.\\d+)?, ?-?\\d{1,3}(\\.\\d+)?', messages: { pattern: 'Like 28.6139,77.2090' } }],
-    ['color', 'Colour', { type: 'string', label: 'Colour', format: 'color' }],
-    ['hidden', 'Hidden value', { type: 'string', label: 'Hidden', widget: 'hidden' }],
   ]],
   ['Numbers', [
+    ['number', 'Number', { type: 'number', label: 'Number' }],
+    ['stepper', 'Number with − / +', { type: 'number', label: 'Quantity', widget: 'stepper', min: 0, decimals: 0 }],
     ['amount', 'Amount (₹)', { type: 'number', label: 'Amount', format: 'currency', currency: 'INR', decimals: 2, min: 0 }],
     ['percent', 'Percent', { type: 'number', label: 'Percent', format: 'percent', min: 0, max: 100 }],
     ['slider', 'Slider', { type: 'number', label: 'Slider', widget: 'slider', min: 0, max: 100 }],
+    ['numberRange', 'Number range', range({ type: 'number' }, 'Range')],
     ['rating', 'Rating (stars)', { type: 'number', label: 'Rating', widget: 'rating', min: 1, max: 5, decimals: 0 }],
   ]],
   ['Choices', [
+    ['radio', 'Radio group', { type: 'choice', label: 'Pick one', widget: 'radio', options: opts2 }],
+    ['checkboxes', 'Checkbox group', { type: 'choice', label: 'Pick any', multiple: true, options: opts2 }],
+    ['dropdown', 'Dropdown', { type: 'choice', label: 'Dropdown', widget: 'select', options: opts2 }],
+    ['multiSelect', 'Multi-select dropdown', { type: 'choice', label: 'Pick several', multiple: true, widget: 'select', options: opts2 }],
+    ['buttonGroup', 'Button group', { type: 'choice', label: 'Pick one', widget: 'buttons', options: ['Low', 'Medium', 'High'] }],
+    ['yesNo', 'Yes / No buttons', { type: 'choice', label: 'Yes or no', widget: 'buttons', options: ['Yes', 'No'] }],
+    ['checkbox', 'Single checkbox', { type: 'boolean', label: 'I agree' }],
     ['toggle', 'Switch', { type: 'boolean', label: 'Switch', widget: 'toggle' }],
-    ['dropdown', 'Dropdown', { type: 'choice', label: 'Dropdown', widget: 'select', options: ['Option 1', 'Option 2'] }],
-    ['radio', 'Radio buttons', { type: 'choice', label: 'Pick one', widget: 'radio', options: ['Option 1', 'Option 2'] }],
-    ['checkboxes', 'Checkboxes', { type: 'choice', label: 'Pick any', multiple: true, options: ['Option 1', 'Option 2'] }],
-    ['multiSelect', 'Multi-select', { type: 'choice', label: 'Pick several', multiple: true, widget: 'select', options: ['Option 1', 'Option 2'] }],
-    ['autocomplete', 'Autocomplete', { type: 'choice', label: 'Search and pick', widget: 'autocomplete', options: ['Option 1', 'Option 2'] }],
+    ['autocomplete', 'Autocomplete', { type: 'choice', label: 'Search and pick', widget: 'autocomplete', options: opts2 }],
+    ['tags', 'Tags', { type: 'choice', label: 'Tags', widget: 'tags', multiple: true, allowOther: true, options: ['Urgent', 'Follow up'] }],
+    ['country', 'Country', { type: 'string', label: 'Country', format: 'country' }],
+    ['cascading', 'Cascading dropdowns', { type: 'group', label: 'Place', fields: {
+      state: { type: 'choice', label: 'State', widget: 'select', options: ['Maharashtra', 'Karnataka'] },
+      city: { type: 'choice', label: 'City', widget: 'select', options: [
+        { value: 'Mumbai', visible: "state == 'Maharashtra'" }, { value: 'Pune', visible: "state == 'Maharashtra'" },
+        { value: 'Bengaluru', visible: "state == 'Karnataka'" }, { value: 'Mysuru', visible: "state == 'Karnataka'" },
+      ] },
+    } }],
   ]],
   ['Date & time', [
+    ['date', 'Date', { type: 'date', label: 'Date' }],
     ['time', 'Time', { type: 'date', label: 'Time', format: 'time' }],
     ['dateTime', 'Date & time', { type: 'date', label: 'Date & time', format: 'datetime' }],
+    ['dateRange', 'Date range', range({ type: 'date' }, 'Dates')],
+    ['timeRange', 'Time range', range({ type: 'date', format: 'time' }, 'Times')],
     ['month', 'Month', { type: 'date', label: 'Month', format: 'month' }],
     ['week', 'Week', { type: 'date', label: 'Week', format: 'week' }],
     ['year', 'Year', { type: 'date', label: 'Year', format: 'year' }],
   ]],
   ['Files', [
-    ['photo', 'Photo / camera', { type: 'file', label: 'Photo', widget: 'camera', accept: 'image/*' }],
+    ['file', 'File', { type: 'file', label: 'File' }],
     ['images', 'Images', { type: 'file', label: 'Images', accept: 'image/*', multiple: true }],
+    ['photo', 'Photo / camera', { type: 'file', label: 'Photo', widget: 'camera', accept: 'image/*' }],
     ['document', 'Document', { type: 'file', label: 'Document', accept: '.pdf,.doc,.docx,.xls,.xlsx' }],
     ['video', 'Video', { type: 'file', label: 'Video', accept: 'video/*' }],
     ['audio', 'Audio', { type: 'file', label: 'Audio', accept: 'audio/*' }],
   ]],
-  ['Tables', [
+  ['Advanced', [
+    ['signature', 'Signature', { type: 'string', label: 'Signature', widget: 'signature' }],
+    ['otp', 'OTP / code', { type: 'string', label: 'OTP', widget: 'otp', minLength: 6, maxLength: 6, pattern: '[0-9]*', messages: { pattern: 'Digits only' } }],
+    ['location', 'Location', { type: 'string', label: 'Location', widget: 'location', pattern: '-?\\d{1,2}(\\.\\d+)?, ?-?\\d{1,3}(\\.\\d+)?', messages: { pattern: 'Like 28.6139,77.2090' } }],
+    ['barcode', 'QR / barcode', { type: 'string', label: 'Code', widget: 'barcode' }],
+    ['color', 'Colour', { type: 'string', label: 'Colour', format: 'color' }],
+    ['markdown', 'Markdown', { type: 'string', label: 'Notes', widget: 'markdown', help: 'Markdown: **bold**, _italic_, - lists' }],
+    ['code', 'Code', { type: 'string', label: 'Code', widget: 'code' }],
+    ['json', 'JSON', { type: 'string', label: 'JSON', widget: 'json', format: 'json' }],
+    ['hidden', 'Hidden value', { type: 'string', label: 'Hidden', widget: 'hidden' }],
+  ]],
+  ['Money & IDs', [
+    ['card', 'Card number', { type: 'string', label: 'Card number', format: 'card' }],
+    ['iban', 'IBAN', { type: 'string', label: 'IBAN', format: 'iban' }],
+    ['account', 'Bank account', id('Account number', '\\d{9,18}', '123456789012')],
+    ['ifsc', 'IFSC', id('IFSC', '[A-Z]{4}0[A-Z0-9]{6}', 'SBIN0001234')],
+    ['pan', 'PAN', id('PAN', '[A-Z]{5}\\d{4}[A-Z]', 'ABCDE1234F')],
+    ['aadhaar', 'Aadhaar', id('Aadhaar', '\\d{12}', '123412341234')],
+    ['gstin', 'GSTIN', id('GSTIN', '\\d{2}[A-Z]{5}\\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]', '27ABCDE1234F1Z5')],
+    ['pincode', 'PIN code', id('PIN code', '[1-9]\\d{5}', '411001')],
+  ]],
+  ['Groups & tables', [
+    ['group', 'Group', NEW.group()],
+    ['fullName', 'Full name', { type: 'group', label: 'Name', fields: { first: { type: 'string', label: 'First name' }, last: { type: 'string', label: 'Last name' } } }],
+    ['address', 'Address', { type: 'group', label: 'Address', fields: {
+      line1: { type: 'string', label: 'Address line 1' }, line2: { type: 'string', label: 'Address line 2' },
+      city: { type: 'string', label: 'City' }, state: { type: 'string', label: 'State' },
+      pincode: { type: 'string', label: 'PIN code', pattern: '[1-9]\\d{5}' }, country: { type: 'string', label: 'Country', format: 'country', default: 'IN' },
+    } }],
+    ['table', 'Table (add rows)', NEW.list()],
     ['fixedTable', 'Table with fixed rows', { type: 'list', label: 'Table', widget: 'table', rows: ['Row 1', 'Row 2'], rowHeading: 'Item', fields: { value: { type: 'string', label: 'Answer' } } }],
+    ['cards', 'Repeating cards', { type: 'list', label: 'Entries', min: 1, fields: {} }],
   ]],
 ]
 
-interface Item { id: string; label: string; base: string; make(): Field }
-const ITEMS: Item[] = [
-  ...KINDS.map(([k, label]) => ({ id: k, label, base: k === 'string' ? 'text' : k, make: NEW[k] })),
-  ...MORE.flatMap(([, list]) => list.map(([base, label, f]) => ({ id: `more:${base}`, label, base, make: () => structuredClone(f) }))),
-]
+interface Item { id: string; label: string; base: string; group: string; make(): Field }
+const ITEMS: Item[] = PALETTE.flatMap(([group, list]) => list.map(([base, label, f]) => ({ id: base, label, base, group, make: () => structuredClone(f) })))
 const itemOf = (id: string) => ITEMS.find((i) => i.id === id)!
 const EMPTY: FormSchema = { version: 1, fields: {} }
 
@@ -175,26 +224,29 @@ function settingsSchema(kind: Kind): FormSchema {
     help: { type: 'string', label: 'Help text' },
   }
   if (input) f.required = { type: 'boolean', widget: 'toggle', label: 'Required' }
+  f.readOnly = { type: 'boolean', widget: 'toggle', label: 'Read-only', help: 'Shown but can\'t be changed.' }
   f.visible = formula('Show only when', "employment == 'Self Employed'")
   if (input) f.value = formula('Calculated value', 'qty * price')
   const num = (label: string): Field => ({ type: 'number', label })
   const pick = (label: string, options: string[]): Field => ({ type: 'choice', label, options })
   switch (kind) {
     case 'string':
-      Object.assign(f, { format: pick('Format', ['email', 'url', 'phone', 'color']), widget: pick('Shown as', ['textarea', 'password', 'search', 'otp', 'signature', 'location', 'hidden']), minLength: num('Fewest characters'), maxLength: num('Most characters'), pattern: { type: 'string', label: 'Pattern (regular expression)' } })
+      Object.assign(f, { format: pick('Format', ['email', 'url', 'phone', 'color', 'country', 'card', 'iban', 'json']), widget: pick('Shown as', ['textarea', 'password', 'search', 'phone', 'otp', 'signature', 'location', 'barcode', 'markdown', 'code', 'json', 'hidden']), minLength: num('Fewest characters'), maxLength: num('Most characters'), pattern: { type: 'string', label: 'Pattern (regular expression)' } })
       break
     case 'number':
       Object.assign(f, {
         min: num('Smallest'), max: num('Largest'), decimals: num('Decimal places'), format: pick('Format', ['currency', 'percent']),
         currency: { type: 'string', label: 'Currency code', placeholder: 'INR', help: 'Shown in front of the box, e.g. INR shows ₹.', pattern: '[A-Z]{3}', visible: "format == 'currency'" },
-        widget: { ...pick('Shown as', ['slider', 'rating', 'hidden']), help: 'A rating has as many stars as Largest (5 when empty).' },
+        widget: { ...pick('Shown as', ['stepper', 'slider', 'rating', 'hidden']), help: 'A rating has as many stars as Largest (5 when empty).' },
       })
       break
     case 'choice':
       Object.assign(f, {
-        options: { type: 'list', label: 'Options', widget: 'table', min: 1, fields: { value: { type: 'string', label: 'Value', required: true }, label: { type: 'string', label: 'Label (if different)' } } },
+        options: { type: 'list', label: 'Options', widget: 'table', min: 1, fields: { value: { type: 'string', label: 'Value', required: true }, label: { type: 'string', label: 'Label (if different)' }, visible: { type: 'string', label: 'Show only when', placeholder: "state == 'Maharashtra'" } },
+          help: '"Show only when" makes cascading choices: the option is offered only while its formula holds.' },
         multiple: { type: 'boolean', widget: 'toggle', label: 'Allow several' },
-        widget: pick('Shown as', ['radio', 'select', 'autocomplete']),
+        widget: pick('Shown as', ['radio', 'select', 'buttons', 'autocomplete', 'tags']),
+        allowOther: { type: 'boolean', widget: 'toggle', label: 'Allow other answers', help: 'People may type answers that aren\'t in the list (tags, "Other").' },
       })
       break
     case 'boolean':
@@ -228,16 +280,17 @@ const asColumn = (s: FormSchema): FormSchema => ({ ...s, fields: { ...s.fields, 
 const SETTINGS = Object.fromEntries(KINDS.map(([k]) => [k, settingsSchema(k)])) as Record<Kind, FormSchema>
 
 /** Settings names that map 1:1 onto field props. */
-const PLAIN = ['format', 'widget', 'minLength', 'maxLength', 'pattern', 'min', 'max', 'decimals', 'multiple', 'accept', 'maxSize', 'className', 'currency']
+const PLAIN = ['format', 'widget', 'minLength', 'maxLength', 'pattern', 'min', 'max', 'decimals', 'multiple', 'accept', 'maxSize', 'className', 'currency', 'allowOther', 'country']
 
 function toSettings(key: string, f: Field): Values {
   const any = f as unknown as Record<string, unknown>
   const s: Values = { key, label: text(f.label, 'en'), help: text(f.help, 'en'), visible: typeof f.visible === 'string' ? f.visible : null }
   if ('required' in f) s.required = !!f.required
+  s.readOnly = !!f.readOnly
   if ('value' in f) s.value = f.value ?? null
   for (const k of PLAIN) if (any[k] !== undefined) s[k] = any[k]
   if (f.type === 'list') Object.assign(s, { widget: f.widget ?? 'list', rows: f.rows?.map((r) => text(r, 'en')).join('\n') || null, rowHeading: text(f.rowHeading, 'en') || null })
-  if (f.type === 'choice') s.options = f.options.map((o) => (typeof o === 'string' ? { value: o, label: null } : { value: o.value, label: text(o.label, 'en') || null }))
+  if (f.type === 'choice') s.options = f.options.map((o) => (typeof o === 'string' ? { value: o, label: null, visible: null } : { value: o.value, label: text(o.label, 'en') || null, visible: typeof o.visible === 'string' ? o.visible : null }))
   return s
 }
 
@@ -252,6 +305,7 @@ function fromSettings(f: Field, s: Values): Field {
   put('label', s.label ? words(f.label, s.label) : null)
   put('help', s.help ? words(f.help, s.help) : null)
   put('visible', s.visible)
+  if ('readOnly' in s) put('readOnly', s.readOnly ? (typeof f.readOnly === 'string' ? f.readOnly : true) : null)
   if ('required' in s) put('required', s.required ? (typeof (f as { required?: unknown }).required === 'string' ? (f as { required?: unknown }).required : true) : null)
   if ('value' in s) put('value', s.value)
   for (const k of PLAIN) if (k in s) put(k, s[k])
@@ -262,7 +316,7 @@ function fromSettings(f: Field, s: Values): Field {
     put('rowHeading', rows.length ? s.rowHeading : null)
   }
   if (f.type === 'choice' && Array.isArray(s.options))
-    out.options = (s.options as Values[]).filter((o) => o.value).map((o) => (o.label ? { value: o.value, label: o.label } : o.value))
+    out.options = (s.options as Values[]).filter((o) => o.value).map((o) => (o.label || o.visible ? { value: o.value, ...(o.label ? { label: o.label } : {}), ...(o.visible ? { visible: o.visible } : {}) } : o.value))
   return out as unknown as Field
 }
 
@@ -287,6 +341,7 @@ export function Builder(props: BuilderProps) {
   const [selected, setSelected] = useState<Path | null>(null)
   const [panel, setPanel] = useState(0) // remounts the settings form
   const [tab, setTab] = useState<'build' | 'layout' | 'preview' | 'json'>('build')
+  const [find, setFind] = useState('')
   const lastPush = useRef(0)
   const issues = useMemo(() => lint(schema), [schema])
   const first = useRef(true)
@@ -405,9 +460,11 @@ export function Builder(props: BuilderProps) {
     tab === 'build' && h('div', { className: 'fw-b-main' },
       h('div', { className: 'fw-b-palette', 'aria-label': 'Add a field' },
         h('h3', null, field && (field.type === 'group' || field.type === 'list') ? `Add to ${text(field.label, 'en') || selected!.at(-1)}` : 'Add'),
-        KINDS.map(([k]) => paletteButton(k)),
-        h('details', { className: 'fw-b-more' }, h('summary', null, `More inputs (${ITEMS.length - KINDS.length})`),
-          h('div', null, MORE.map(([group, list]) => h(Fragment, { key: group }, h('h4', null, group), list.map(([base]) => paletteButton(`more:${base}`)))))),
+        h('input', { type: 'search', className: 'fw-b-find', placeholder: `Find an input (${ITEMS.length})`, 'aria-label': 'Find an input', value: find, onChange: (e: ChangeEvent<HTMLInputElement>) => setFind(e.target.value) }),
+        PALETTE.map(([group, list]) => {
+          const hits = list.filter(([base, label]) => !find || `${label} ${group} ${base}`.toLowerCase().includes(find.toLowerCase()))
+          return hits.length > 0 && h(Fragment, { key: group }, h('h4', null, group), hits.map(([base]) => paletteButton(base)))
+        }),
         h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
         props.scan && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…')),
       h('div', { className: 'fw-b-tree' },

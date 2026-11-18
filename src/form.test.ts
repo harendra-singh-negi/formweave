@@ -153,3 +153,21 @@ test('a drawn signature may be longer than typed text; a colour is #rrggbb', () 
   assert.ok(validate(s, { sign: 'x'.repeat(20_000), c: '#12abEF' }).ok)
   assert.equal(validate(s, { c: 'red' }).errors.c?.code, 'format')
 })
+
+test('cascading options, other answers, and the card / IBAN / country / JSON checks', () => {
+  const s: FormSchema = { version: 1, fields: {
+    state: { type: 'choice', options: ['MH', 'KA'] },
+    city: { type: 'choice', options: [{ value: 'Pune', visible: "state == 'MH'" }, { value: 'Mysuru', visible: "state == 'KA'" }] },
+    tags: { type: 'choice', multiple: true, allowOther: true, options: ['a'] },
+    card: { type: 'string', format: 'card' }, iban: { type: 'string', format: 'iban' },
+    country: { type: 'string', format: 'country' }, json: { type: 'string', format: 'json' },
+  } }
+  assert.deepEqual(lint(s), [])
+  assert.equal(validate(s, { state: 'KA', city: 'Pune' }).errors.city?.code, 'option')
+  assert.ok(validate(s, { state: 'MH', city: 'Pune', tags: ['a', 'mine'] }).ok)
+  const f = createForm(s, { values: { state: 'KA' } })
+  assert.deepEqual(f.getState().fields.city.options, ['Mysuru'])
+  assert.ok(validate(s, { card: '4111111111111111', iban: 'GB82WEST12345698765432', country: 'IN', json: '{"a":1}' }).ok)
+  const bad = validate(s, { card: '4111111111111112', iban: 'GB82WEST12345698765433', country: 'ZZ', json: '{a:1}' }).errors
+  assert.deepEqual([bad.card?.code, bad.iban?.code, bad.country?.code, bad.json?.code], ['format', 'format', 'format', 'format'])
+})

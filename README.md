@@ -161,14 +161,14 @@ Good to know:
 How a field looks (radio, toggle, textarea, table…) is its `widget`, which the renderer reads.
 Every field can have `visible`, `readOnly`, `check`, `validators` and `messages`; every value field also has `required` and `value` (calculated).
 
-The built-in widgets and formats. The builder's **More inputs** adds each one ready-made.
+The built-in widgets and formats. The builder's palette lists 64 ready-made inputs in groups, with a search box. Some are groups of fields: date, time and number ranges (To is checked against From), address, full name and cascading dropdowns. Others are text fields with a pattern: PAN, Aadhaar, GSTIN, IFSC, PIN code and bank account. Any of them can be a column of a table.
 
 | Type | `widget` / `format` |
 | --- | --- |
-| `string` | `textarea`, `password`, `search`, `otp` (one box per character, `maxLength` boxes), `signature` (drawn; the value is an SVG drawing), `location` ("lat,lng", with a "Use my location" button), `hidden`; formats `email`, `url`, `phone`, `color` |
-| `number` | `slider` (`min`..`max`), `rating` (`max` stars, 5 by default), `hidden`; formats `currency` (with `currency: 'INR'` it shows ₹ in front) and `percent` |
+| `string` | `textarea`, `password`, `search`, `phone` (country code + number, `country: 'IN'` first), `otp` (one box per character, `maxLength` boxes), `signature` (drawn; the value is an SVG drawing), `location` ("lat,lng", with a "Use my location" button), `barcode` (typed, or read with the camera where the browser has BarcodeDetector), `markdown`, `code`, `json`, `hidden`; formats `email`, `url`, `phone`, `color`, `country` (ISO code, names in the form's language), `card` (Luhn-checked), `iban` (check digits), `json` |
+| `number` | `stepper` (− / +), `slider` (`min`..`max`), `rating` (`max` stars, 5 by default), `hidden`; formats `currency` (with `currency: 'INR'` it shows ₹ in front) and `percent` |
 | `boolean` | a checkbox, or `toggle` |
-| `choice` | `select`, `radio`, `autocomplete` (type to search), checkboxes with `multiple`, or `multiple` with `select` |
+| `choice` | `select`, `radio` (radio group), `buttons` (button group; checkboxes with `multiple`), `autocomplete` (type to search), `tags` (with `allowOther`), a checkbox group with `multiple`, or `multiple` with `select`. An option's `visible` formula makes cascading choices: `{ value: 'Pune', visible: "state == 'Maharashtra'" }`. `allowOther` accepts typed answers that aren't options |
 | `date` | formats `date`, `time`, `datetime`, `month`, `week`, `year` |
 | `file` | a drop zone and a picker; `camera` opens the phone's camera. `accept` limits it to images, video, audio or documents |
 | `list` | rows as cards, or `table`. `rows: ['Monday', 'Tuesday']` makes a table with fixed rows: the text sits in the first column under `rowHeading`, and no rows are added or removed. The submitted rows come in the same order |
