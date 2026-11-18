@@ -159,6 +159,8 @@ function settingsSchema(kind: Kind): FormSchema {
   f.className = cssClasses
   return { version: 1, fields: f }
 }
+/** A table's column: its label is the column heading. */
+const asColumn = (s: FormSchema): FormSchema => ({ ...s, fields: { ...s.fields, label: { type: 'string', label: 'Column heading', help: 'Shown at the top of the column, and above the box on a phone.' } } })
 const SETTINGS = Object.fromEntries(KINDS.map(([k]) => [k, settingsSchema(k)])) as Record<Kind, FormSchema>
 
 /** Settings names that map 1:1 onto field props. */
@@ -312,6 +314,11 @@ export function Builder(props: BuilderProps) {
   }
 
   const field = selected ? fieldAt(schema.fields, selected) : undefined
+  /** Is this field a column of a table? */
+  const inTable = (path: Path) => {
+    const up = path.length > 1 ? fieldAt(schema.fields, path.slice(0, -1)) : undefined
+    return up?.type === 'list' && up.widget === 'table'
+  }
   return h('div', { className: 'fw-builder', onKeyDown: onKey },
     h('div', { className: 'fw-b-bar' },
       h('div', { role: 'tablist' },
@@ -332,7 +339,7 @@ export function Builder(props: BuilderProps) {
       h('div', { className: 'fw-b-settings' },
         field && selected
           ? h(Fragment, null, h('h3', null, KINDS.find(([k]) => k === field.type)![1], ' settings'),
-              h(Form, { key: panel, schema: SETTINGS[field.type], values: toSettings(selected.at(-1)!, field), labels: { submit: 'Done' }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
+              h(Form, { key: panel, schema: inTable(selected) ? asColumn(SETTINGS[field.type]) : SETTINGS[field.type], values: toSettings(selected.at(-1)!, field), labels: { submit: 'Done' }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
           : h('p', { className: 'fw-help' }, 'Select a field to change it.'))),
     tab === 'layout' && h(LayoutTab, { schema, commit: (layout: Layout[] | undefined, typing?: boolean) => commit({ ...schema, layout }, selected, typing), panel, bump: () => setPanel((n) => n + 1) }),
     tab === 'preview' && h('div', { className: 'fw-b-preview' },
@@ -352,6 +359,8 @@ interface TreeProps {
   place(kind: Kind, parent: Path, before: string | null): void
   /** What an empty group or list says. */
   empty?: string
+  /** These fields are a table's columns. */
+  columns?: boolean
 }
 
 function Tree(p: TreeProps): ReactNode {
@@ -382,13 +391,13 @@ function Tree(p: TreeProps): ReactNode {
           h('button', {
             type: 'button', className: 'fw-b-pick', draggable: true, onClick: () => p.select(path),
             onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-path', path.join('.')),
-          }, h('span', null, text(f.label, 'en') || key), h('small', null, ` ${key} · ${f.type}`)),
+          }, h('span', null, text(f.label, 'en') || key), h('small', null, ` ${key} · ${f.type}${p.columns ? ' · column' : ''}`)),
           on && h('span', { className: 'fw-b-tools' },
             h('button', { type: 'button', 'aria-label': 'Move up', onClick: () => p.move(path, -1) }, '↑'),
             h('button', { type: 'button', 'aria-label': 'Move down', onClick: () => p.move(path, 1) }, '↓'),
             h('button', { type: 'button', 'aria-label': 'Duplicate', onClick: () => p.duplicate(path) }, '⧉'),
             h('button', { type: 'button', 'aria-label': 'Delete', onClick: () => p.remove(path) }, '✕'))),
-        (f.type === 'group' || f.type === 'list') && h(Tree, { ...p, fields: f.fields, parent: path, empty: f.type === 'list' && f.widget === 'table'
+        (f.type === 'group' || f.type === 'list') && h(Tree, { ...p, fields: f.fields, parent: path, columns: f.type === 'list' && f.widget === 'table', empty: f.type === 'list' && f.widget === 'table'
           ? 'No columns yet. Each field you add here is a column: select the table and click a field type, or drag one here.'
           : 'Empty. Select it and click a field type, or drag one here.' }))
     }))

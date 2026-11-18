@@ -66,6 +66,7 @@ import 'formweave/style.css'
 - Widgets: the built-ins cover all 8 types. Pass your own by widget name or by type. Each widget draws only its control; formweave adds the label, help and error.
 - Accessibility: every label is tied to its input, and errors are announced through `aria-describedby`. Submitting focuses the first error and opens the page it is on.
 - Theming: change the `--fw-*` CSS variables. All styles stay under `.fw-form`.
+- Tables (`type: 'list', widget: 'table'`): each field in the list is a column, and its label is the column heading. People add rows with "+ Add row". On a narrow form each row becomes a card with every heading above its box, so nothing scrolls sideways. Without `widget: 'table'`, every row is a card at any width.
 - Tabs and accordion: underlined tabs that scroll sideways when they don't fit, with arrow keys between them. The accordion has one bordered panel per page. When a form is sent with an error in a closed panel, that panel opens.
 
 ### Your own CSS and classes

@@ -72,5 +72,6 @@ test('a list shows each row as a card; a table numbers its rows', () => {
   assert.doesNotMatch(list, /<table/)
   const table = renderToString(h(Form, { schema: rows('table') }))
   assert.match(table, /<th class="fw-n">#<\/th>/)
-  assert.match(table, /<td class="fw-n">2<\/td>/)
+  assert.match(table, /<td class="fw-n" data-label="Row">2<\/td>/) // a phone shows "Row 2" on the row's card
+  assert.match(table, /<label for="[^"]+items\.1\.qty" class="fw-sr">Qty<\/label>/) // the heading a phone shows above the box
 })

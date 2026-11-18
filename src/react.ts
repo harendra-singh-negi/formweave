@@ -401,7 +401,7 @@ function ListInput(p: WidgetProps) {
         h('table', { className: 'fw-table' },
           h('thead', null, h('tr', null, h('th', { className: 'fw-n' }, '#'), cols.map(([k, sf]) => h('th', { key: k }, text(sf.label, c.locale) || humanize(k))), h('th', { className: 'fw-n' }))),
           h('tbody', null, rows.map((_, i) => h('tr', { key: i },
-            h('td', { className: 'fw-n' }, i + 1),
+            h('td', { className: 'fw-n', 'data-label': c.labels.row }, i + 1),
             cols.map(([k, sf]) => h('td', { key: k }, h(Context.Provider, { value: { ...c, compact: true } }, cell(i, k, sf)))),
             h('td', { className: 'fw-n' }, remove(i))))))),
       add)
