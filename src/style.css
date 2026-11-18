@@ -121,6 +121,7 @@
 .fw-b-list > li.fw-b-over { box-shadow: 0 -3px 0 var(--fw-accent); }
 .fw-b-list > li.fw-b-drop.fw-b-over { border-color: var(--fw-accent); color: var(--fw-accent); box-shadow: none; }
 .fw-builder .fw-b-palette button[draggable] { cursor: grab; }
+.fw-builder .fw-b-palette .fw-b-scan-go { margin-top: 0.5rem; border-style: dashed; }
 .fw-b-drop { padding: 0.5rem; border: 1px dashed var(--fw-border); border-radius: var(--fw-radius); color: var(--fw-muted); font-size: 0.875rem; }
 .fw-b-scan { display: grid; gap: 0.5rem; justify-items: start; padding-bottom: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--fw-border); }
 .fw-b-scan p, .fw-b-json > p { margin: 0; }
