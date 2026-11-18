@@ -429,3 +429,21 @@
 /* a label being retyped on the canvas */
 .fw-b-canvas { position: relative; }
 .fw-builder .fw-b-inline { position: absolute; z-index: 2; box-sizing: border-box; margin: 0; padding: 0 0.25rem; line-height: 1.2; color: var(--fw-text); background: var(--fw-bg); border: 2px solid var(--fw-accent); border-radius: 3px; outline: none; box-shadow: 0 2px 8px rgb(0 0 0 / 0.15); }
+/* the bar, the palette and the settings stay put; only the middle scrolls */
+.fw-builder > .fw-b-bar { position: sticky; top: 0; z-index: 3; margin-block: -0.5rem 0; padding-block: 0.5rem; background: var(--fw-bg); }
+@container fwb (min-width: 52rem) {
+  .fw-b-main > :is(.fw-b-palette, .fw-b-settings) {
+    position: sticky; top: 3.25rem; align-self: start;
+    max-height: calc(100vh - 4.25rem); overflow: hidden auto; overscroll-behavior: contain; padding-right: 0.25rem;
+  }
+}
+/* the trees: long names are cut, never wider than their column */
+.fw-b-tree { min-width: 0; }
+.fw-b-list { grid-template-columns: minmax(0, 1fr); }
+.fw-b-pick { display: flex; align-items: baseline; gap: 0.4rem; }
+.fw-b-pick > span:not(.fw-b-ico) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fw-b-pick small { flex: 0 4 auto; min-width: 3rem; margin-left: auto; padding-left: 0.5rem; font-weight: normal; overflow: hidden; text-overflow: ellipsis; }
+.fw-b-ico { flex: none; display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.25rem; padding: 0 0.2rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: var(--fw-muted); background: color-mix(in srgb, var(--fw-border) 35%, var(--fw-bg)); }
+.fw-builder .fw-b-pick.fw-b-box { background: color-mix(in srgb, var(--fw-accent) 7%, var(--fw-bg)); }
+.fw-b-box .fw-b-ico { color: var(--fw-accent); background: color-mix(in srgb, var(--fw-accent) 15%, var(--fw-bg)); }
+.fw-b-list .fw-b-list { border-left-color: color-mix(in srgb, var(--fw-accent) 30%, var(--fw-border)); }

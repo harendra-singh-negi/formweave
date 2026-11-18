@@ -1119,6 +1119,8 @@ export function relocate(s: FormSchema, key: string, parent: Ip, index: number):
   return next ? { ...s, layout: next } : s
 }
 
+const FIELD_ICONS: Record<Kind, string> = { string: 'Aa', number: '#', boolean: '☑', choice: '◉', date: '◷', file: '⎙', group: '▣', list: '☰' }
+
 const placedKeys = (items: Layout[]): string[] => items.flatMap((n) => (typeof n === 'string' ? [n] : isContainer(n) ? placedKeys(n.children) : []))
 
 const NODES: [string, string, () => Layout][] = [
@@ -1287,13 +1289,20 @@ function LayoutTree(p: LayoutTreeProps): ReactNode {
     e.stopPropagation()
     p.move(raw.split('.').map(Number), p.parent, index)
   }
-  const name = (n: Layout) => {
-    if (typeof n === 'string') return [text(p.schema.fields[n]?.label, 'en') || n, ` ${n} · field`]
+  /** [icon, what it says, what it is] */
+  const name = (n: Layout): [string, string, string] => {
+    if (typeof n === 'string') {
+      const f = p.schema.fields[n]
+      return [FIELD_ICONS[f?.type ?? 'string'], text(f?.label, 'en') || n, `${n} · ${f?.type ?? 'missing'}`]
+    }
     switch (n.type) {
-      case 'section': return [text(n.title, 'en') || 'Section', ' section']
-      case 'grid': return ['Columns', ` grid · ${typeof n.cols === 'number' ? n.cols : Object.values(n.cols ?? { base: 1 }).join('/')}`]
-      case 'pages': return ['Pages', ` ${n.display ?? 'steps'}${n.position && n.display !== 'accordion' ? ` · ${n.position}` : ''}`]
-      case 'content': return [n.as === 'divider' ? '———' : text(n.text, 'en').replace(/<[^>]*>/g, ' ').trim().slice(0, 40) || '…', ` ${n.as ?? 'text'}`]
+      case 'section': return ['▤', text(n.title, 'en') || 'Section without a title', 'section']
+      case 'grid': {
+        const c = typeof n.cols === 'number' ? { base: 1, md: n.cols } : (n.cols ?? { base: 1 })
+        return ['▥', `${Math.max(...Object.values(c).map(Number))} columns`, `grid · ${c.base ?? 1} on phones`]
+      }
+      case 'pages': return ['⧉', `${n.children.length} ${n.display ?? 'steps'}`, `pages${n.position && n.display !== 'accordion' ? ` · ${n.position}` : ''}`]
+      case 'content': return [n.as === 'divider' ? '—' : n.as === 'heading' ? 'H' : '¶', n.as === 'divider' ? 'Divider' : text(n.text, 'en').replace(/<[^>]*>/g, ' ').trim().slice(0, 60) || '…', n.as ?? 'text']
     }
   }
   return h('ul', { className: 'fw-b-list', onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => drop(e, p.items.length) },
@@ -1301,14 +1310,14 @@ function LayoutTree(p: LayoutTreeProps): ReactNode {
     p.items.map((n, i): ReactNode => {
       const ip = [...p.parent, i]
       const on = !!p.sel && p.sel.join('.') === ip.join('.')
-      const [title, kind] = name(n)
+      const [icon, title, kind] = name(n)
       const siblings = p.items.length
       return h('li', { key: i, onDragOver: dragOver, onDragLeave: dragLeave, onDrop: (e: DragEvent) => drop(e, i) },
         h('div', { className: 'fw-b-item', 'aria-current': on || undefined },
           h('button', {
-            type: 'button', className: `fw-b-pick${isContainer(n) ? ' fw-b-box' : ''}`, draggable: true, onClick: () => p.select(ip),
+            type: 'button', className: `fw-b-pick${isContainer(n) ? ' fw-b-box' : ''}`, draggable: true, onClick: () => p.select(ip), title: `${title} (${kind})`,
             onDragStart: (e: DragEvent) => { e.stopPropagation(); e.dataTransfer.setData('text/x-fw-node', ip.join('.')) },
-          }, h('span', null, title), h('small', null, kind)),
+          }, h('span', { className: 'fw-b-ico', 'aria-hidden': true }, icon), h('span', { className: 'fw-b-name' }, title), h('small', null, kind)),
           on && h('span', { className: 'fw-b-tools' },
             h('button', { type: 'button', 'aria-label': 'Move up', disabled: i === 0, onClick: () => p.move(ip, p.parent, i - 1) }, '↑'),
             h('button', { type: 'button', 'aria-label': 'Move down', disabled: i === siblings - 1, onClick: () => p.move(ip, p.parent, i + 2) }, '↓'),
