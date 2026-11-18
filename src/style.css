@@ -465,3 +465,6 @@
 .fw-b-help { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1rem 1.5rem; padding: 1rem 1.25rem; border: 1px solid color-mix(in srgb, var(--fw-accent) 35%, var(--fw-border)); border-radius: var(--fw-radius); background: color-mix(in srgb, var(--fw-accent) 4%, var(--fw-bg)); font-size: 0.875rem; line-height: 1.5; }
 .fw-b-help ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.375rem; }
 .fw-builder .fw-b-bar [aria-expanded=true] { border-color: var(--fw-accent); color: var(--fw-accent); }
+/* copy, paste, duplicate */
+.fw-builder .fw-b-tools .fw-b-clip { font-size: 0.8125rem; padding: 0.2rem 0.5rem; }
+.fw-b-note { margin: 0; padding: 0.375rem 0.75rem; border-radius: var(--fw-radius); background: color-mix(in srgb, var(--fw-accent) 10%, var(--fw-bg)); color: var(--fw-text); font-size: 0.875rem; }

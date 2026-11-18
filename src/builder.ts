@@ -1,5 +1,5 @@
 // The visual builder. Its settings panel is itself a formweave form.
-import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type ClipboardEvent } from 'react'
 import { lint, type Issue } from './lint.ts'
 import { text } from './form.ts'
 import { fromJsonSchema, type Imported } from './jsonschema.ts'
@@ -484,11 +484,47 @@ export function Builder(props: BuilderProps) {
     commit(before === null ? added : edits.move(added, [...parent, key], before), [...parent, key])
     setPanel((n) => n + 1)
   }
-  const duplicate = (path: Path) => {
-    const parent = path.slice(0, -1)
-    const key = freeKey(schema.fields, parent, path.at(-1)!.replace(/\d+$/, ''))
-    commit(edits.add(schema, parent, key, structuredClone(fieldAt(schema.fields, path)!), path.at(-1)), [...parent, key])
-    setPanel((n) => n + 1)
+  /** The last thing copied in this builder; Ctrl+V also takes one copied in another tab or builder. */
+  const [clip, setClip] = useState<Clip | null>(null)
+  const [note, setNote] = useState('')
+  const say = (m: string) => { setNote(m); setTimeout(() => setNote((x) => (x === m ? '' : x)), 2500) }
+  const picked = (): Part => (selected ? { path: selected } : node ? { ip: node } : 'all')
+  const CLIP_MARK = 'formweave-clip'
+  const copy = (part: Part = picked(), data?: DataTransfer) => {
+    const c = copyPart(schema, part)
+    if (!c) return
+    setClip(c)
+    const textOut = JSON.stringify({ [CLIP_MARK]: 1, ...c })
+    if (data) data.setData('text/plain', textOut)
+    else navigator.clipboard?.writeText(textOut).catch(() => {})
+    const n = Object.keys(c.fields).length
+    say(part === 'all' ? `Copied the whole form (${n} fields)` : `Copied ${n === 1 && 'path' in part ? 'the field' : `it with ${n} field${n === 1 ? '' : 's'}`}. Paste with Ctrl+V or Paste.`)
+  }
+  /** Pastes after what is picked (inside a picked group or list, or a picked section on the canvas), else at the end. */
+  const paste = (c: Clip | null = clip, at?: { parent: Path; after?: string; place?: [Ip, number] }) => {
+    if (!c) return
+    const target = selected ? fieldAt(schema.fields, selected) : undefined
+    const intoField = !c.layout?.some((n) => typeof n === 'object') && target && (target.type === 'group' || target.type === 'list')
+    const parent = at?.parent ?? (!selected || c.layout?.some((n) => typeof n === 'object') ? [] : intoField ? selected : selected.slice(0, -1))
+    const after = at ? at.after : parent.length && !intoField ? selected!.at(-1) : !parent.length && selected?.length === 1 ? selected[0] : undefined
+    // a pasted section or grid goes after the picked one, not into it
+    const first = c.layout?.[0]
+    const afterNode: [Ip, number] | undefined = node && typeof first === 'object' && first.type !== 'content' ? [node.slice(0, -1), node.at(-1)! + 1] : undefined
+    const place = at?.place ?? (parent.length ? undefined : afterNode ?? spot(schema.layout ? schema : { ...schema, layout: Object.keys(schema.fields) }, first ?? 'x'))
+    const { schema: next, keys, placed } = pasteClip(schema, c, parent, after, place)
+    const piece = c.layout?.length === 1 && typeof c.layout[0] === 'object'
+    commit(next, piece || !keys.length ? null : [...parent, keys[0]])
+    if (piece) selectNode(placed ?? null)
+    else setPanel((n) => n + 1)
+    say(`Pasted ${keys.length} field${keys.length === 1 ? '' : 's'}${keys.length ? `: ${keys.slice(0, 4).join(', ')}${keys.length > 4 ? '…' : ''}` : ''}. Change the keys in the settings if you like.`)
+  }
+  /** A copy right after the original, without touching what was copied. */
+  const duplicate = (path?: Path) => {
+    const part: Part = path ? { path } : picked()
+    const c = copyPart(schema, part)
+    if (!c || part === 'all') return
+    if ('path' in part) paste(c, { parent: part.path.slice(0, -1), after: part.path.at(-1), place: part.path.length === 1 && schema.layout ? (() => { const ip = ipOf(schema.layout!, part.path[0]); return ip ? [ip.slice(0, -1), ip.at(-1)! + 1] as [Ip, number] : undefined })() : undefined })
+    else paste(c, { parent: [], place: [part.ip.slice(0, -1), part.ip.at(-1)! + 1] })
   }
   const remove = (path: Path) => {
     commit(edits.remove(schema, path), null)
@@ -522,14 +558,31 @@ export function Builder(props: BuilderProps) {
     if (path !== selected || stable(next) !== stable(schema)) commit(next, path, true)
   }
 
+  const typingIn = (t: EventTarget) => (t as HTMLElement).closest?.('input, textarea, select, [contenteditable]')
   const onKey = (e: KeyboardEvent) => {
-    const t = e.target as HTMLElement
-    if (t.closest('input, textarea, select, [contenteditable]') || !(e.ctrlKey || e.metaKey)) return
+    if (typingIn(e.target) || !(e.ctrlKey || e.metaKey)) return
     const k = e.key.toLowerCase()
     if (k === 'z' && !e.shiftKey) undo()
     else if (k === 'y' || (k === 'z' && e.shiftKey)) redo()
+    else if (k === 'd' && (selected || node)) duplicate()
     else return
     e.preventDefault()
+  }
+  // Ctrl+C / Ctrl+V outside a text box copy and paste parts of the form, through the system clipboard
+  const onCopy = (e: ClipboardEvent) => {
+    if (typingIn(e.target) || window.getSelection()?.toString()) return
+    e.preventDefault()
+    copy(picked(), e.clipboardData)
+  }
+  const onPaste = (e: ClipboardEvent) => {
+    if (typingIn(e.target)) return
+    try {
+      const c = JSON.parse(e.clipboardData.getData('text/plain'))
+      if (!c?.[CLIP_MARK] || typeof c.fields !== 'object') return
+      e.preventDefault()
+      const { [CLIP_MARK]: _, ...rest } = c
+      paste(rest as Clip)
+    } catch {}
   }
 
   const field = selected ? fieldAt(schema.fields, selected) : undefined
@@ -557,11 +610,16 @@ export function Builder(props: BuilderProps) {
     }),
     !design && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
     props.scan && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…'))
+  /** Copy, Paste and Duplicate for what is picked; with nothing picked, Copy takes the whole form. */
+  const tool = (label: string, title: string, onClick: () => void, disabled = false) =>
+    h('button', { type: 'button', title, 'aria-label': title, disabled, onClick, className: 'fw-b-clip' }, label)
+  const clipTools = h(Fragment, null,
+    tool('Copy', selected || node ? 'Copy (Ctrl+C)' : 'Copy the whole form (Ctrl+C)', () => copy()),
+    tool('Paste', clip ? 'Paste after what is picked (Ctrl+V)' : 'Copy something first', () => paste(), !clip),
+    (selected || node) && tool('⧉', 'Duplicate (Ctrl+D)', () => duplicate()))
   const fieldSettings = field && selected && h(Fragment, null,
     h('div', { className: 'fw-b-head' }, h('h3', null, KINDS.find(([k]) => k === field.type)![1], ' settings'),
-      design && h('span', { className: 'fw-b-tools' },
-        h('button', { type: 'button', 'aria-label': 'Duplicate', title: 'Duplicate', onClick: () => duplicate(selected) }, '⧉'),
-        h('button', { type: 'button', 'aria-label': 'Delete', title: 'Delete', onClick: () => remove(selected) }, '✕'))),
+      h('span', { className: 'fw-b-tools' }, clipTools, h('button', { type: 'button', 'aria-label': 'Delete', title: 'Delete', onClick: () => remove(selected) }, '✕'))),
     field.type === 'list' && (field.widget === 'table' || field.widget === 'matrix') && h(TableDesigner, {
       field, pick: (k) => select([...selected, k]),
       set: (f) => { commit(edits.replace(schema, selected, f), selected, true); setPanel((n) => n + 1) },
@@ -594,7 +652,7 @@ export function Builder(props: BuilderProps) {
     commit({ ...schema, layout: isContainer(piece) ? layoutEdits.unwrap(schema.layout, node) : layoutEdits.remove(schema.layout, node) }, null)
     selectNode(null)
   }
-  return h('div', { className: 'fw-builder', onKeyDown: onKey },
+  return h('div', { className: 'fw-builder', onKeyDown: onKey, onCopy, onPaste },
     h('div', { className: 'fw-b-bar' },
       h('div', { role: 'tablist' },
         (['design', 'build', 'layout', 'preview', 'json'] as const).map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, { design: 'Design', build: 'Fields', layout: 'Layout', preview: 'Preview', json: props.scan ? 'Scan / Import' : 'Import / JSON' }[t]))),
@@ -603,6 +661,7 @@ export function Builder(props: BuilderProps) {
         h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, 'Redo'),
         h('button', { type: 'button', 'aria-expanded': help, 'aria-controls': 'fw-b-help', onClick: () => setHelp(!help) }, help ? '✕ Close help' : '? Help'))),
     help && h(Help),
+    note && h('p', { className: 'fw-b-note', role: 'status' }, note),
     issues.length > 0 && h('ul', { className: 'fw-b-issues', role: 'status' }, issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message))),
     design && h('div', { className: `fw-b-main fw-b-design${wide ? ' fw-b-wide' : ''}` },
       (!wide || adding) && palette,
@@ -612,10 +671,10 @@ export function Builder(props: BuilderProps) {
         fieldSettings
           || (typeof piece === 'object' && h(Fragment, null,
             h('div', { className: 'fw-b-head' }, h('h3', null, piece.type === 'content' ? 'Content' : piece.type, ' settings'),
-              h('span', { className: 'fw-b-tools' }, h('button', { type: 'button', 'aria-label': isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', title: isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', onClick: removeNode }, '✕'))),
+              h('span', { className: 'fw-b-tools' }, clipTools, h('button', { type: 'button', 'aria-label': isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', title: isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', onClick: removeNode }, '✕'))),
             h(Form, { key: panel, schema: NODE_SETTINGS[piece.type], values: nodeSettings(piece), widgets: { image: ImagePicker }, labels: { submit: 'Done' }, onSubmit: () => selectNode(null),
               onChange: (st) => { const next = fromNodeSettings(piece, st.values); if (JSON.stringify(next) !== JSON.stringify(piece)) commit({ ...schema, layout: layoutEdits.replace(schema.layout!, node!, next) }, null, true) } })))
-          || h(Fragment, null, h('h3', null, 'Form settings'),
+          || h(Fragment, null, h('div', { className: 'fw-b-head' }, h('h3', null, 'Form settings'), h('span', { className: 'fw-b-tools' }, clipTools)),
             h(Form, { key: panel, schema: FORM_SETTINGS, values: formSettings(schema), labels: { submit: 'Done' }, onSubmit: () => {},
               onChange: (st) => { const next = fromFormSettings(schema, st.values); if (JSON.stringify(next) !== JSON.stringify(schema)) commit(next, null, true) } }),
             h('p', { className: 'fw-help' }, 'Click a field or section on the form to change it. Drag them to move them; drag from the left to add.')))),
@@ -866,6 +925,7 @@ const HELP: [string, string[]][] = [
     'Double-click a label, column heading, section title or heading to retype it in place. Enter keeps it, Esc leaves it.',
     'Drag anything on the form to move it. Drag an input or a layout piece from the left onto the spot it should go, or click it to add it after what is picked.',
     'Delete removes what is picked. Undo and Redo (Ctrl+Z, Ctrl+Shift+Z) take back any change.',
+    'Copy, Paste and ⧉ Duplicate (Ctrl+C, Ctrl+V, Ctrl+D) work on what is picked: a field, a column, or a section with everything in it. With nothing picked, Copy takes the whole form. Pasted keys are made unique (email → email1) and their formulas follow; change the keys as you like.',
     'Desktop, Tablet and Phone show the form at that screen\'s width, and you keep editing in each. Full width puts the palette and settings away; "+ Add" brings the palette back.',
     'Click empty space on the form to see the form\'s own settings: its title and its look.',
   ]],
@@ -1207,6 +1267,81 @@ export function relocate(s: FormSchema, key: string, parent: Ip, index: number):
   const from = ipOf(items, key)
   const next = from ? layoutEdits.move(items, from, parent, index) : fits(items, parent, key) ? layoutEdits.insert(items, parent, index, key) : undefined
   return next ? { ...s, layout: next } : s
+}
+
+// ---- copy and paste ----
+
+
+
+/** What Copy keeps: fields by key, and for a layout piece or a whole form, where they were placed. */
+export interface Clip {
+  fields: Fields
+  /** Layout pieces to paste, naming the keys in `fields`. Absent for a field inside a group or list. */
+  layout?: Layout[]
+}
+/** What a part of a schema is: a field by path, a layout piece by place, or the whole form. */
+export type Part = { path: Path } | { ip: Ip } | 'all'
+
+/** A copy of a field, a layout piece with the fields placed in it, or the whole form. */
+export function copyPart(s: FormSchema, part: Part): Clip | undefined {
+  if (part === 'all') return structuredClone({ fields: s.fields, layout: s.layout ?? Object.keys(s.fields) })
+  if ('path' in part) {
+    const f = fieldAt(s.fields, part.path)
+    return f && structuredClone({ fields: { [part.path.at(-1)!]: f }, ...(part.path.length === 1 ? { layout: [part.path[0]] } : {}) })
+  }
+  const n = s.layout && nodeAt(s.layout, part.ip)
+  if (n === undefined) return
+  const keys = placedKeys([n]).filter((k) => Object.hasOwn(s.fields, k))
+  return structuredClone({ fields: Object.fromEntries(keys.map((k) => [k, s.fields[k]])), layout: [n] })
+}
+
+/** Field names in a formula renamed by `map`; words in quotes and the parts after a dot stay as they are. */
+export function renameRefs(src: string, map: Record<string, string>): string {
+  return src.split(/('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")/).map((part, i) =>
+    i % 2 ? part : part.replace(/(^|[^.\w])([A-Za-z_][A-Za-z0-9_]*)/g, (m, before: string, name: string) => (Object.hasOwn(map, name) ? before + map[name] : m))).join('')
+}
+
+function renameIn<T>(x: T, map: Record<string, string>): T {
+  const r = (v: unknown) => (typeof v === 'string' ? renameRefs(v, map) : v)
+  const o = { ...(x as Record<string, unknown>) }
+  for (const k of ['visible', 'readOnly', 'required', 'check', 'value']) if (k in o) o[k] = r(o[k])
+  if (Array.isArray(o.options)) o.options = o.options.map((op) => (op && typeof op === 'object' ? { ...op, visible: r(op.visible) } : op))
+  // ponytail: a name inside a group that its own row also has is renamed too; fine unless a pasted key shadows a column
+  if (o.fields && typeof o.fields === 'object') o.fields = Object.fromEntries(Object.entries(o.fields as Fields).map(([k, f]) => [k, renameIn(f, map)]))
+  if (Array.isArray(o.children)) o.children = o.children.map((c) => (typeof c === 'string' ? (map[c] ?? c) : renameIn(c, map)))
+  return o as T
+}
+
+/**
+ * Puts a copy into `s`: its fields into `parent` after `after` (or at the end), every key made unique (email → email1),
+ * and the formulas and layout among them following the new keys. Pasted at the top, its layout goes at `at`
+ * ([parent place, index]) or the end. Returns the schema and the keys it got.
+ */
+export function pasteClip(s: FormSchema, clip: Clip, parent: Path = [], after?: string, at?: [Ip, number]): { schema: FormSchema; keys: string[]; placed?: Ip } {
+  const top = parent.length === 0
+  const map: Record<string, string> = {}
+  const taken = new Set(Object.keys(top ? s.fields : (fieldAt(s.fields, parent) as { fields: Fields }).fields))
+  for (const k of Object.keys(clip.fields)) {
+    let key = k
+    for (let n = 1; taken.has(key); n++) key = k.replace(/\d+$/, '') + n
+    taken.add(key)
+    map[k] = key
+  }
+  const added = Object.entries(clip.fields).map(([k, f]): [string, Field] => [map[k], renameIn(f, map)])
+  const fields = inMap(s.fields, parent, (m) => {
+    const i = after === undefined ? m.length : m.findIndex(([k]) => k === after) + 1
+    return [...m.slice(0, i), ...added, ...m.slice(i)]
+  })
+  let layout = s.layout
+  let placed: Ip | undefined
+  if (top && (s.layout || clip.layout?.some((n) => typeof n === 'object'))) {
+    const items = layout ?? Object.keys(s.fields)
+    const pieces = (clip.layout ?? Object.keys(clip.fields)).map((n) => (typeof n === 'string' ? map[n] ?? n : renameIn(n, map)))
+    const [where, index] = at && fits(items, at[0], pieces[0]) ? at : [[], items.length] as [Ip, number]
+    layout = pieces.reduce((l, n, i) => layoutEdits.insert(l, where, index + i, n), items)
+    placed = [...where, index]
+  }
+  return { schema: { ...s, fields, layout }, keys: added.map(([k]) => k), placed }
 }
 
 const FIELD_ICONS: Record<Kind, string> = { string: 'Aa', number: '#', boolean: '☑', choice: '◉', date: '◷', file: '⎙', group: '▣', list: '☰' }

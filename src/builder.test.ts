@@ -107,3 +107,31 @@ test('lint: images are https or inline png/jpeg/gif/webp; grid widths are positi
   assert.deepEqual(lint(s({ type: 'grid', widths: [1, 3], look: 'lines', children: [] })), [])
   assert.deepEqual(lint(s({ type: 'grid', widths: [0], look: 'box', children: [] })).map((i) => i.path), ['layout.0.widths', 'layout.0.look'])
 })
+
+test('copy and paste: keys made unique, formulas and the layout follow them', async () => {
+  const { copyPart, pasteClip, renameRefs } = await import('./builder.ts')
+  assert.equal(renameRefs("qty * price + sum(items.total) and name == 'qty'", { qty: 'qty1', price: 'price1', items: 'items1', total: 'x' }), "qty1 * price1 + sum(items1.total) and name == 'qty'")
+  const s: FormSchema = { version: 1, fields: { qty: { type: 'number' }, price: { type: 'number' }, total: { type: 'number', value: 'qty * price' }, note: { type: 'string' } },
+    layout: [{ type: 'section', title: 'Order', visible: 'qty > 0', children: [{ type: 'grid', cols: 2, children: ['qty', 'price'] }, 'total'] }, 'note'] }
+  // a section, with the fields in it, pasted after itself
+  const r = pasteClip(s, copyPart(s, { ip: [0] })!, [], undefined, [[], 1])
+  assert.deepEqual(r.keys, ['qty1', 'price1', 'total1'])
+  assert.deepEqual(r.placed, [1])
+  assert.equal((r.schema.fields.total1 as any).value, 'qty1 * price1')
+  assert.deepEqual(r.schema.layout![1], { type: 'section', title: 'Order', visible: 'qty1 > 0', children: [{ type: 'grid', cols: 2, children: ['qty1', 'price1'] }, 'total1'] })
+  assert.deepEqual(lint(r.schema), [])
+  // one field: after the original, its key free
+  const f = pasteClip(r.schema, copyPart(r.schema, { path: ['note'] })!, [], 'note', [[], 3])
+  const keys = Object.keys(f.schema.fields)
+  assert.equal(keys.indexOf('note1'), keys.indexOf('note') + 1)
+  assert.deepEqual(f.schema.layout!.slice(2), ['note', 'note1'])
+  assert.deepEqual(lint(f.schema), [])
+  // the whole form into another: everything comes, nothing clashes
+  const all = pasteClip(s, copyPart(s, 'all')!)
+  assert.equal(Object.keys(all.schema.fields).length, 8)
+  assert.deepEqual(lint(all.schema), [])
+  // a column of a table stays in the table
+  const t: FormSchema = { version: 1, fields: { items: { type: 'list', fields: { qty: { type: 'number' } } } } }
+  const col = pasteClip(t, copyPart(t, { path: ['items', 'qty'] })!, ['items'], 'qty')
+  assert.deepEqual(Object.keys((col.schema.fields.items as any).fields), ['qty', 'qty1'])
+})
