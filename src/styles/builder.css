@@ -1,0 +1,165 @@
+/* formweave/builder.css: the visual builder. Load it with formweave/style.css, which the forms on its canvas and in its panels use. */
+/* ---- builder ---- */
+.fw-builder { --fw-text: #1f2328; --fw-muted: #59636e; --fw-bg: #fff; --fw-border: #d1d9e0; --fw-accent: #0969da; --fw-error: #cf222e; --fw-radius: 6px;
+  --fw-b-palette: 13rem; --fw-b-settings: 21rem; --fw-b-top: 3.25rem;
+  container: fwb / inline-size; display: grid; gap: 0.75rem; color: var(--fw-text); font-family: var(--fw-b-font, inherit); }
+/* the panels (themselves formweave forms) take the builder's colours, font and corners; the canvas keeps the form's own */
+.fw-builder :is(.fw-b-settings, .fw-b-json) .fw-form { --fw-text: inherit; --fw-muted: inherit; --fw-bg: inherit; --fw-border: inherit; --fw-accent: inherit; --fw-error: inherit; --fw-radius: inherit; font-family: inherit; }
+@media (prefers-color-scheme: dark) { .fw-builder { --fw-text: #e6edf3; --fw-muted: #9198a1; --fw-bg: #0d1117; --fw-border: #3d444d; --fw-accent: #4493f8; --fw-error: #f85149; } }
+.fw-builder h3:where(:not(.fw-b-canvas .fw-form h3)) { margin: 0 0 0.5rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fw-muted); }
+.fw-builder button:where(:not(.fw-b-canvas .fw-form button)) { font: inherit; padding: 0.3rem 0.7rem; border: 1px solid var(--fw-border); border-radius: var(--fw-radius); background: var(--fw-bg); color: inherit; cursor: pointer; }
+.fw-builder button:disabled:where(:not(.fw-b-canvas .fw-form button)) { opacity: 0.5; cursor: default; }
+.fw-builder [role=tab][aria-selected=true]:where(:not(.fw-b-canvas .fw-form *)) { border-color: var(--fw-accent); color: var(--fw-accent); }
+.fw-b-bar { display: flex; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.fw-b-bar > div { display: flex; gap: 0.375rem; }
+.fw-b-issues { margin: 0; padding: 0.5rem 0.75rem 0.5rem 1.75rem; border: 1px solid var(--fw-error); border-radius: var(--fw-radius); color: var(--fw-error); font-size: 0.875rem; }
+.fw-b-main { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+@container fwb (min-width: 52rem) { .fw-b-main { grid-template-columns: var(--fw-b-palette) minmax(0, 1fr) minmax(var(--fw-b-settings), 1.2fr); } }
+.fw-b-palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 0.375rem; align-content: start; grid-auto-rows: max-content; }
+.fw-b-palette h3 { grid-column: 1 / -1; }
+.fw-builder .fw-b-palette button { text-align: start; }
+@container fwb (min-width: 52rem) { .fw-b-palette { grid-template-columns: 1fr; } }
+.fw-b-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
+.fw-b-list .fw-b-list { margin: 0.25rem 0 0.25rem 1.25rem; padding-left: 0.5rem; border-left: 2px solid var(--fw-border); }
+.fw-b-item { display: flex; gap: 0.375rem; align-items: center; }
+.fw-builder .fw-b-pick { flex: 1; text-align: start; cursor: grab; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw-builder .fw-b-item[aria-current] .fw-b-pick { border-color: var(--fw-accent); box-shadow: inset 3px 0 0 var(--fw-accent); }
+.fw-b-pick small { color: var(--fw-muted); }
+.fw-b-tools { display: flex; gap: 0.25rem; }
+.fw-b-settings, .fw-b-preview { min-width: 0; }
+.fw-b-json { display: grid; gap: 0.5rem; }
+.fw-b-json textarea { width: 100%; min-height: 24rem; font: 12px/1.5 ui-monospace, monospace; padding: 0.5rem; color: inherit; background: var(--fw-bg); border: 1px solid var(--fw-border); border-radius: var(--fw-radius); }
+.fw-builder .fw-b-box { font-weight: 600; }
+.fw-b-layout-empty { display: grid; gap: 0.75rem; justify-items: start; }
+.fw-b-list > li.fw-b-over { box-shadow: 0 -3px 0 var(--fw-accent); }
+.fw-b-list > li.fw-b-drop.fw-b-over { border-color: var(--fw-accent); color: var(--fw-accent); box-shadow: none; }
+.fw-builder .fw-b-palette button[draggable] { cursor: grab; }
+.fw-builder .fw-b-palette .fw-b-scan-go { margin-top: 0.5rem; border-style: dashed; }
+.fw-b-group { grid-column: 1 / -1; min-width: 0; border: 1px solid var(--fw-border); border-radius: var(--fw-radius); background: var(--fw-bg); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
+.fw-b-group[open] { border-color: color-mix(in srgb, var(--fw-accent) 45%, var(--fw-border)); box-shadow: 0 1px 3px rgb(0 0 0 / 0.06); }
+.fw-b-group > summary:hover { background: color-mix(in srgb, var(--fw-accent) 6%, var(--fw-bg)); }
+.fw-b-group[open] > summary { color: var(--fw-accent); background: color-mix(in srgb, var(--fw-accent) 8%, var(--fw-bg)); }
+.fw-b-group > summary:focus-visible { outline: 2px solid var(--fw-accent); outline-offset: -2px; }
+.fw-b-group > summary small { margin-left: 0.125rem; padding: 0 0.4rem; border-radius: 999px; background: color-mix(in srgb, var(--fw-border) 50%, var(--fw-bg)); font-size: 0.75rem; line-height: 1.4; }
+.fw-b-group > summary::after { transition: transform 0.15s; }
+.fw-b-group::details-content { block-size: 0; overflow: hidden; transition: block-size 0.2s, content-visibility 0.2s allow-discrete; }
+.fw-b-group[open]::details-content { block-size: auto; }
+.fw-builder { interpolate-size: allow-keywords; }
+@media (prefers-reduced-motion: reduce) { .fw-b-group, .fw-b-group::details-content, .fw-b-group > summary::after { transition: none; } }
+.fw-builder .fw-b-find { min-width: 0; width: 100%; box-sizing: border-box; }
+.fw-b-palette * { box-sizing: border-box; }
+.fw-b-group > summary { display: flex; align-items: center; gap: 0.375rem; padding: 0.55rem 0.7rem; cursor: pointer; list-style: none; font-weight: 600; font-size: 0.875rem; }
+.fw-b-group > summary::-webkit-details-marker { display: none; }
+.fw-b-group > summary small { color: var(--fw-muted); font-weight: normal; }
+.fw-b-group > summary::after { content: ''; margin-left: auto; width: 0.4rem; height: 0.4rem; border: solid var(--fw-muted); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.fw-b-group[open] > summary::after { transform: rotate(-135deg); }
+.fw-b-group[open] > summary { border-bottom: 1px solid var(--fw-border); }
+.fw-b-group > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 0.375rem; padding: 0.5rem; }
+@container fwb (min-width: 52rem) { .fw-b-group > div { grid-template-columns: 1fr; } }
+.fw-builder .fw-b-find { position: sticky; top: 0; z-index: 1; }
+.fw-builder .fw-b-find { grid-column: 1 / -1; font: inherit; padding: 0.3rem 0.5rem; color: inherit; background: var(--fw-bg); border: 1px solid var(--fw-border); border-radius: var(--fw-radius); }
+@container fwb (min-width: 52rem) { .fw-b-palette { max-height: 75vh; overflow: hidden auto; padding-right: 0.25rem; } }
+.fw-builder .fw-b-palette button { min-width: 0; overflow-wrap: anywhere; }
+.fw-b-clash { margin: 0 0 0.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--fw-error); border-radius: var(--fw-radius); color: var(--fw-error); font-size: 0.875rem; }
+.fw-b-drop { padding: 0.5rem; border: 1px dashed var(--fw-border); border-radius: var(--fw-radius); color: var(--fw-muted); font-size: 0.875rem; }
+.fw-b-scan { display: grid; gap: 0.5rem; justify-items: start; padding-bottom: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--fw-border); }
+.fw-b-scan p, .fw-b-json > p { margin: 0; }
+/* design: the form itself as the canvas */
+@container fwb (min-width: 52rem) { .fw-b-main.fw-b-design { grid-template-columns: var(--fw-b-palette) minmax(0, 1fr) var(--fw-b-settings); } }
+.fw-b-canvas { min-width: 0; min-height: 16rem; padding: 1.25rem; border: 1px solid var(--fw-border); border-radius: var(--fw-radius); outline: none; }
+.fw-b-canvas [data-fw-path], .fw-b-canvas [data-fw-ip] { cursor: pointer; border-radius: 2px; }
+.fw-b-canvas :is([data-fw-path], [data-fw-ip]):hover:not(:has(:is([data-fw-path], [data-fw-ip]):hover)) { outline: 1px dashed var(--fw-accent); outline-offset: 3px; }
+.fw-b-canvas [data-fw-hidden] { opacity: 0.55; outline: 1px dashed var(--fw-border); outline-offset: 3px; }
+.fw-b-canvas .fw-b-over { box-shadow: 0 -3px 0 var(--fw-accent); }
+/* the controls don't take clicks or focus here: a click picks the field around them */
+.fw-b-canvas .fw-form :is(input, select, textarea, label, [contenteditable], svg, .fw-map-view, .fw-files, button) { pointer-events: none; }
+.fw-b-canvas :is(.fw-steps, .fw-tabs, .fw-nav) button, .fw-b-canvas summary { pointer-events: auto; }
+.fw-b-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+/* table designer: the table, its headings and rows typed in place */
+.fw-b-td { display: grid; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--fw-border); }
+.fw-b-td-wrap { overflow-x: auto; }
+.fw-b-td table { border-collapse: collapse; font-size: 0.875rem; }
+.fw-b-td :is(th, td) { padding: 0.25rem; border: 1px solid var(--fw-border); vertical-align: top; text-align: start; }
+.fw-b-td thead th { background: color-mix(in srgb, var(--fw-border) 30%, var(--fw-bg)); min-width: 6.5rem; }
+.fw-b-td tbody th { min-width: 9rem; font-weight: normal; }
+.fw-b-td td { min-width: 3rem; color: var(--fw-muted); text-align: center; }
+.fw-b-td input:not([type=checkbox]), .fw-b-td select { width: 100%; box-sizing: border-box; font: inherit; padding: 0.2rem 0.375rem; color: inherit; background: var(--fw-bg); border: 1px solid var(--fw-border); border-radius: 4px; }
+.fw-b-td thead input { font-weight: 600; }
+.fw-b-td .fw-b-tools { margin-top: 0.25rem; flex-wrap: wrap; }
+.fw-builder .fw-b-td .fw-b-tools button { padding: 0 0.375rem; font-size: 0.8125rem; }
+.fw-b-td small { display: block; margin-top: 0.125rem; color: var(--fw-muted); font-weight: normal; }
+.fw-b-td th.fw-b-td-add { min-width: 7rem; background: none; border-style: dashed; }
+.fw-b-td th.fw-b-td-add select { margin-bottom: 0.25rem; }
+.fw-b-td-totals td { color: inherit; }
+.fw-b-td-totals label { white-space: nowrap; }
+.fw-b-td .fw-b-bar { justify-content: start; }
+/* the canvas at a desktop, tablet or phone width */
+.fw-b-devices { display: flex; align-items: center; gap: 0.25rem; margin-bottom: 1rem; }
+.fw-builder .fw-b-devices button { padding: 0.2rem 0.6rem; font-size: 0.875rem; }
+.fw-builder .fw-b-devices button[aria-pressed=true] { border-color: var(--fw-accent); color: var(--fw-accent); background: color-mix(in srgb, var(--fw-accent) 10%, var(--fw-bg)); }
+.fw-b-devices small { margin-left: auto; color: var(--fw-muted); font-variant-numeric: tabular-nums; }
+.fw-b-device { box-sizing: content-box; max-width: none; margin-inline: auto; }
+.fw-b-device:not([data-device=desktop]) { padding: 1rem; border: 1px solid var(--fw-border); border-radius: 1.25rem; box-shadow: 0 2px 10px rgb(0 0 0 / 0.08); }
+.fw-b-device[data-device=phone] { padding: 1.5rem 1.375rem; border-radius: 2rem; border-width: 2px; }
+/* full width: the canvas alone, the settings beside it only while something is picked */
+@container fwb (min-width: 52rem) {
+  .fw-b-main.fw-b-design.fw-b-wide { grid-template-columns: minmax(0, 1fr); }
+  .fw-b-main.fw-b-design.fw-b-wide:has(> .fw-b-settings) { grid-template-columns: minmax(0, 1fr) var(--fw-b-settings); }
+  .fw-b-main.fw-b-design.fw-b-wide:has(> .fw-b-palette) { grid-template-columns: var(--fw-b-palette) minmax(0, 1fr); }
+  .fw-b-main.fw-b-design.fw-b-wide:has(> .fw-b-palette):has(> .fw-b-settings) { grid-template-columns: var(--fw-b-palette) minmax(0, 1fr) var(--fw-b-settings); }
+}
+.fw-builder .fw-b-devices .fw-b-wide-go { margin-left: 0.5rem; }
+.fw-builder .fw-b-devices .fw-b-wide-go + .fw-b-wide-go { margin-left: 0; }
+/* the builder's option list: a line per option */
+.fw-b-opts { display: grid; gap: 0.375rem; }
+.fw-b-opt { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0.375rem; align-items: center; }
+.fw-b-opt-head { font-size: 0.75rem; color: var(--fw-muted); }
+.fw-b-opt .fw-b-opt-when { grid-column: 1 / -1; font-size: 0.875em; margin-bottom: 0.25rem; }
+.fw-builder .fw-b-opt .fw-b-tools button { padding: 0 0.45rem; min-height: 2rem; }
+.fw-b-opts .fw-b-bar { justify-content: start; align-items: center; }
+.fw-b-opts-cond { display: inline-flex; gap: 0.25rem; align-items: center; font-size: 0.875rem; margin-left: auto; }
+.fw-b-opts-bulk { display: grid; gap: 0.375rem; }
+.fw-b-opts-bulk textarea { font: inherit; }
+/* a label being retyped on the canvas */
+.fw-b-canvas { position: relative; }
+.fw-builder .fw-b-inline { position: absolute; z-index: 2; box-sizing: border-box; margin: 0; padding: 0 0.25rem; line-height: 1.2; color: var(--fw-text); background: var(--fw-bg); border: 2px solid var(--fw-accent); border-radius: 3px; outline: none; box-shadow: 0 2px 8px rgb(0 0 0 / 0.15); }
+/* the bar, the palette and the settings stay put; only the middle scrolls */
+.fw-builder > .fw-b-bar { position: sticky; top: 0; z-index: 3; margin-block: -0.5rem 0; padding-block: 0.5rem; background: var(--fw-bg); }
+@container fwb (min-width: 52rem) {
+  .fw-b-main > :is(.fw-b-palette, .fw-b-settings) {
+    position: sticky; top: var(--fw-b-top); align-self: start;
+    max-height: calc(100vh - var(--fw-b-top) - 1rem); overflow: hidden auto; overscroll-behavior: contain; padding-right: 0.25rem;
+  }
+}
+/* the trees: long names are cut, never wider than their column */
+.fw-b-tree { min-width: 0; }
+.fw-b-list { grid-template-columns: minmax(0, 1fr); }
+.fw-b-pick { display: flex; align-items: baseline; gap: 0.4rem; }
+.fw-b-pick > span:not(.fw-b-ico) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fw-b-pick small { flex: 0 4 auto; min-width: 3rem; margin-left: auto; padding-left: 0.5rem; font-weight: normal; overflow: hidden; text-overflow: ellipsis; }
+.fw-b-ico { flex: none; display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.25rem; padding: 0 0.2rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: var(--fw-muted); background: color-mix(in srgb, var(--fw-border) 35%, var(--fw-bg)); }
+.fw-builder .fw-b-pick.fw-b-box { background: color-mix(in srgb, var(--fw-accent) 7%, var(--fw-bg)); }
+.fw-b-box .fw-b-ico { color: var(--fw-accent); background: color-mix(in srgb, var(--fw-accent) 15%, var(--fw-bg)); }
+.fw-b-list .fw-b-list { border-left-color: color-mix(in srgb, var(--fw-accent) 30%, var(--fw-border)); }
+.fw-b-image { display: grid; gap: 0.375rem; justify-items: start; }
+.fw-b-image img { max-width: 100%; max-height: 8rem; border: 1px solid var(--fw-border); border-radius: var(--fw-radius); }
+/* help: how to do each thing, in a dialog over the builder */
+.fw-b-help { width: min(64rem, calc(100vw - 2rem)); max-height: min(85vh, 50rem); padding: 0; overflow: hidden; display: none; flex-direction: column;
+  color: var(--fw-text); background: var(--fw-bg); border: 1px solid var(--fw-border); border-radius: calc(var(--fw-radius) * 2); box-shadow: 0 20px 60px rgb(0 0 0 / 0.3); font-size: 0.875rem; line-height: 1.5; }
+.fw-b-help[open] { display: flex; }
+.fw-b-help::backdrop { background: rgb(15 20 30 / 0.45); backdrop-filter: blur(2px); }
+.fw-b-help-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.75rem 1rem 0.75rem 1.25rem; border-bottom: 1px solid var(--fw-border); }
+.fw-b-help-head h2 { margin: 0; font-size: 1.125rem; font-weight: 700; text-transform: none; letter-spacing: normal; color: var(--fw-text); }
+.fw-b-help-body { overflow: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1rem 1.5rem; padding: 1rem 1.25rem 1.25rem; }
+.fw-b-help ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.375rem; }
+.fw-builder .fw-b-bar [aria-expanded=true] { border-color: var(--fw-accent); color: var(--fw-accent); }
+/* copy, paste, duplicate */
+.fw-builder .fw-b-tools .fw-b-clip { font-size: 0.8125rem; padding: 0.2rem 0.5rem; }
+.fw-b-note { margin: 0; padding: 0.375rem 0.75rem; border-radius: var(--fw-radius); background: color-mix(in srgb, var(--fw-accent) 10%, var(--fw-bg)); color: var(--fw-text); font-size: 0.875rem; }
+/* samples to open */
+.fw-b-samples { display: grid; gap: 0.5rem; padding-bottom: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--fw-border); }
+.fw-b-samples p { margin: 0; }
+.fw-b-samples > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0.5rem; }
+.fw-builder .fw-b-samples button { display: grid; gap: 0.25rem; text-align: start; padding: 0.625rem 0.75rem; }
+.fw-builder .fw-b-samples button:hover { border-color: var(--fw-accent); }
+.fw-b-samples button span { color: var(--fw-muted); font-size: 0.8125rem; line-height: 1.4; }

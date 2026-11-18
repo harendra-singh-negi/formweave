@@ -96,6 +96,8 @@ import 'formweave/style.css'
 
 ```tsx
 import { Builder } from 'formweave/builder'
+import 'formweave/style.css'   // the forms on its canvas and in its panels
+import 'formweave/builder.css' // the builder itself
 <Builder schema={saved} onChange={(schema, issues) => issues.length || save(schema)} />
 ```
 

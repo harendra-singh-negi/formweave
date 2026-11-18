@@ -1,6 +1,7 @@
 // The demo uses the custom elements, the way an Angular, Vue or plain-HTML app would.
 import '../src/element.ts'
-import '../src/style.css'
+import '../src/styles/form.css'
+import '../src/styles/builder.css'
 import type { FormweaveBuilder, FormweaveForm } from '../src/element.ts'
 import { lint } from '../src/core/lint.ts'
 import { scanForm } from '../src/scan.ts'

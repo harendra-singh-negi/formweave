@@ -29,7 +29,8 @@
     "./samples": {
       "types": "./dist/samples.d.ts",
       "default": "./dist/samples.js"
-    }
+    },
+    "./builder.css": "./dist/builder.css"
   },
   "files": [
     "dist"
@@ -42,7 +43,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && cp src/style.css dist/",
+    "build": "node scripts/build.mjs",
     "typecheck": "tsc",
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts",
     "demo": "vite --open",
