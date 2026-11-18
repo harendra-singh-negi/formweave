@@ -62,6 +62,11 @@ export interface FormProps extends Options {
   onChange?(state: FormState): void
   /** Stores a picked file and says how to find it. Without it, the file's name is its id. */
   onUpload?(file: File): Promise<FileRef>
+  /**
+   * For a builder's canvas: hidden fields and sections show (marked), any step can be opened without checks,
+   * and each field and layout node carries `data-fw-path` / `data-fw-ip` so a click can tell which one it is.
+   */
+  design?: boolean
 }
 
 interface Ctx {
@@ -80,6 +85,7 @@ interface Ctx {
   page: number
   setPage(i: number): void
   busy: boolean
+  design: boolean
 }
 const Context = createContext<Ctx | null>(null)
 const useCtx = () => {
@@ -142,33 +148,36 @@ export function Form(props: FormProps) {
     context: props.context,
     onUpload: props.onUpload,
     compact: false,
+    design: !!props.design,
   }
   return h(Context.Provider, { value: ctx },
-    h('form', { ref, className: cx('fw-form', props.className), noValidate: true, onSubmit: submit },
-      h(Nodes, { items: layout }),
+    h('form', { ref, className: cx('fw-form', props.className), noValidate: true, onSubmit: props.design ? (e: FormEvent) => e.preventDefault() : submit },
+      h(Nodes, { items: layout, ip: [] }),
       !pages && h(SubmitButton)))
 }
 
 // ---- layout ----
 
-function Nodes({ items }: { items: Layout[] }) {
-  return h(Fragment, null, items.map((item, i) => h(LayoutView, { key: i, item })))
+function Nodes({ items, ip }: { items: Layout[]; ip: number[] }) {
+  return h(Fragment, null, items.map((item, i) => h(LayoutView, { key: i, item, ip: [...ip, i] })))
 }
 
-function LayoutView({ item }: { item: Layout }): ReactNode {
+function LayoutView({ item, ip }: { item: Layout; ip: number[] }): ReactNode {
   const c = useCtx()
   if (typeof item === 'string') return h(Shell, { path: item, field: c.schema.fields[item] })
-  if (!shown(item.visible, c.state, c.context)) return null
+  const hidden = !shown(item.visible, c.state, c.context)
+  if (hidden && !c.design) return null
+  const own = c.design ? { 'data-fw-ip': ip.join('.'), 'data-fw-hidden': hidden || undefined, draggable: true } : {}
   switch (item.type) {
     case 'content':
-      return item.as === 'divider' ? h('hr', { className: cx('fw-divider', item.className) })
-        : h(item.as === 'heading' ? 'h3' : 'p', { className: cx('fw-content', item.className) }, text(item.text, c.locale))
+      return item.as === 'divider' ? h('hr', { className: cx('fw-divider', item.className), ...own })
+        : h(item.as === 'heading' ? 'h3' : 'p', { className: cx('fw-content', item.className), ...own }, text(item.text, c.locale))
     case 'section':
-      return h('section', { className: cx('fw-section', item.className) }, item.title && h('h3', null, text(item.title, c.locale)), h(Nodes, { items: item.children }))
+      return h('section', { className: cx('fw-section', item.className), ...own }, item.title && h('h3', null, text(item.title, c.locale)), h(Nodes, { items: item.children, ip }))
     case 'grid':
-      return h('div', { className: cx('fw-grid', item.className), style: gridVars(item.cols) }, h(Nodes, { items: item.children }))
+      return h('div', { className: cx('fw-grid', item.className), style: gridVars(item.cols), ...own }, h(Nodes, { items: item.children, ip }))
     case 'pages':
-      return h(PagesView, { item })
+      return h(PagesView, { item, ip })
   }
 }
 
@@ -178,9 +187,10 @@ function gridVars(cols: Grid['cols']): CSSProperties {
   return { '--fw-cols': c.base ?? 1, '--fw-cols-sm': c.sm, '--fw-cols-md': c.md, '--fw-cols-lg': c.lg } as CSSProperties
 }
 
-function PagesView({ item }: { item: Pages }) {
+function PagesView({ item, ip }: { item: Pages; ip: number[] }) {
   const c = useCtx()
-  const pages = visiblePages(item, c.state, c.context)
+  // the canvas shows every page, so a page's place in `pages` is its place in the layout too
+  const pages = c.design ? item.children : visiblePages(item, c.state, c.context)
   const i = Math.max(0, Math.min(c.page, pages.length - 1))
   const body = useRef<HTMLElement>(null)
   const moved = useRef(false)
@@ -190,13 +200,15 @@ function PagesView({ item }: { item: Pages }) {
   }, [i])
   const title = (s: Section, j: number) => text(s.title, c.locale) || `${j + 1}`
 
+  const own = (k: number[]) => (c.design ? { 'data-fw-ip': k.join('.'), draggable: true } : {})
   if (item.display === 'accordion')
-    return h('div', { className: cx('fw-accordion', item.className) },
-      pages.map((s, j) => h('details', { key: j, open: j === 0 }, h('summary', null, title(s, j)), h('div', { className: 'fw-accordion-body' }, h(Nodes, { items: s.children })))),
+    return h('div', { className: cx('fw-accordion', item.className), ...own(ip) },
+      pages.map((s, j) => h('details', { key: j, open: j === 0, ...own([...ip, j]) }, h('summary', null, title(s, j)), h('div', { className: 'fw-accordion-body' }, h(Nodes, { items: s.children, ip: [...ip, j] })))),
       h(SubmitButton))
   if (!pages.length) return h(SubmitButton)
 
   const next = () => {
+    if (c.design) return c.setPage(i + 1)
     const keys = keysOf(pages[i])
     const bad = Object.keys(c.state.errors).some((p) => keys.includes(p.split('.')[0]))
     if (!bad) return c.setPage(i + 1)
@@ -208,7 +220,7 @@ function PagesView({ item }: { item: Pages }) {
   const step = (s: Section, j: number) => {
     const inner = [h('span', { key: 'n', className: 'fw-step-n', 'aria-hidden': true }, j < i ? '✓' : j + 1), h('span', { key: 't', className: 'fw-step-t' }, title(s, j)), j < i && h('span', { key: 'd', className: 'fw-sr' }, ' (done)')]
     return h('li', { key: j, 'data-state': j < i ? 'done' : j === i ? 'current' : 'next', 'aria-current': j === i ? 'step' : undefined },
-      j < i ? h('button', { type: 'button', className: 'fw-step', onClick: () => c.setPage(j) }, inner) : h('span', { className: 'fw-step' }, inner))
+      j < i || (c.design && j !== i) ? h('button', { type: 'button', className: 'fw-step', onClick: () => c.setPage(j) }, inner) : h('span', { className: 'fw-step' }, inner))
   }
   /** Arrow keys move between tabs, as in any tab list. */
   const tabKey = (e: KeyboardEvent<HTMLElement>) => {
@@ -220,14 +232,14 @@ function PagesView({ item }: { item: Pages }) {
     c.setPage(j)
     setTimeout(() => list.querySelectorAll<HTMLElement>('[role=tab]')[j]?.focus())
   }
-  return h('div', { className: cx('fw-pages', item.className), 'data-position': item.position ?? 'top' },
+  return h('div', { className: cx('fw-pages', item.className), 'data-position': item.position ?? 'top', ...own(ip) },
     tabs
       ? h('div', { role: 'tablist', className: 'fw-tabs', onKeyDown: tabKey },
           pages.map((s, j) => h('button', { key: j, id: `${c.id}tab${j}`, type: 'button', role: 'tab', 'aria-selected': j === i, 'aria-controls': `${c.id}panel`, tabIndex: j === i ? 0 : -1, onClick: () => c.setPage(j) }, title(s, j))))
       : h('ol', { className: 'fw-steps' }, pages.map(step)),
     h('div', { className: 'fw-pages-body' },
-      h('section', { ref: body, tabIndex: -1, className: 'fw-page', ...(tabs ? { id: `${c.id}panel`, role: 'tabpanel', 'aria-labelledby': `${c.id}tab${i}` } : { 'aria-label': title(pages[i], i) }) },
-        h(Nodes, { items: pages[i].children })),
+      h('section', { ref: body, tabIndex: -1, className: 'fw-page', ...own([...ip, i]), ...(tabs ? { id: `${c.id}panel`, role: 'tabpanel', 'aria-labelledby': `${c.id}tab${i}` } : { 'aria-label': title(pages[i], i) }) },
+        h(Nodes, { items: pages[i].children, ip: [...ip, i] })),
       tabs ? h(SubmitButton)
         : h('div', { className: 'fw-nav' },
             i > 0 && h('button', { type: 'button', className: c.classes.button, onClick: () => c.setPage(i - 1) }, c.labels.back),
@@ -271,7 +283,10 @@ const at = (values: Values, path: string) => path.split('.').reduce<unknown>((v,
 function Shell({ path, field }: { path: string; field: Field }) {
   const c = useCtx()
   const st = c.state.fields[path]
-  if (!st?.visible || field.widget === 'hidden') return null
+  const hidden = !st?.visible || field.widget === 'hidden'
+  if (!st || (hidden && !c.design)) return null
+  // a table's cells name their column ('items.qty'), not the row, so every cell of it is that field
+  const own = c.design ? { 'data-fw-path': path.replace(/\.\d+(?=\.|$)/g, ''), 'data-fw-hidden': hidden || undefined, draggable: true } : {}
   const id = `${c.id}${path}`
   const parts = path.split('.')
   const touched = c.state.submitted || parts.some((_, i) => c.state.touched[parts.slice(0, i + 1).join('.')])
@@ -293,13 +308,13 @@ function Shell({ path, field }: { path: string; field: Field }) {
   const wrap = (kind?: string) => cx('fw-field', kind, c.classes.field, field.className)
   if (field.type === 'group' || field.type === 'list') {
     // no label: no title on screen, the key still names it for screen readers
-    const own = text(field.label, c.locale)
-    return h('fieldset', { className: wrap(`fw-${field.type}`), 'aria-label': own ? undefined : label },
-      own && h('legend', { className: c.classes.label }, own, mark), control, notes)
+    const legend = text(field.label, c.locale)
+    return h('fieldset', { className: wrap(`fw-${field.type}`), 'aria-label': legend ? undefined : label, ...own },
+      legend && h('legend', { className: c.classes.label }, legend, mark), control, notes)
   }
   if (field.type === 'boolean')
-    return h('div', { className: wrap('fw-check') }, h('label', { htmlFor: id, className: c.classes.label }, control, ' ', label, mark), notes)
-  return h('div', { className: wrap() }, h('label', { htmlFor: id, className: cx(c.compact && 'fw-sr', c.classes.label) }, label, mark), control, notes)
+    return h('div', { className: wrap('fw-check'), ...own }, h('label', { htmlFor: id, className: c.classes.label }, control, ' ', label, mark), notes)
+  return h('div', { className: wrap(), ...own }, h('label',{ htmlFor: id, className: cx(c.compact && 'fw-sr', c.classes.label) }, label, mark), control, notes)
 }
 
 const aria = (p: WidgetProps) => ({
@@ -794,7 +809,7 @@ function ListInput(p: WidgetProps) {
     return h(Fragment, null,
       h('div', { className: 'fw-table-wrap' },
         h('table', { className: 'fw-table' },
-          h('thead', null, h('tr', null, h('th', { className: fixed ? 'fw-fixed' : 'fw-n' }, fixed ? text(f.rowHeading, c.locale) : '#'), cols.map(([k, sf]) => h('th', { key: k }, text(sf.label, c.locale) || humanize(k))), h('th', { className: 'fw-n' }))),
+          h('thead', null, h('tr', null, h('th', { className: fixed ? 'fw-fixed' : 'fw-n' }, fixed ? text(f.rowHeading, c.locale) : '#'), cols.map(([k, sf]) => h('th', { key: k, 'data-fw-path': c.design ? `${p.path}.${k}` : undefined }, text(sf.label, c.locale) || humanize(k))), h('th', { className: 'fw-n' }))),
           h('tbody', null, rows.map((_, i) => h('tr', { key: i },
             fixed ? h('th', { scope: 'row', className: 'fw-fixed' }, fixed[i]) : h('td', { className: 'fw-n', 'data-label': c.labels.row }, i + 1),
             cols.map(([k, sf]) => h('td', { key: k }, h(Context.Provider, { value: { ...c, compact: true } }, cell(i, k, sf)))),

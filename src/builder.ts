@@ -1,5 +1,5 @@
 // The visual builder. Its settings panel is itself a formweave form.
-import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { createElement as h, Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { lint, type Issue } from './lint.ts'
 import { text } from './form.ts'
 import { fromJsonSchema, type Imported } from './jsonschema.ts'
@@ -342,7 +342,9 @@ export function Builder(props: BuilderProps) {
   const [schema, setSchema] = useState<FormSchema>(props.schema ?? EMPTY)
   const [selected, setSelected] = useState<Path | null>(null)
   const [panel, setPanel] = useState(0) // remounts the settings form
-  const [tab, setTab] = useState<'build' | 'layout' | 'preview' | 'json'>('build')
+  const [tab, setTab] = useState<'design' | 'build' | 'layout' | 'preview' | 'json'>('design')
+  /** On the canvas: a selected section, grid, page or text, by its place in the layout. */
+  const [node, setNode] = useState<Ip | null>(null)
   const [find, setFind] = useState('')
   /** A key typed in the settings that another field here already has. */
   const [clash, setClash] = useState<string | null>(null)
@@ -378,8 +380,24 @@ export function Builder(props: BuilderProps) {
 
   const select = (path: Path | null) => {
     setSelected(path)
+    setNode(null)
     setClash(null)
     setPanel((n) => n + 1)
+  }
+  const selectNode = (ip: Ip | null) => {
+    setSelected(null)
+    setNode(ip)
+    setPanel((n) => n + 1)
+  }
+  /** Where a new top-level field or layout piece goes: into the selected container, after the selected thing, or at the end. */
+  const spot = (s: FormSchema, n: Layout): [Ip, number] | undefined => {
+    const items = s.layout
+    if (!items) return
+    const at = node ?? (selected && ipOf(items, selected[0]))
+    if (!at) return
+    const there = nodeAt(items, at)
+    if (node && isContainer(there) && fits(items, at, n)) return [at, there.children.length]
+    if (fits(items, at.slice(0, -1), n)) return [at.slice(0, -1), at.at(-1)! + 1]
   }
   const add = (id: string) => {
     const it = itemOf(id)
@@ -388,8 +406,66 @@ export function Builder(props: BuilderProps) {
     const inside = target && (target.type === 'group' || target.type === 'list')
     const parent = !selected ? [] : inside ? selected : selected.slice(0, -1)
     const key = freeKey(schema.fields, parent, it.base)
-    commit(edits.add(schema, parent, key, it.make(), inside ? undefined : selected?.at(-1)), [...parent, key])
+    let next = edits.add(schema, parent, key, it.make(), inside ? undefined : selected?.at(-1))
+    const to = parent.length ? undefined : spot(schema, key)
+    if (to) next = relocate(next, key, ...to)
+    commit(next, [...parent, key])
+    setNode(null)
     setPanel((n) => n + 1)
+  }
+  /** A section, grid, steps or text from the canvas palette. A form without a layout gets one, its fields in order. */
+  const addNode = (n: Layout) => {
+    const s = schema.layout ? schema : { ...schema, layout: Object.keys(schema.fields) }
+    const [parent, index] = spot(s, n) ?? [[], s.layout!.length]
+    commit({ ...s, layout: layoutEdits.insert(s.layout!, parent, index, n) }, null)
+    selectNode([...parent, index])
+  }
+  /** A drop on the canvas: `on` is the field or layout piece under the pointer. */
+  const canvasDrop = (data: DataTransfer, on: { path?: Path; ip?: Ip }) => {
+    const kind = data.getData('text/x-fw-kind')
+    const made = data.getData('text/x-fw-new')
+    const from = data.getData('text/x-fw-path')
+    const moved = data.getData('text/x-fw-node')
+    const target = on.path && fieldAt(schema.fields, on.path)
+    // where in the layout: into a container, else before the thing dropped on
+    const s = schema.layout || made || moved ? { ...schema, layout: schema.layout ?? Object.keys(schema.fields) } : schema
+    const ip = on.ip ?? (on.path && s.layout ? ipOf(s.layout, on.path[0]) : undefined)
+    const box = ip && !on.path ? nodeAt(s.layout!, ip) : undefined
+    const where = (n: Layout): [Ip, number] | undefined =>
+      !ip ? undefined : isContainer(box) && fits(s.layout!, ip, n) ? [ip, box.children.length] : [ip.slice(0, -1), ip.at(-1)!]
+    if (kind) {
+      const it = itemOf(kind)
+      const into = target && (target.type === 'group' || target.type === 'list')
+      const parent = into ? on.path! : on.path?.slice(0, -1) ?? []
+      const key = freeKey(schema.fields, parent, it.base)
+      let next = edits.add(s, parent, key, it.make())
+      if (!into && on.path) next = edits.move(next, [...parent, key], on.path.at(-1)!)
+      const to = parent.length ? undefined : where(key)
+      if (to) next = relocate(next, key, ...to)
+      commit(next, [...parent, key])
+      return setPanel((n) => n + 1)
+    }
+    if (made) {
+      const n = JSON.parse(made) as Layout
+      const [parent, index] = where(n) ?? [[], s.layout!.length]
+      if (!fits(s.layout!, parent, n)) return
+      commit({ ...s, layout: layoutEdits.insert(s.layout!, parent, index, n) }, null)
+      return selectNode([...parent, index])
+    }
+    if (moved) {
+      const fromIp = moved.split('.').map(Number)
+      const to = where(nodeAt(s.layout!, fromIp)!)
+      const next = to && layoutEdits.move(s.layout!, fromIp, ...to)
+      if (next) { commit({ ...s, layout: next }, null); selectNode(null) }
+      return
+    }
+    if (!from) return
+    const path = from.split('.')
+    if (path.join('.') === on.path?.join('.')) return
+    if (path.length === 1 && s.layout) {
+      const to = where(path[0])
+      if (to) commit(relocate(s, path[0], ...to), path)
+    } else if (on.path && path.slice(0, -1).join('.') === on.path.slice(0, -1).join('.')) commit(edits.move(schema, path, on.path.at(-1)!), path)
   }
   /** A field dragged from the palette: into `parent`, before `before` (null = the end). */
   const place = (id: string, parent: Path, before: string | null) => {
@@ -457,39 +533,137 @@ export function Builder(props: BuilderProps) {
     const up = path.length > 1 ? fieldAt(schema.fields, path.slice(0, -1)) : undefined
     return up?.type === 'list' && up.widget === 'table'
   }
+  const design = tab === 'design'
+  const palette = h('div', { className: 'fw-b-palette', 'aria-label': 'Add a field' },
+    h('h3', null, field && (field.type === 'group' || field.type === 'list') ? `Add to ${text(field.label, 'en') || selected!.at(-1)}` : 'Add'),
+    h('input', { type: 'search', className: 'fw-b-find', placeholder: `Find an input (${ITEMS.length})`, 'aria-label': 'Find an input', value: find, onChange: (e: ChangeEvent<HTMLInputElement>) => setFind(e.target.value) }),
+    [...PALETTE, ...(design ? [['Layout', NODES] as const] : [])].map(([group, list]) => {
+      const hits = (list as [string, string, unknown][]).filter(([base, label]) => !find || `${label} ${group} ${base}`.toLowerCase().includes(find.toLowerCase()))
+      // an accordion: Text starts open; while searching, every group with a hit opens (the key resets them after)
+      return hits.length > 0 && h('details', { key: `${group}${find ? '?' : ''}`, className: 'fw-b-group', open: !!find || group === 'Text', name: find ? undefined : 'fw-palette' },
+        h('summary', null, group, h('small', null, ` ${hits.length}`)),
+        h('div', null, group === 'Layout'
+          ? (hits as typeof NODES).map(([k, label, make]) => h('button', { key: k, type: 'button', draggable: true, title: 'Click to add, or drag it into place', onClick: () => addNode(make()), onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-new', JSON.stringify(make())) }, '+ ', label))
+          : hits.map(([base]) => paletteButton(base))))
+    }),
+    !design && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
+    props.scan && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…'))
+  const fieldSettings = field && selected && h(Fragment, null,
+    h('div', { className: 'fw-b-head' }, h('h3', null, KINDS.find(([k]) => k === field.type)![1], ' settings'),
+      design && h('span', { className: 'fw-b-tools' },
+        h('button', { type: 'button', 'aria-label': 'Duplicate', title: 'Duplicate', onClick: () => duplicate(selected) }, '⧉'),
+        h('button', { type: 'button', 'aria-label': 'Delete', title: 'Delete', onClick: () => remove(selected) }, '✕'))),
+    clash && h('p', { className: 'fw-b-clash', role: 'alert' }, `The key "${clash}" is already used by another field here. Keys must be unique, so this field keeps "${selected.at(-1)}" until you type a free one.`),
+    h(Form, { key: panel, schema: inTable(selected) ? asColumn(SETTINGS[field.type]) : SETTINGS[field.type], values: toSettings(selected.at(-1)!, field), labels: { submit: 'Done' }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
+  const piece = node && schema.layout ? nodeAt(schema.layout, node) : undefined
+  /** A section or grid goes but what was in it stays; a text or field place just goes. */
+  const removeNode = () => {
+    if (!node || !schema.layout) return
+    commit({ ...schema, layout: isContainer(piece) ? layoutEdits.unwrap(schema.layout, node) : layoutEdits.remove(schema.layout, node) }, null)
+    selectNode(null)
+  }
   return h('div', { className: 'fw-builder', onKeyDown: onKey },
     h('div', { className: 'fw-b-bar' },
       h('div', { role: 'tablist' },
-        (['build', 'layout', 'preview', 'json'] as const).map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, { build: 'Fields', layout: 'Layout', preview: 'Preview', json: props.scan ? 'Scan / Import' : 'Import / JSON' }[t]))),
+        (['design', 'build', 'layout', 'preview', 'json'] as const).map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, { design: 'Design', build: 'Fields', layout: 'Layout', preview: 'Preview', json: props.scan ? 'Scan / Import' : 'Import / JSON' }[t]))),
       h('div', null,
         h('button', { type: 'button', onClick: undo, disabled: !past.length, title: 'Ctrl+Z' }, 'Undo'),
         h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, 'Redo'))),
     issues.length > 0 && h('ul', { className: 'fw-b-issues', role: 'status' }, issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message))),
+    design && h('div', { className: 'fw-b-main fw-b-design' },
+      palette,
+      h(Canvas, { schema, issues: issues.length > 0, selected, node, select, selectNode, drop: canvasDrop, remove: () => (selected ? remove(selected) : removeNode()) }),
+      h('div', { className: 'fw-b-settings' },
+        fieldSettings
+          || (typeof piece === 'object' && h(Fragment, null,
+            h('div', { className: 'fw-b-head' }, h('h3', null, piece.type === 'content' ? 'Content' : piece.type, ' settings'),
+              h('span', { className: 'fw-b-tools' }, h('button', { type: 'button', 'aria-label': isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', title: isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', onClick: removeNode }, '✕'))),
+            h(Form, { key: panel, schema: NODE_SETTINGS[piece.type], values: nodeSettings(piece), labels: { submit: 'Done' }, onSubmit: () => selectNode(null),
+              onChange: (st) => { const next = fromNodeSettings(piece, st.values); if (JSON.stringify(next) !== JSON.stringify(piece)) commit({ ...schema, layout: layoutEdits.replace(schema.layout!, node!, next) }, null, true) } })))
+          || h(Fragment, null, h('h3', null, 'Form settings'),
+            h(Form, { key: panel, schema: FORM_SETTINGS, values: formSettings(schema), labels: { submit: 'Done' }, onSubmit: () => {},
+              onChange: (st) => { const next = fromFormSettings(schema, st.values); if (JSON.stringify(next) !== JSON.stringify(schema)) commit(next, null, true) } }),
+            h('p', { className: 'fw-help' }, 'Click a field or section on the form to change it. Drag them to move them; drag from the left to add.')))),
     tab === 'build' && h('div', { className: 'fw-b-main' },
-      h('div', { className: 'fw-b-palette', 'aria-label': 'Add a field' },
-        h('h3', null, field && (field.type === 'group' || field.type === 'list') ? `Add to ${text(field.label, 'en') || selected!.at(-1)}` : 'Add'),
-        h('input', { type: 'search', className: 'fw-b-find', placeholder: `Find an input (${ITEMS.length})`, 'aria-label': 'Find an input', value: find, onChange: (e: ChangeEvent<HTMLInputElement>) => setFind(e.target.value) }),
-        PALETTE.map(([group, list]) => {
-          const hits = list.filter(([base, label]) => !find || `${label} ${group} ${base}`.toLowerCase().includes(find.toLowerCase()))
-          // an accordion: Text starts open; while searching, every group with a hit opens (the key resets them after)
-          return hits.length > 0 && h('details', { key: `${group}${find ? '?' : ''}`, className: 'fw-b-group', open: !!find || group === 'Text', name: find ? undefined : 'fw-palette' },
-            h('summary', null, group, h('small', null, ` ${hits.length}`)), h('div', null, hits.map(([base]) => paletteButton(base))))
-        }),
-        h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('layout') }, 'Steps, sections, columns…'),
-        props.scan && h('button', { type: 'button', className: 'fw-b-scan-go', onClick: () => setTab('json') }, 'From a PDF or photo…')),
+      palette,
       h('div', { className: 'fw-b-tree' },
         h('h3', null, 'Fields'),
         h(Tree, { fields: schema.fields, parent: [], selected, select, move, remove, duplicate, place, drop: (path, before) => commit(edits.move(schema, path, before)) })),
       h('div', { className: 'fw-b-settings' },
-        field && selected
-          ? h(Fragment, null, h('h3', null, KINDS.find(([k]) => k === field.type)![1], ' settings'),
-              clash && h('p', { className: 'fw-b-clash', role: 'alert' }, `The key "${clash}" is already used by another field here. Keys must be unique, so this field keeps "${selected.at(-1)}" until you type a free one.`),
-              h(Form, { key: panel, schema: inTable(selected) ? asColumn(SETTINGS[field.type]) : SETTINGS[field.type], values: toSettings(selected.at(-1)!, field), labels: { submit: 'Done' }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
-          : h('p', { className: 'fw-help' }, 'Select a field to change it.'))),
+        fieldSettings || h('p', { className: 'fw-help' }, 'Select a field to change it.'))),
     tab === 'layout' && h(LayoutTab, { schema, commit: (layout: Layout[] | undefined, typing?: boolean) => commit({ ...schema, layout }, selected, typing), panel, bump: () => setPanel((n) => n + 1) }),
     tab === 'preview' && h('div', { className: 'fw-b-preview' },
       issues.length ? h('p', { className: 'fw-error' }, 'Fix the issues above to preview.') : h(Form, { schema, onSubmit: () => {} })),
     tab === 'json' && h(JsonTab, { schema, scan: props.scan, load: (s) => commit(s, null) }))
+}
+
+const FORM_SETTINGS: FormSchema = { version: 1, fields: { title: { type: 'string', label: 'Title', help: 'Shown above the form by your app; also the name it is saved under.' } } }
+const formSettings = (s: FormSchema): Values => ({ title: text(s.title, 'en') || null })
+function fromFormSettings(s: FormSchema, v: Values): FormSchema {
+  const out: FormSchema = { ...s }
+  if (v.title) out.title = s.title && typeof s.title === 'object' ? { ...s.title, en: String(v.title) } : String(v.title)
+  else delete out.title
+  return out
+}
+
+interface CanvasProps {
+  schema: FormSchema
+  issues: boolean
+  selected: Path | null
+  node: Ip | null
+  select(p: Path | null): void
+  selectNode(ip: Ip | null): void
+  drop(data: DataTransfer, on: { path?: Path; ip?: Ip }): void
+  remove(): void
+}
+
+/** The form as people will see it. A click picks the field or section under it; dragging moves things or drops new ones in. */
+function Canvas(p: CanvasProps) {
+  const over = useRef<Element | null>(null)
+  const mark = (el: Element | null) => {
+    over.current?.classList.remove('fw-b-over')
+    over.current = el
+    el?.classList.add('fw-b-over')
+  }
+  const hit = (t: EventTarget | null) => (t instanceof Element ? t.closest('[data-fw-path], [data-fw-ip]') : null)
+  const read = (el: Element | null): { path?: Path; ip?: Ip } =>
+    !el ? {} : el.hasAttribute('data-fw-path') ? { path: el.getAttribute('data-fw-path')!.split('.') } : { ip: el.getAttribute('data-fw-ip')!.split('.').map(Number) }
+  if (p.issues) return h('div', { className: 'fw-b-canvas' }, h('p', { className: 'fw-error' }, 'Fix the issues above to see the form.'))
+  // keys and places are checked by lint() (letters, digits, _), so they are safe inside the selector
+  const sel = p.selected ? `[data-fw-path="${p.selected.join('.')}"]` : p.node ? `[data-fw-ip="${p.node.join('.')}"]` : ''
+  return h('div', {
+    className: 'fw-b-canvas', tabIndex: -1, 'aria-label': 'The form: click a part to change it',
+    onClickCapture: (e: MouseEvent) => {
+      const t = e.target as Element
+      if (t.closest('.fw-steps button, [role=tab], summary, .fw-nav button')) return // moving between pages still works
+      e.preventDefault()
+      e.stopPropagation()
+      const at = read(hit(t))
+      if (at.path) p.select(at.path)
+      else if (at.ip) p.selectNode(at.ip)
+      else p.select(null)
+    },
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' || (e.target as Element).closest('input, textarea, select, [contenteditable]')) return
+      e.preventDefault()
+      p.remove()
+    },
+    onDragStart: (e: DragEvent) => {
+      const at = read(hit(e.target))
+      if (at.path) e.dataTransfer.setData('text/x-fw-path', at.path.join('.'))
+      else if (at.ip) e.dataTransfer.setData('text/x-fw-node', at.ip.join('.'))
+      e.stopPropagation()
+    },
+    onDragOver: (e: DragEvent) => { e.preventDefault(); mark(hit(e.target) ?? e.currentTarget) },
+    onDragLeave: (e: DragEvent) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) mark(null) },
+    onDrop: (e: DragEvent) => {
+      e.preventDefault()
+      mark(null)
+      p.drop(e.dataTransfer, read(hit(e.target)))
+    },
+  },
+    sel && h('style', null, `.fw-b-canvas ${sel} { outline: 2px solid var(--fw-accent) !important; outline-offset: 3px; }`),
+    h(Form, { schema: p.schema, design: true }))
 }
 
 interface TreeProps {
@@ -657,6 +831,24 @@ export const layoutEdits = {
     if (to.length === fp.length && fp.every((x, i) => to[i] === x) && index > last) index--
     return layoutEdits.insert(layoutEdits.remove(items, from), to, index, node)
   },
+}
+
+/** Where a top-level field is placed in the layout. */
+export function ipOf(items: Layout[], key: string): Ip | undefined {
+  for (let i = 0; i < items.length; i++) {
+    const n = items[i]
+    if (n === key) return [i]
+    const inner = isContainer(n) ? ipOf(n.children, key) : undefined
+    if (inner) return [i, ...inner]
+  }
+}
+
+/** Moves a top-level field's place in the layout to `parent` before `index` (counted before it leaves its old place). */
+export function relocate(s: FormSchema, key: string, parent: Ip, index: number): FormSchema {
+  const items = s.layout ?? []
+  const from = ipOf(items, key)
+  const next = from ? layoutEdits.move(items, from, parent, index) : fits(items, parent, key) ? layoutEdits.insert(items, parent, index, key) : undefined
+  return next ? { ...s, layout: next } : s
 }
 
 const placedKeys = (items: Layout[]): string[] => items.flatMap((n) => (typeof n === 'string' ? [n] : isContainer(n) ? placedKeys(n.children) : []))

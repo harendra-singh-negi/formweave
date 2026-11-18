@@ -30,14 +30,31 @@ test('edits keep order, nesting and the layout in step', () => {
   assert.equal(freeKey(s.fields, ['items'], 'qty'), 'qty1')
 })
 
-test('renders palette, field tree and an empty settings panel', () => {
+test('opens on the design canvas: the form itself, every part marked so a click can pick it', () => {
+  const html = renderToString(h(Builder, { schema: { ...base, fields: { ...base.fields, items: { ...base.fields.items, widget: 'table', min: 1 } as any, secret: { type: 'string', visible: 'name == \'x\'' } }, layout: [{ type: 'section', title: 'You', children: ['name', 'items', 'secret'] }] } }))
+  assert.match(html, /<section class="fw-section" data-fw-ip="0" draggable="true"><h3>You<\/h3>/)
+  assert.match(html, /class="fw-field" data-fw-path="name" draggable="true"/)
+  assert.match(html, /<th data-fw-path="items.qty">/) // a column, picked from its heading
+  assert.match(html, /data-fw-path="items.qty" draggable="true"/) // and from its cells, which name the column, not the row
+  assert.match(html, /data-fw-path="secret" data-fw-hidden="true"/) // hidden by its condition, still shown here
+  assert.match(html, /Form settings/)
+  assert.match(html, /<summary>Layout<small> 6<\/small>/) // sections and steps come from the same palette
+})
+
+test('relocate moves a field\'s place in the layout, ipOf finds it', async () => {
+  const { relocate, ipOf } = await import('./builder.ts')
+  const s: FormSchema = { version: 1, fields: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } }, layout: ['a', { type: 'section', children: ['b'] }, 'c'] }
+  assert.deepEqual(ipOf(s.layout!, 'b'), [1, 0])
+  const t = relocate(s, 'c', [1], 0) // into the section, before b
+  assert.deepEqual(t.layout, ['a', { type: 'section', children: ['c', 'b'] }])
+  assert.deepEqual(relocate(t, 'a', [], 2).layout, [{ type: 'section', children: ['c', 'b'] }, 'a'])
+})
+
+test('the palette is an accordion, one group open at a time, Text first', () => {
   const html = renderToString(h(Builder, { schema: base }))
-  assert.match(html, /<details class="fw-b-group" open="" name="fw-palette"><summary>Text<small> 8<\/small><\/summary>/) // an accordion, one open at a time, Text first
+  assert.match(html, /<details class="fw-b-group" open="" name="fw-palette"><summary>Text<small> 8<\/small><\/summary>/)
   assert.match(html, /<summary>Choices.*?\+ <!-- -->Radio group/)
   assert.match(html, /\+ <!-- -->Checkbox group/)
-  assert.match(html, /name · string/)
-  assert.match(html, /qty · number/) // children of the list are shown
-  assert.match(html, /Select a field to change it/)
 })
 
 test('layout edits move nodes between containers and keep pages to sections', async () => {

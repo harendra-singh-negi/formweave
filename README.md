@@ -94,6 +94,7 @@ import { Builder } from 'formweave/builder'
 
 Or `<formweave-builder>` from `formweave/element`, which fires `fw-change` with `{ schema, issues }`.
 
+- It opens on the Design tab: the form itself, as people will see it. Click a field, a section, a grid, a page or a text on it to change it in the panel beside it; the form updates as you type. Drag anything on it to move it, or drag an input or a layout piece from the palette onto the spot it should go. Fields hidden by "show only when" are shown faded, any step can be opened, and Delete removes what is picked. With nothing picked, the panel holds the form's own settings. `<Form design>` is what draws it, if you build a canvas of your own.
 - Add the 8 field types: click one, or drag it from the palette to the spot it should go, groups and lists included. Drag fields or use ↑ ↓ to reorder. A line shows where a drop will land.
 - Duplicate, delete, undo and redo (Ctrl+Z, Ctrl+Shift+Z).
 - The settings panel is itself a formweave form. It covers key, label, help, required, "show only when", "calculated value", options and limits.
