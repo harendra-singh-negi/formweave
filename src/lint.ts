@@ -1,5 +1,5 @@
 import { parse, refs } from './expr.ts'
-import { DATE_FORMATS, STRING_FORMATS } from './schema.ts'
+import { DATE_FORMATS, SAFE_IMAGE, STRING_FORMATS } from './schema.ts'
 
 export interface Issue {
   path: string
@@ -131,7 +131,10 @@ export function lint(schema: unknown): Issue[] {
         if (item.type === 'pages' && item.position !== undefined && !['top', 'left', 'right', 'bottom'].includes(item.position as string))
           add(`${path}.position`, 'Position is top, left, right or bottom')
         if (item.type === 'section' && item.look !== undefined && !['box', 'band', 'line'].includes(item.look as string)) add(`${path}.look`, 'Look is box, band or line')
-        if (item.type === 'content' && item.as !== undefined && !['heading', 'text', 'rich', 'divider'].includes(item.as as string)) add(`${path}.as`, 'As is heading, text, rich or divider')
+        if (item.type === 'content' && item.as !== undefined && !['heading', 'text', 'rich', 'divider', 'image'].includes(item.as as string)) add(`${path}.as`, 'As is heading, text, rich, divider or image')
+        if (item.type === 'content' && item.src !== undefined && !(typeof item.src === 'string' && SAFE_IMAGE.test(item.src))) add(`${path}.src`, 'An image is an https: address or a data:image/png, jpeg, gif or webp URL')
+        if (item.type === 'grid' && item.widths !== undefined && !(Array.isArray(item.widths) && item.widths.length && item.widths.every((w: unknown) => typeof w === 'number' && w > 0 && w <= 100))) add(`${path}.widths`, 'Widths are numbers above 0, one per column')
+        if (item.type === 'grid' && item.look !== undefined && item.look !== 'lines') add(`${path}.look`, "A grid's look is 'lines'")
         if (item.type !== 'content') layout(item.children, `${path}.children`)
       }
     })

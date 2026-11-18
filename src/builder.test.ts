@@ -40,7 +40,7 @@ test('opens on the design canvas: the form itself, every part marked so a click 
   assert.match(html, /Form settings/)
   assert.match(html, /<button type="button" aria-pressed="true" title="1024px wide">Desktop<\/button>/) // also Tablet and Phone widths
   assert.match(html, /class="fw-b-device" data-device="desktop" style="width:1024px;zoom:1"/)
-  assert.match(html, /<summary>Layout<small> 7<\/small>/) // sections and steps come from the same palette
+  assert.match(html, /<summary>Layout<small> 10<\/small>/) // sections and steps come from the same palette
 })
 
 test('relocate moves a field\'s place in the layout, ipOf finds it', async () => {
@@ -96,4 +96,14 @@ test('lint: options per row is a whole number from 1 to 12', () => {
   assert.deepEqual(lint(s(3)), [])
   assert.deepEqual(lint(s(0)).map((i) => i.path), ['c.columns'])
   assert.deepEqual(lint(s(2.5)).map((i) => i.path), ['c.columns'])
+})
+
+test('lint: images are https or inline png/jpeg/gif/webp; grid widths are positive numbers', () => {
+  const s = (n: object) => ({ version: 1, fields: {}, layout: [n] })
+  assert.deepEqual(lint(s({ type: 'content', as: 'image', src: 'https://example.com/a.png' })), [])
+  assert.deepEqual(lint(s({ type: 'content', as: 'image', src: 'data:image/webp;base64,AAAA' })), [])
+  for (const bad of ['javascript:alert(1)', 'http://x/a.png', 'data:image/svg+xml;base64,AAAA', 'https://x/a.png" onerror="x'])
+    assert.deepEqual(lint(s({ type: 'content', as: 'image', src: bad })).map((i) => i.path), ['layout.0.src'], bad)
+  assert.deepEqual(lint(s({ type: 'grid', widths: [1, 3], look: 'lines', children: [] })), [])
+  assert.deepEqual(lint(s({ type: 'grid', widths: [0], look: 'box', children: [] })).map((i) => i.path), ['layout.0.widths', 'layout.0.look'])
 })

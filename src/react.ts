@@ -11,6 +11,7 @@ import { createForm, text, type Form as Store, type FormState, type Options } fr
 import type {
   ChoiceField, DateField, Field, FileField, FileRef, FormSchema, Grid, Layout, ListField, NumberField, Pages, Section, StringField, Values, When,
 } from './schema.ts'
+import { SAFE_IMAGE } from './schema.ts'
 
 /** What a widget gets. It draws only the control; label, help and error are drawn around it. */
 export interface WidgetProps {
@@ -172,12 +173,17 @@ function LayoutView({ item, ip }: { item: Layout; ip: number[] }): ReactNode {
   switch (item.type) {
     case 'content':
       if (item.as === 'rich') return h(RichBlock, { html: text(item.text, c.locale), className: item.className, own })
+      if (item.as === 'image')
+        return item.src && SAFE_IMAGE.test(item.src)
+          ? h('figure', { className: cx('fw-content', 'fw-image', item.className), ...own },
+              h('img', { src: item.src, alt: text(item.alt, c.locale), loading: 'lazy', style: item.width ? { width: item.width } : undefined }))
+          : c.design ? h('div', { className: 'fw-content fw-image-empty', ...own }, 'Image: pick one in its settings') : null
       return item.as === 'divider' ? h('hr', { className: cx('fw-divider', item.className), ...own })
         : h(item.as === 'heading' ? 'h3' : 'p', { className: cx('fw-content', item.className), ...own }, text(item.text, c.locale))
     case 'section':
       return h('section', { className: cx('fw-section', item.look && `fw-look-${item.look}`, item.className), ...own }, item.title && h('h3', null, text(item.title, c.locale)), h(Nodes, { items: item.children, ip }))
     case 'grid':
-      return h('div', { className: cx('fw-grid', item.className), style: gridVars(item.cols), ...own }, h(Nodes, { items: item.children, ip }))
+      return h('div', { className: cx('fw-grid', item.widths && 'fw-grid-w', item.look === 'lines' && 'fw-grid-lines', item.className), style: gridVars(item.cols, item.widths), ...own }, h(Nodes, { items: item.children, ip }))
     case 'pages':
       return h(PagesView, { item, ip })
   }
@@ -192,9 +198,10 @@ function RichBlock({ html, className, own }: { html: string; className?: string;
 }
 
 /** A plain number is that many columns from medium width up, one on phones. */
-function gridVars(cols: Grid['cols']): CSSProperties {
+function gridVars(cols: Grid['cols'], widths?: number[]): CSSProperties {
   const c = typeof cols === 'number' ? { base: 1, md: cols } : (cols ?? {})
-  return { '--fw-cols': c.base ?? 1, '--fw-cols-sm': c.sm, '--fw-cols-md': c.md, '--fw-cols-lg': c.lg } as CSSProperties
+  return { '--fw-cols': c.base ?? 1, '--fw-cols-sm': c.sm, '--fw-cols-md': c.md, '--fw-cols-lg': c.lg,
+    '--fw-widths': widths?.map((w) => `minmax(0, ${w}fr)`).join(' ') } as CSSProperties
 }
 
 function PagesView({ item, ip }: { item: Pages; ip: number[] }) {
@@ -612,6 +619,10 @@ function RichText(p: WidgetProps) {
       tool('S', 'Strikethrough', () => run('strikeThrough')), tool('H', 'Heading', () => run('formatBlock', 'h3')),
       tool('•', 'Bulleted list', () => run('insertUnorderedList')), tool('1.', 'Numbered list', () => run('insertOrderedList')),
       tool('❝', 'Quote', () => run('formatBlock', 'blockquote')),
+      h('label', { className: 'fw-rich-colour', title: 'Text colour' },
+        h('span', { 'aria-hidden': true }, 'A'),
+        h('input', { type: 'color', 'aria-label': 'Text colour', disabled: p.readOnly, onMouseDown: (e: MouseEvent) => e.stopPropagation(),
+          onChange: (e: ChangeEvent<HTMLInputElement>) => { document.execCommand('styleWithCSS', false, 'true'); run('foreColor', e.target.value) } })),
       tool('🔗', 'Link', () => { const url = prompt('Link address (https://…)'); if (url && /^(https?:|mailto:)/i.test(url.trim())) run('createLink', url.trim()) }),
       tool('⌫', 'Clear formatting', () => { run('removeFormat'); run('formatBlock', 'p') })),
     h('div', {

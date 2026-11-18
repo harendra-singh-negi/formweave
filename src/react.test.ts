@@ -168,3 +168,17 @@ test('options break into the columns asked for', () => {
   assert.match(html, /class="fw-options fw-options-cols" role="group" aria-label="Ops" style="--fw-opt-cols:3"/)
   assert.match(html, /class="fw-options" role="radiogroup" aria-label="One">/) // without columns they run on in a line
 })
+
+test('an image beside text: a grid with widths and lines; an unsafe picture is refused', () => {
+  const s: FormSchema = { version: 1, fields: {}, layout: [
+    { type: 'grid', cols: { base: 1, md: 2 }, widths: [1, 4], look: 'lines', children: [
+      { type: 'content', as: 'image', src: 'https://example.com/icon.png', alt: 'Rotational', width: 80 },
+      { type: 'content', as: 'rich', text: '<p>This is a <span style="color: #1a7f37">Rotational</span> question</p>' },
+    ] },
+  ] }
+  const html = renderToString(h(Form, { schema: s }))
+  assert.match(html, /<div class="fw-grid fw-grid-w fw-grid-lines" style="--fw-cols:1;--fw-cols-md:2;--fw-widths:minmax\(0, 1fr\) minmax\(0, 4fr\)">/)
+  assert.match(html, /<figure class="fw-content fw-image"><img src="https:\/\/example.com\/icon.png" alt="Rotational" loading="lazy" style="width:80px"\/><\/figure>/)
+  const bad = { ...s, layout: [{ type: 'content', as: 'image', src: 'javascript:alert(1)' }] } as FormSchema
+  assert.throws(() => renderToString(h(Form, { schema: bad })), /layout\.0\.src/) // lint() stops it before anything is drawn
+})

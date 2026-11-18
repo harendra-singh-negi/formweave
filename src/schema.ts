@@ -168,6 +168,10 @@ export interface Section {
 export interface Grid {
   type: 'grid'
   cols?: number | { base?: number; sm?: number; md?: number; lg?: number }
+  /** How wide each column is next to the others, once there are several side by side: [1, 3] makes the second three times the first. */
+  widths?: number[]
+  /** 'lines': lines between the cells and around them, like a table. */
+  look?: 'lines'
   visible?: When
   /** Your own CSS classes, separated by spaces. */
   className?: string
@@ -187,9 +191,15 @@ export interface Pages {
 
 export interface Content {
   type: 'content'
-  /** 'rich': `text` is HTML with bold, italic, lists, links and headings; anything else in it is dropped (see cleanHtml). */
-  as?: 'heading' | 'text' | 'rich' | 'divider'
+  /** 'rich': `text` is HTML with bold, italic, colours, lists, links and headings; anything else in it is dropped (see cleanHtml). */
+  as?: 'heading' | 'text' | 'rich' | 'divider' | 'image'
   text?: Text
+  /** For 'image': an https: address or a data:image/ (png, jpeg, gif, webp) URL. */
+  src?: string
+  /** For 'image': what it shows, for people who can't see it. */
+  alt?: Text
+  /** For 'image': the most pixels wide it is drawn. It never grows past its column. */
+  width?: number
   visible?: When
   /** Your own CSS classes, separated by spaces. */
   className?: string
@@ -243,3 +253,6 @@ export const DATE_FORMATS = {
   year: /^\d{4}$/,
   week: /^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$/,
 }
+
+/** Image addresses formweave draws: https, or an inline png, jpeg, gif or webp (not svg, which can carry script). */
+export const SAFE_IMAGE = /^(?:https:\/\/[^\s"'<>]+|data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+)$/

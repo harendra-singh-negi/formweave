@@ -4,7 +4,7 @@ import { lint, type Issue } from './lint.ts'
 import { text } from './form.ts'
 import { fromJsonSchema, type Imported } from './jsonschema.ts'
 import { Form, type WidgetProps } from './react.ts'
-import { DATE_FORMATS, type ChoiceField, type Field, type Fields, type FormSchema, type Grid, type Layout, type ListField, type Text, type Values } from './schema.ts'
+import { DATE_FORMATS, SAFE_IMAGE, type ChoiceField, type Field, type Fields, type FormSchema, type Grid, type Layout, type ListField, type Text, type Values } from './schema.ts'
 
 type Path = string[]
 type Kind = Field['type']
@@ -610,7 +610,7 @@ export function Builder(props: BuilderProps) {
           || (typeof piece === 'object' && h(Fragment, null,
             h('div', { className: 'fw-b-head' }, h('h3', null, piece.type === 'content' ? 'Content' : piece.type, ' settings'),
               h('span', { className: 'fw-b-tools' }, h('button', { type: 'button', 'aria-label': isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', title: isContainer(piece) ? 'Remove, keep what is inside' : 'Delete', onClick: removeNode }, '✕'))),
-            h(Form, { key: panel, schema: NODE_SETTINGS[piece.type], values: nodeSettings(piece), labels: { submit: 'Done' }, onSubmit: () => selectNode(null),
+            h(Form, { key: panel, schema: NODE_SETTINGS[piece.type], values: nodeSettings(piece), widgets: { image: ImagePicker }, labels: { submit: 'Done' }, onSubmit: () => selectNode(null),
               onChange: (st) => { const next = fromNodeSettings(piece, st.values); if (JSON.stringify(next) !== JSON.stringify(piece)) commit({ ...schema, layout: layoutEdits.replace(schema.layout!, node!, next) }, null, true) } })))
           || h(Fragment, null, h('h3', null, 'Form settings'),
             h(Form, { key: panel, schema: FORM_SETTINGS, values: formSettings(schema), labels: { submit: 'Done' }, onSubmit: () => {},
@@ -684,6 +684,48 @@ function OptionsEditor(p: WidgetProps) {
             tool('Paste a list', 'Type or paste many options at once', () => setBulk(rows.map((r) => (r.label ? `${r.value ?? ''} | ${r.label}` : String(r.value ?? ''))).join('\n'))),
             h('label', { className: 'fw-b-opts-cond', title: 'Offer an option only while a formula holds: cascading choices' },
               h('input', { type: 'checkbox', checked: conditions, onChange: (e: ChangeEvent<HTMLInputElement>) => setConditions(e.target.checked) }), ' Conditions'))))
+}
+
+/** Pictures are kept inside the form, so a big one is made smaller first: at most this many pixels on its long side. */
+const IMAGE_SIDE = 1200
+
+/** Reads a picked picture into a data: URL, shrunk to IMAGE_SIDE, in this browser: nothing is uploaded. */
+async function shrink(file: File): Promise<string> {
+  const img = await createImageBitmap(file)
+  const k = Math.min(1, IMAGE_SIDE / Math.max(img.width, img.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(img.width * k)
+  canvas.height = Math.round(img.height * k)
+  canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+  return canvas.toDataURL('image/webp', 0.85) // keeps transparency, far smaller than png
+}
+
+/** An image's picture: picked from the device (or a phone's camera), or an https address. */
+function ImagePicker(p: WidgetProps) {
+  const src = typeof p.value === 'string' ? p.value : ''
+  const [note, setNote] = useState('')
+  const inline = src.startsWith('data:')
+  return h('div', { className: 'fw-b-image' },
+    src && SAFE_IMAGE.test(src) && h('img', { src, alt: '' }),
+    h('input', { type: 'file', accept: 'image/png,image/jpeg,image/gif,image/webp', 'aria-label': 'Pick a picture', disabled: p.readOnly,
+      onChange: async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        e.target.value = ''
+        if (!file) return
+        setNote('Reading…')
+        try {
+          p.set(await shrink(file))
+          setNote('')
+        } catch {
+          setNote('That picture could not be read. Try a PNG or JPEG.')
+        }
+      } }),
+    h('input', { type: 'url', placeholder: 'or its address: https://…', 'aria-label': 'Picture address', value: inline ? '' : src, readOnly: p.readOnly,
+      onChange: (e: ChangeEvent<HTMLInputElement>) => p.set(e.target.value.trim() || null) }),
+    inline && h('p', { className: 'fw-help' }, `Kept inside the form (${Math.round((src.length * 3) / 4 / 1024)} KB).`),
+    src && !SAFE_IMAGE.test(src) && h('p', { className: 'fw-error' }, 'Use an https:// address.'),
+    note && h('p', { className: 'fw-help', role: 'status' }, note),
+    src && h('button', { type: 'button', onClick: () => p.set(null) }, 'Remove the picture'))
 }
 
 const NEW_COLUMNS: [string, string, Field][] = [
@@ -1131,6 +1173,15 @@ const NODES: [string, string, () => Layout][] = [
   ['text', 'Text', () => ({ type: 'content', as: 'text', text: 'Some text' })],
   ['rich', 'Rich text', () => ({ type: 'content', as: 'rich', text: '<p><strong>Please note:</strong> write in capital letters.</p>' })],
   ['divider', 'Divider', () => ({ type: 'content', as: 'divider' })],
+  ['image', 'Image', () => ({ type: 'content', as: 'image' })],
+  ['imageText', 'Image beside text', () => ({ type: 'grid', cols: { base: 1, md: 2 }, widths: [1, 4], look: 'lines', children: [
+    { type: 'content', as: 'image' },
+    { type: 'content', as: 'rich', text: '<p>Text beside the picture. <strong>Bold</strong>, <span style="color: #1a7f37">colours</span> and lists work here.</p>' },
+  ] })],
+  ['labelRows', 'Label | text rows', () => ({ type: 'grid', cols: { base: 1, md: 2 }, widths: [1, 4], look: 'lines', children: [
+    { type: 'content', as: 'heading', text: 'Objective' }, { type: 'content', as: 'rich', text: '<p>What this part is for.</p>' },
+    { type: 'content', as: 'heading', text: 'Tagged rank' }, { type: 'content', as: 'rich', text: '<p>Who it is for.</p>' },
+  ] })],
 ]
 
 const showWhen = formula('Show only when', "employment == 'Self Employed'")
@@ -1142,8 +1193,12 @@ const NODE_SETTINGS: Record<string, FormSchema> = {
     visible: showWhen, className: cssClasses,
   } },
   grid: { version: 1, fields: {
-    base: cols('Columns on phones'), sm: cols('Columns from 480px'), md: cols('Columns from 640px'), lg: cols('Columns from 960px'), visible: showWhen, className: cssClasses,
-  }, layout: [{ type: 'grid', cols: 2, children: ['base', 'sm', 'md', 'lg'] }, 'visible', 'className'] },
+    base: cols('Columns on phones'), sm: cols('Columns from 480px'), md: cols('Columns from 640px'), lg: cols('Columns from 960px'),
+    widths: { type: 'string', label: 'Column widths', placeholder: '1 3', pattern: '\\s*\\d+(\\.\\d+)?(\\s+\\d+(\\.\\d+)?)*\\s*', messages: { pattern: 'Numbers with spaces between, like 1 3' },
+      help: 'How wide each column is next to the others: "1 3" makes the second three times the first. Empty: all the same.' },
+    lines: { type: 'boolean', widget: 'toggle', label: 'Lines between cells', help: 'Drawn like a table: a label cell beside a text cell, a picture beside its words.' },
+    visible: showWhen, className: cssClasses,
+  }, layout: [{ type: 'grid', cols: 2, children: ['base', 'sm', 'md', 'lg'] }, 'widths', 'lines', 'visible', 'className'] },
   pages: { version: 1, fields: {
     display: { type: 'choice', label: 'Shown as', options: ['steps', 'tabs', 'accordion'], required: true },
     position: { type: 'choice', widget: 'radio', label: 'Where the steps go', options: ['top', 'left', 'right', 'bottom'], required: true, visible: "display != 'accordion'",
@@ -1152,7 +1207,10 @@ const NODE_SETTINGS: Record<string, FormSchema> = {
     className: cssClasses,
   } },
   content: { version: 1, fields: {
-    as: { type: 'choice', label: 'Kind', options: [{ value: 'heading', label: 'Heading' }, { value: 'text', label: 'Text' }, { value: 'rich', label: 'Rich text (bold, lists, links)' }, { value: 'divider', label: 'Divider' }], required: true },
+    as: { type: 'choice', label: 'Kind', options: [{ value: 'heading', label: 'Heading' }, { value: 'text', label: 'Text' }, { value: 'rich', label: 'Rich text (bold, colours, lists, links)' }, { value: 'image', label: 'Image' }, { value: 'divider', label: 'Divider' }], required: true },
+    src: { type: 'string', widget: 'image', label: 'Picture', visible: "as == 'image'" },
+    alt: { type: 'string', label: 'What it shows', help: 'Read out to people who can\'t see it. Empty for a decoration.', visible: "as == 'image'" },
+    width: { type: 'number', label: 'Largest width (px)', min: 8, max: 4000, decimals: 0, placeholder: 'Its column', visible: "as == 'image'" },
     text: { type: 'string', widget: 'textarea', label: 'Text', visible: "as == 'heading' or as == 'text'" },
     html: { type: 'string', widget: 'richtext', label: 'Text', visible: "as == 'rich'" },
     visible: showWhen, className: cssClasses,
@@ -1168,10 +1226,11 @@ function nodeOwn(n: Container | Extract<Layout, { type: 'content' }>): Values {
     case 'section': return { title: text(n.title, 'en') || null, look: n.look ?? 'plain', visible }
     case 'grid': {
       const c = typeof n.cols === 'number' ? { base: 1, md: n.cols } : (n.cols ?? {})
-      return { base: c.base ?? null, sm: c.sm ?? null, md: c.md ?? null, lg: c.lg ?? null, visible }
+      return { base: c.base ?? null, sm: c.sm ?? null, md: c.md ?? null, lg: c.lg ?? null, widths: n.widths?.join(' ') ?? null, lines: n.look === 'lines', visible }
     }
     case 'pages': return { display: n.display ?? 'steps', position: n.position ?? 'top', visible }
-    case 'content': return { as: n.as ?? 'text', text: n.as === 'rich' ? null : text(n.text, 'en') || null, html: n.as === 'rich' ? text(n.text, 'en') || null : null, visible }
+    case 'content': return { as: n.as ?? 'text', text: n.as === 'rich' ? null : text(n.text, 'en') || null, html: n.as === 'rich' ? text(n.text, 'en') || null : null,
+      src: n.src ?? null, alt: text(n.alt, 'en') || null, width: n.width ?? null, visible }
   }
 }
 
@@ -1188,11 +1247,17 @@ function fromNodeSettings(n: Exclude<Layout, string>, s: Values): Layout {
     // rich text is typed in its own box; switching kinds keeps the words (without formatting when leaving rich)
     const plain = (html: unknown) => String(html ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || null
     const typed = s.as === 'rich' ? (s.html ?? (n.as === 'rich' ? null : s.text)) : (s.text ?? (n.as === 'rich' ? plain(s.html) : null))
-    put('text', s.as === 'divider' ? null : words(n.text, typed))
+    put('text', s.as === 'divider' || s.as === 'image' ? null : words(n.text, typed))
+    put('src', s.as === 'image' ? s.src : null)
+    put('alt', s.as === 'image' ? words(n.alt, s.alt) : null)
+    put('width', s.as === 'image' ? s.width : null)
   }
   if (n.type === 'grid') {
     const c = Object.fromEntries(['base', 'sm', 'md', 'lg'].filter((k) => typeof s[k] === 'number').map((k) => [k, s[k]]))
     put('cols', Object.keys(c).length ? (c as Grid['cols']) : null)
+    const widths = String(s.widths ?? '').trim().split(/\s+/).map(Number).filter((w) => w > 0)
+    put('widths', widths.length ? widths : null)
+    put('look', s.lines ? 'lines' : null)
   }
   return out as unknown as Layout
 }
@@ -1258,7 +1323,7 @@ function LayoutTab({ schema, commit, panel, bump }: LayoutTabProps) {
     h('div', { className: 'fw-b-settings' },
       typeof node === 'object'
         ? h(Fragment, null, h('h3', null, node.type === 'content' ? 'Content' : node.type, ' settings'),
-            h(Form, { key: panel, schema: NODE_SETTINGS[node.type], values: nodeSettings(node), labels: { submit: 'Done' }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
+            h(Form, { key: panel, schema: NODE_SETTINGS[node.type], values: nodeSettings(node), widgets: { image: ImagePicker }, labels: { submit: 'Done' }, onChange: (s) => onSettings(s.values), onSubmit: () => select(null) }))
         : h('p', { className: 'fw-help' }, typeof node === 'string' ? 'A field. Change it on the Fields tab.' : 'Select a section, grid, page or text to change it. Drag anything to move it.')))
 }
 
@@ -1302,7 +1367,9 @@ function LayoutTree(p: LayoutTreeProps): ReactNode {
         return ['▥', `${Math.max(...Object.values(c).map(Number))} columns`, `grid · ${c.base ?? 1} on phones`]
       }
       case 'pages': return ['⧉', `${n.children.length} ${n.display ?? 'steps'}`, `pages${n.position && n.display !== 'accordion' ? ` · ${n.position}` : ''}`]
-      case 'content': return [n.as === 'divider' ? '—' : n.as === 'heading' ? 'H' : '¶', n.as === 'divider' ? 'Divider' : text(n.text, 'en').replace(/<[^>]*>/g, ' ').trim().slice(0, 60) || '…', n.as ?? 'text']
+      case 'content':
+        if (n.as === 'image') return ['▨', text(n.alt, 'en') || (n.src ? 'Image' : 'Image (none picked yet)'), 'image']
+        return [n.as === 'divider' ? '—' : n.as === 'heading' ? 'H' : '¶', n.as === 'divider' ? 'Divider' : text(n.text, 'en').replace(/<[^>]*>/g, ' ').trim().slice(0, 60) || '…', n.as ?? 'text']
     }
   }
   return h('ul', { className: 'fw-b-list', onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => drop(e, p.items.length) },
