@@ -43,6 +43,12 @@ scripts/      build.mjs, and scan-pdf.ts to compare scanning across PDFs
 Keep files small and about one thing. A new widget is a file in `src/react/widgets/` plus a line in its `index.ts`;
 a new sample is a file in `src/samples/` plus a line in `src/samples.ts`. Every file starts with a line on what it is for.
 
+## Editor
+
+The Prettier and oxc (oxlint) extensions show the same results while you type; `.editorconfig` sets the spacing.
+A rule that must not apply in one place is turned off on that line with its reason:
+`// oxlint-disable-next-line rule -- why`.
+
 ## Rules of the house
 
 - No AI service, account or paid API anywhere: the people who fill in these forms have none.
@@ -56,6 +62,8 @@ a new sample is a file in `src/samples/` plus a line in `src/samples.ts`. Every 
 ## Check a change
 
 ```sh
+npm run format       # Prettier writes the code style; format:check only checks
+npm run lint         # oxlint: mistakes, unused code, the rules of hooks; warnings fail too
 npm run typecheck
 npm test
 npm run test:e2e
@@ -67,7 +75,7 @@ For scanning changes, compare before and after on a set of PDFs: `node --experim
 
 ## Continuous integration
 
-Every push to `main` and every pull request runs `.github/workflows/ci.yml`: the type check, unit tests, build, package
+Every push to `main` and every pull request runs `.github/workflows/ci.yml`: lint, the Prettier check, the type check, unit tests, build, package
 check and browser tests on Node 22, and the built package on Node 20, 22 and 24. A pull request is merged when it is
 green.
 

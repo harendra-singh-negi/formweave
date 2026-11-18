@@ -321,6 +321,8 @@ npm run demo      # the demo app at http://127.0.0.1:5180 (Build and Fill tabs, 
 npm test          # unit tests, node:test, Node 22.6+
 npm run test:e2e  # the builder in a real browser (Playwright)
 npm run test:dist # after build: the built package used by name, on any supported Node
+npm run lint      # oxlint
+npm run format    # Prettier
 npm run typecheck
 npm run build     # dist/ from scratch
 ```
