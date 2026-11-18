@@ -464,8 +464,14 @@
 .fw-rich-text span[style] { text-decoration: inherit; }
 .fw-b-image { display: grid; gap: 0.375rem; justify-items: start; }
 .fw-b-image img { max-width: 100%; max-height: 8rem; border: 1px solid var(--fw-border); border-radius: var(--fw-radius); }
-/* help: how to do each thing */
-.fw-b-help { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1rem 1.5rem; padding: 1rem 1.25rem; border: 1px solid color-mix(in srgb, var(--fw-accent) 35%, var(--fw-border)); border-radius: var(--fw-radius); background: color-mix(in srgb, var(--fw-accent) 4%, var(--fw-bg)); font-size: 0.875rem; line-height: 1.5; }
+/* help: how to do each thing, in a dialog over the builder */
+.fw-b-help { width: min(64rem, calc(100vw - 2rem)); max-height: min(85vh, 50rem); padding: 0; overflow: hidden; display: none; flex-direction: column;
+  color: var(--fw-text); background: var(--fw-bg); border: 1px solid var(--fw-border); border-radius: calc(var(--fw-radius) * 2); box-shadow: 0 20px 60px rgb(0 0 0 / 0.3); font-size: 0.875rem; line-height: 1.5; }
+.fw-b-help[open] { display: flex; }
+.fw-b-help::backdrop { background: rgb(15 20 30 / 0.45); backdrop-filter: blur(2px); }
+.fw-b-help-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.75rem 1rem 0.75rem 1.25rem; border-bottom: 1px solid var(--fw-border); }
+.fw-b-help-head h2 { margin: 0; font-size: 1.125rem; font-weight: 700; text-transform: none; letter-spacing: normal; color: var(--fw-text); }
+.fw-b-help-body { overflow: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1rem 1.5rem; padding: 1rem 1.25rem 1.25rem; }
 .fw-b-help ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.375rem; }
 .fw-builder .fw-b-bar [aria-expanded=true] { border-color: var(--fw-accent); color: var(--fw-accent); }
 /* copy, paste, duplicate */

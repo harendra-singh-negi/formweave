@@ -94,7 +94,7 @@ $('reset').addEventListener('click', () => {
 // The builder's look and words are the app's to choose: colours, font and corners as CSS variables, words as labels
 const BUILDER_HI = {
   design: 'डिज़ाइन', build: 'फ़ील्ड', layout: 'लेआउट', preview: 'पूर्वावलोकन', json: 'इम्पोर्ट / JSON', jsonScan: 'स्कैन / इम्पोर्ट',
-  undo: 'पूर्ववत', redo: 'फिर करें', help: '? मदद', closeHelp: '✕ मदद बंद', add: 'जोड़ें', addTo: '{name} में जोड़ें', find: 'इनपुट खोजें ({n})',
+  undo: 'पूर्ववत', redo: 'फिर करें', help: '? मदद', closeHelp: 'मदद बंद करें', helpTitle: 'बिल्डर कैसे इस्तेमाल करें', add: 'जोड़ें', addTo: '{name} में जोड़ें', find: 'इनपुट खोजें ({n})',
   fields: 'फ़ील्ड', formSettings: 'फ़ॉर्म सेटिंग', settings: '{kind} सेटिंग', selectField: 'बदलने के लिए कोई फ़ील्ड चुनें।', copy: 'कॉपी', paste: 'पेस्ट',
   duplicate: 'डुप्लिकेट', remove: 'हटाएँ', desktop: 'डेस्कटॉप', tablet: 'टैबलेट', phone: 'फ़ोन', fullWidth: '⤢ पूरी चौड़ाई', exitFullWidth: '⤡ सामान्य चौड़ाई',
   openPalette: '+ जोड़ें', closePalette: '✕ पैलेट बंद', samples: 'नमूने', layoutPieces: 'लेआउट',

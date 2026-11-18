@@ -42,7 +42,7 @@ export type BuilderTab = 'design' | 'build' | 'layout' | 'preview' | 'json'
 /** The builder's own words. Pass `labels` to change any of them. */
 export const BUILDER_LABELS = {
   design: 'Design', build: 'Fields', layout: 'Layout', preview: 'Preview', json: 'Import / JSON', jsonScan: 'Scan / Import',
-  undo: 'Undo', redo: 'Redo', help: '? Help', closeHelp: '✕ Close help',
+  undo: 'Undo', redo: 'Redo', help: '? Help', closeHelp: 'Close help', helpTitle: 'How to use the builder',
   add: 'Add', addTo: 'Add to {name}', find: 'Find an input ({n})', fields: 'Fields', formSettings: 'Form settings', settings: '{kind} settings',
   selectField: 'Select a field to change it.', copy: 'Copy', paste: 'Paste', duplicate: 'Duplicate', remove: 'Delete',
   desktop: 'Desktop', tablet: 'Tablet', phone: 'Phone', fullWidth: '⤢ Full width', exitFullWidth: '⤡ Exit full width', openPalette: '+ Add', closePalette: '✕ Close palette',
@@ -579,8 +579,8 @@ export function Builder(props: BuilderProps) {
       h('div', null,
         h('button', { type: 'button', onClick: undo, disabled: !past.length, title: 'Ctrl+Z' }, L.undo),
         h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, L.redo),
-        props.help !== false && h('button', { type: 'button', 'aria-expanded': help, 'aria-controls': 'fw-b-help', onClick: () => setHelp(!help) }, help ? L.closeHelp : L.help))),
-    help && h(Help),
+        props.help !== false && h('button', { type: 'button', 'aria-haspopup': 'dialog', onClick: () => setHelp(true) }, L.help))),
+    help && h(Help, { close: () => setHelp(false), title: L.helpTitle, closeLabel: L.closeHelp }),
     note && h('p', { className: 'fw-b-note', role: 'status' }, note),
     issues.length > 0 && h('ul', { className: 'fw-b-issues', role: 'status' }, issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message))),
     design && h('div', { className: `fw-b-main fw-b-design${wide ? ' fw-b-wide' : ''}` },
@@ -881,9 +881,22 @@ const HELP: [string, string[]][] = [
   ]],
 ]
 
-function Help() {
-  return h('section', { id: 'fw-b-help', className: 'fw-b-help', 'aria-label': 'How to use the builder' },
-    HELP.map(([title, items]) => h('div', { key: title }, h('h3', null, title), h('ul', null, items.map((t, i) => h('li', { key: i }, t))))))
+/** The how-to, in a modal dialog over the builder: Esc, ✕ or a click outside it closes it. */
+function Help({ close, title, closeLabel }: { close(): void; title: string; closeLabel: string }) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const d = ref.current
+    if (d && !d.open) d.showModal?.()
+  }, [])
+  return h('dialog', {
+    ref, id: 'fw-b-help', className: 'fw-b-help', 'aria-labelledby': 'fw-b-help-title', onClose: close,
+    onClick: (e: MouseEvent) => { if (e.target === e.currentTarget) close() }, // the backdrop
+  },
+    h('div', { className: 'fw-b-help-head' },
+      h('h2', { id: 'fw-b-help-title' }, title),
+      h('button', { type: 'button', autoFocus: true, 'aria-label': closeLabel, title: `${closeLabel} (Esc)`, onClick: close }, '✕')),
+    h('div', { className: 'fw-b-help-body' },
+      HELP.map(([group, items]) => h('section', { key: group }, h('h3', null, group), h('ul', null, items.map((t, i) => h('li', { key: i }, t)))))))
 }
 
 interface CanvasProps {
