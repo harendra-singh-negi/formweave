@@ -59,10 +59,17 @@ a new sample is a file in `src/samples/` plus a line in `src/samples.ts`. Every 
 npm run typecheck
 npm test
 npm run test:e2e
-npm run build && npm pack --dry-run   # what would be published
+npm run build && npm run test:dist    # the built package, used by name as an app would
+npm pack --dry-run                    # what would be published
 ```
 
 For scanning changes, compare before and after on a set of PDFs: `node --experimental-strip-types scripts/scan-pdf.ts a.pdf b.pdf`.
+
+## Continuous integration
+
+Every push to `main` and every pull request runs `.github/workflows/ci.yml`: the type check, unit tests, build, package
+check and browser tests on Node 22, and the built package on Node 20, 22 and 24. A pull request is merged when it is
+green.
 
 ## Send it
 
