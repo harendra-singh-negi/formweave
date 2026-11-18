@@ -349,6 +349,7 @@ export function Builder(props: BuilderProps) {
   const [tab, setTab] = useState<'design' | 'build' | 'layout' | 'preview' | 'json'>('design')
   /** The canvas alone, palette and form settings put away. */
   const [wide, setWide] = useState(false)
+  const [help, setHelp] = useState(false)
   /** Full width: the palette opened again with "+ Add". */
   const [adding, setAdding] = useState(false)
   /** On the canvas: a selected section, grid, page or text, by its place in the layout. */
@@ -599,7 +600,9 @@ export function Builder(props: BuilderProps) {
         (['design', 'build', 'layout', 'preview', 'json'] as const).map((t) => h('button', { key: t, type: 'button', role: 'tab', 'aria-selected': tab === t, onClick: () => setTab(t) }, { design: 'Design', build: 'Fields', layout: 'Layout', preview: 'Preview', json: props.scan ? 'Scan / Import' : 'Import / JSON' }[t]))),
       h('div', null,
         h('button', { type: 'button', onClick: undo, disabled: !past.length, title: 'Ctrl+Z' }, 'Undo'),
-        h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, 'Redo'))),
+        h('button', { type: 'button', onClick: redo, disabled: !future.length, title: 'Ctrl+Shift+Z' }, 'Redo'),
+        h('button', { type: 'button', 'aria-expanded': help, 'aria-controls': 'fw-b-help', onClick: () => setHelp(!help) }, help ? '✕ Close help' : '? Help'))),
+    help && h(Help),
     issues.length > 0 && h('ul', { className: 'fw-b-issues', role: 'status' }, issues.map((i, n) => h('li', { key: n }, h('code', null, i.path || 'schema'), ' ', i.message))),
     design && h('div', { className: `fw-b-main fw-b-design${wide ? ' fw-b-wide' : ''}` },
       (!wide || adding) && palette,
@@ -854,6 +857,51 @@ function fromFormSettings(s: FormSchema, v: Values): FormSchema {
   if (v.title) out.title = s.title && typeof s.title === 'object' ? { ...s.title, en: String(v.title) } : String(v.title)
   else delete out.title
   return out
+}
+
+/** How to do each thing in the builder: what the Help button opens. */
+const HELP: [string, string[]][] = [
+  ['The design canvas', [
+    'The middle is the form as people will see it. Click a field, column, section, grid, page or text to change it in the panel on the right; the form updates as you type.',
+    'Double-click a label, column heading, section title or heading to retype it in place. Enter keeps it, Esc leaves it.',
+    'Drag anything on the form to move it. Drag an input or a layout piece from the left onto the spot it should go, or click it to add it after what is picked.',
+    'Delete removes what is picked. Undo and Redo (Ctrl+Z, Ctrl+Shift+Z) take back any change.',
+    'Desktop, Tablet and Phone show the form at that screen\'s width, and you keep editing in each. Full width puts the palette and settings away; "+ Add" brings the palette back.',
+    'Click empty space on the form to see the form\'s own settings: its title and its look.',
+  ]],
+  ['Inputs and their settings', [
+    'The palette on the left has every input, in groups, with a search box. Fields hidden by "Show only when" show faded on the canvas.',
+    'Key is the name in the saved data. Required, Read-only, "Show only when" (a formula such as employment == \'Self Employed\') and "Calculated value" (qty * price) are in every input\'s settings.',
+  ]],
+  ['Choices and options', [
+    'Each option is a line: Value is saved, Label is shown when it should read differently. Enter adds the next option.',
+    '"Paste a list" takes many at once, one per line, "value | label" when they differ.',
+    '"Options per row" breaks radios and tick boxes into that many columns, like a printed form; phones show one.',
+    '"Conditions" adds a "show only when" box to each option, for cascading choices (cities of the picked state).',
+  ]],
+  ['Tables and matrices', [
+    'Pick a table and its designer opens on the right: type the headings and rows in place, "+ Column" (choose its type first), "+ Row", ← → ↑ ↓ to reorder, ✕ to remove, ⚙ for a column\'s own settings.',
+    'Tick "Sum" under a number column for a Total row. "Use fixed rows" names the rows (Monday, Tuesday…); "Let people add rows" lets people add them with "+ Add row".',
+    'A matrix (Choices → Matrix) asks a question per row with one choice from the same options, a column each. Its designer edits the rows and the options.',
+  ]],
+  ['Layout: sections, columns, pictures', [
+    'Layout in the palette adds sections, grids (columns), steps or tabs, headings, text, rich text, images and dividers.',
+    'A section\'s Style is plain, box, a title band or an underlined title.',
+    'A grid sets how many columns per screen width, "Column widths" such as 1 4 (the second four times as wide), and "Lines between cells" to draw it like a table. Phones stack the cells.',
+    '"Image beside text" and "Label | text rows" are ready-made grids: a picture or a label cell beside text, as on printed question sheets.',
+    'Rich text has bold, italic, lists, links, quotes and a text colour (A). An image is picked from this device (made smaller, kept inside the form) or given by its https address.',
+    'The Layout tab shows the same layout as a tree, with an icon for each kind of piece, for moving things far apart.',
+  ]],
+  ['Looks, import and saving', [
+    'Form settings → Look → Paper draws the form like a printed one: title on top, boxed sections, lines to write on, and only the form when printed.',
+    'Scan / Import reads a PDF or photos into a form on this device (nothing is uploaded), or takes a pasted schema or JSON Schema.',
+    'Every change is passed to your app, with any problems listed at the top; Preview fills the form for real.',
+  ]],
+]
+
+function Help() {
+  return h('section', { id: 'fw-b-help', className: 'fw-b-help', 'aria-label': 'How to use the builder' },
+    HELP.map(([title, items]) => h('div', { key: title }, h('h3', null, title), h('ul', null, items.map((t, i) => h('li', { key: i }, t))))))
 }
 
 interface CanvasProps {
