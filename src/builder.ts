@@ -186,6 +186,18 @@ function fromSettings(f: Field, s: Values): Field {
 
 // ---- the builder ----
 
+/** Drag helpers: mark the innermost row under the pointer so people see where a drop lands. */
+const dragOver = (e: DragEvent) => {
+  e.preventDefault()
+  e.stopPropagation()
+  e.currentTarget.classList.add('fw-b-over')
+}
+const dragLeave = (e: DragEvent) => {
+  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) e.currentTarget.classList.remove('fw-b-over')
+}
+const dragEnd = (e: DragEvent) => e.currentTarget.classList.remove('fw-b-over')
+
+
 export function Builder(props: BuilderProps) {
   const [past, setPast] = useState<FormSchema[]>([])
   const [future, setFuture] = useState<FormSchema[]>([])
@@ -234,6 +246,13 @@ export function Builder(props: BuilderProps) {
     const parent = !selected ? [] : inside ? selected : selected.slice(0, -1)
     const key = freeKey(schema.fields, parent, kind === 'string' ? 'text' : kind)
     commit(edits.add(schema, parent, key, NEW[kind](), inside ? undefined : selected?.at(-1)), [...parent, key])
+    setPanel((n) => n + 1)
+  }
+  /** A field dragged from the palette: into `parent`, before `before` (null = the end). */
+  const place = (kind: Kind, parent: Path, before: string | null) => {
+    const key = freeKey(schema.fields, parent, kind === 'string' ? 'text' : kind)
+    const added = edits.add(schema, parent, key, NEW[kind]())
+    commit(before === null ? added : edits.move(added, [...parent, key], before), [...parent, key])
     setPanel((n) => n + 1)
   }
   const duplicate = (path: Path) => {
@@ -293,12 +312,10 @@ export function Builder(props: BuilderProps) {
     tab === 'build' && h('div', { className: 'fw-b-main' },
       h('div', { className: 'fw-b-palette', 'aria-label': 'Add a field' },
         h('h3', null, 'Add'),
-        KINDS.map(([k, label]) => h('button', { key: k, type: 'button', onClick: () => add(k) }, '+ ', label))),
+        KINDS.map(([k, label]) => h('button', { key: k, type: 'button', draggable: true, title: 'Click to add, or drag it into place', onClick: () => add(k), onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-kind', k) }, '+ ', label))),
       h('div', { className: 'fw-b-tree' },
         h('h3', null, 'Fields'),
-        Object.keys(schema.fields).length === 0
-          ? h('p', { className: 'fw-help' }, 'Add a field from the left.')
-          : h(Tree, { fields: schema.fields, parent: [], selected, select, move, remove, duplicate, drop: (path, before) => commit(edits.move(schema, path, before)) })),
+        h(Tree, { fields: schema.fields, parent: [], selected, select, move, remove, duplicate, place, drop: (path, before) => commit(edits.move(schema, path, before)) })),
       h('div', { className: 'fw-b-settings' },
         field && selected
           ? h(Fragment, null, h('h3', null, KINDS.find(([k]) => k === field.type)![1], ' settings'),
@@ -319,11 +336,19 @@ interface TreeProps {
   remove(p: Path): void
   duplicate(p: Path): void
   drop(p: Path, before: string | null): void
+  place(kind: Kind, parent: Path, before: string | null): void
 }
 
 function Tree(p: TreeProps): ReactNode {
   const same = (a: Path | null, b: Path) => !!a && a.join('.') === b.join('.')
   const onDrop = (e: DragEvent, before: string | null) => {
+    dragEnd(e)
+    const kind = e.dataTransfer.getData('text/x-fw-kind') as Kind
+    if (kind) {
+      e.preventDefault()
+      e.stopPropagation()
+      return p.place(kind, p.parent, before)
+    }
     const from = e.dataTransfer.getData('text/x-fw-path').split('.')
     // only among siblings: moving between groups would change the data's shape
     if (from.slice(0, -1).join('.') !== p.parent.join('.')) return
@@ -332,10 +357,12 @@ function Tree(p: TreeProps): ReactNode {
     if (from.at(-1) !== before) p.drop(from, before)
   }
   return h('ul', { className: 'fw-b-list', onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => onDrop(e, null) },
+    Object.keys(p.fields).length === 0 && h('li', { className: 'fw-b-drop', onDragOver: dragOver, onDragLeave: dragLeave, onDrop: (e: DragEvent) => onDrop(e, null) },
+      p.parent.length ? 'Empty: drag a field here' : 'Drag a field here, or click one on the left'),
     Object.entries(p.fields).map(([key, f]): ReactNode => {
       const path = [...p.parent, key]
       const on = same(p.selected, path)
-      return h('li', { key, onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => onDrop(e, key) },
+      return h('li', { key, onDragOver: dragOver, onDragLeave: dragLeave, onDrop: (e: DragEvent) => onDrop(e, key) },
         h('div', { className: 'fw-b-item', 'aria-current': on || undefined },
           h('button', {
             type: 'button', className: 'fw-b-pick', draggable: true, onClick: () => p.select(path),
@@ -544,6 +571,12 @@ function LayoutTab({ schema, commit, panel, bump }: LayoutTabProps) {
     const next = layoutEdits.move(items, from, parent, index)
     if (next) { commit(next); select(null) }
   }
+  const insert = (parent: Ip, index: number, n: Layout) => {
+    if (!fits(items, parent, n)) return
+    commit(layoutEdits.insert(items, parent, index, n))
+    select([...parent, index])
+  }
+  const newNode = (n: () => Layout) => ({ draggable: true, title: 'Click to add, or drag it into place', onDragStart: (e: DragEvent) => e.dataTransfer.setData('text/x-fw-new', JSON.stringify(n())) })
   const onSettings = (v: Values) => {
     if (!sel || typeof node !== 'object') return
     const next = fromNodeSettings(node, v)
@@ -553,13 +586,12 @@ function LayoutTab({ schema, commit, panel, bump }: LayoutTabProps) {
   return h('div', { className: 'fw-b-main' },
     h('div', { className: 'fw-b-palette', 'aria-label': 'Add to the layout' },
       h('h3', null, 'Add'),
-      NODES.map(([k, label, make]) => h('button', { key: k, type: 'button', onClick: () => add(make()) }, '+ ', label)),
+      NODES.map(([k, label, make]) => h('button', { key: k, type: 'button', onClick: () => add(make()), ...newNode(make) }, '+ ', label)),
       unplaced.length > 0 && h('h3', null, 'Not placed'),
-      unplaced.map((k) => h('button', { key: k, type: 'button', title: 'Place it', onClick: () => add(k) }, '+ ', text(schema.fields[k].label, 'en') || k))),
+      unplaced.map((k) => h('button', { key: k, type: 'button', onClick: () => add(k), ...newNode(() => k) }, '+ ', text(schema.fields[k].label, 'en') || k))),
     h('div', { className: 'fw-b-tree' },
       h('h3', null, 'Layout'),
-      items.length === 0 ? h('p', { className: 'fw-help' }, 'Empty: add a section or place a field.')
-        : h(LayoutTree, { items: items, all: items, parent: [], sel, select, move, schema,
+      h(LayoutTree, { items: items, all: items, parent: [], sel, select, move, insert, schema,
             remove: (ip: Ip) => { commit(isContainer(nodeAt(items, ip)) ? layoutEdits.unwrap(items, ip) : layoutEdits.remove(items, ip)); select(null) } }),
       h('p', null, h('button', { type: 'button', onClick: () => { commit(undefined); select(null) } }, 'Remove the layout'))),
     h('div', { className: 'fw-b-settings' },
@@ -577,11 +609,19 @@ interface LayoutTreeProps {
   schema: FormSchema
   select(ip: Ip): void
   move(from: Ip, parent: Ip, index: number): void
+  insert(parent: Ip, index: number, n: Layout): void
   remove(ip: Ip): void
 }
 
 function LayoutTree(p: LayoutTreeProps): ReactNode {
   const drop = (e: DragEvent, index: number) => {
+    dragEnd(e)
+    const made = e.dataTransfer.getData('text/x-fw-new')
+    if (made) {
+      e.preventDefault()
+      e.stopPropagation()
+      return p.insert(p.parent, index, JSON.parse(made))
+    }
     const raw = e.dataTransfer.getData('text/x-fw-node')
     if (!raw) return
     e.preventDefault()
@@ -598,13 +638,13 @@ function LayoutTree(p: LayoutTreeProps): ReactNode {
     }
   }
   return h('ul', { className: 'fw-b-list', onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => drop(e, p.items.length) },
-    p.items.length === 0 && h('li', { className: 'fw-b-drop' }, 'Empty: drag something here'),
+    p.items.length === 0 && h('li', { className: 'fw-b-drop', onDragOver: dragOver, onDragLeave: dragLeave, onDrop: (e: DragEvent) => drop(e, 0) }, 'Empty: drag something here'),
     p.items.map((n, i): ReactNode => {
       const ip = [...p.parent, i]
       const on = !!p.sel && p.sel.join('.') === ip.join('.')
       const [title, kind] = name(n)
       const siblings = p.items.length
-      return h('li', { key: i, onDragOver: (e: DragEvent) => e.preventDefault(), onDrop: (e: DragEvent) => drop(e, i) },
+      return h('li', { key: i, onDragOver: dragOver, onDragLeave: dragLeave, onDrop: (e: DragEvent) => drop(e, i) },
         h('div', { className: 'fw-b-item', 'aria-current': on || undefined },
           h('button', {
             type: 'button', className: `fw-b-pick${isContainer(n) ? ' fw-b-box' : ''}`, draggable: true, onClick: () => p.select(ip),

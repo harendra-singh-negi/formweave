@@ -118,6 +118,9 @@
 .fw-b-json textarea { width: 100%; min-height: 24rem; font: 12px/1.5 ui-monospace, monospace; padding: 0.5rem; color: inherit; background: var(--fw-bg); border: 1px solid var(--fw-border); border-radius: var(--fw-radius); }
 .fw-builder .fw-b-box { font-weight: 600; }
 .fw-b-layout-empty { display: grid; gap: 0.75rem; justify-items: start; }
+.fw-b-list > li.fw-b-over { box-shadow: 0 -3px 0 var(--fw-accent); }
+.fw-b-list > li.fw-b-drop.fw-b-over { border-color: var(--fw-accent); color: var(--fw-accent); box-shadow: none; }
+.fw-builder .fw-b-palette button[draggable] { cursor: grab; }
 .fw-b-drop { padding: 0.5rem; border: 1px dashed var(--fw-border); border-radius: var(--fw-radius); color: var(--fw-muted); font-size: 0.875rem; }
 .fw-b-scan { display: grid; gap: 0.5rem; justify-items: start; padding-bottom: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--fw-border); }
 .fw-b-scan p, .fw-b-json > p { margin: 0; }
